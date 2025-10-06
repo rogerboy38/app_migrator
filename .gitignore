@@ -1,7 +1,17 @@
-.DS_Store
+Frappe specific
+
+pycache/
 *.pyc
-*.egg-info
-*.swp
-tags
-node_modules
-__pycache__
+*.egg-info/
+.env
+OS specific
+
+.DS_Store
+Thumbs.db
+Logs
+
+*.log
+Temporary files
+
+*.tmp
+*.temp

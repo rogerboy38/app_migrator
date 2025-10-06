@@ -1,41 +1,33 @@
-### App Migrator
+# Create README.md
+cat > README.md << 'EOF'
+# App Migrator - Frappe App Migration Toolkit
 
-Frappe App Migration Toolkit
+🚀 **Automate Frappe app migrations with precision and control**
+
+App Migrator is a powerful Frappe application that provides intelligent tools to migrate, merge, or append modules and components between Frappe apps. Perfect for consolidating apps, extracting features, or reorganizing your Frappe ecosystem.
+
+## ✨ Features
+
+- **Interactive Migration Wizard** - Step-by-step guided migration
+- **Granular Selection** - Choose specific modules, doctypes, and components
+- **Smart Discovery** - Automatically detects app structure and dependencies
+- **Component-Aware** - Migrates doctypes, workflows, reports, print formats, fixtures, and more
+- **Safe & Controlled** - Preview migration plan before execution
+- **Batch Processing** - Handle multiple modules efficiently
+
+## 🎯 Use Cases
+
+- **App Consolidation** - Merge multiple similar apps into one
+- **Feature Extraction** - Move specific modules between apps
+- **App Splitting** - Extract modules to create new apps
+- **Code Reorganization** - Restructure your Frappe applications
+- **Development Workflow** - Share features across development teams
+
+## 🚀 Quick Start
 
 ### Installation
 
-You can install this app using the [bench](https://github.com/frappe/bench) CLI:
-
 ```bash
-cd $PATH_TO_YOUR_BENCH
-bench get-app $URL_OF_THIS_REPO --branch develop
-bench install-app app_migrator
-```
-
-### Contributing
-
-This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
-
-```bash
-cd apps/app_migrator
-pre-commit install
-```
-
-Pre-commit is configured to use the following tools for checking and formatting your code:
-
-- ruff
-- eslint
-- prettier
-- pyupgrade
-
-### CI
-
-This app can use GitHub Actions for CI. The following workflows are configured:
-
-- CI: Installs this app and runs unit tests on every push to `develop` branch.
-- Linters: Runs [Frappe Semgrep Rules](https://github.com/frappe/semgrep-rules) and [pip-audit](https://pypi.org/project/pip-audit/) on every pull request.
-
-
-### License
-
-mit
+# Install the app
+bench get-app app_migrator
+bench --site [your-site] install-app app_migrator
