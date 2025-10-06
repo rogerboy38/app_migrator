@@ -591,14 +591,12 @@ def has_actual_content(directory_path):
         comp_path = os.path.join(directory_path, comp_dir)
         if os.path.exists(comp_path) and os.path.isdir(comp_path):
             # Check if directory has content (not just __init__.py)
-            items = [item for item in os.listdir(comp_path) 
-                    if not item.startswith('.') and not item == '__init__.py']
+            items = [item for item in os.listdir(comp_path) if not item.startswith('.') and not item == '__pycache__']
             if items:
                 return True
     
     # Check for Python files that might be modules
-    python_files = [f for f in os.listdir(directory_path) 
-                   if f.endswith('.py') and not f.startswith('__') and f not in ['hooks.py', '__init__.py']]
+    python_files = [f for f in os.listdir(directory_path) if f.endswith('.py') and not f.startswith('__') and f not in ['hooks.py']]
     if python_files:
         return True
         
@@ -621,8 +619,7 @@ def count_doctypes_in_module(app_name, module_name):
                 not item == '__pycache__'):
                 
                 # Check if this looks like a real doctype (has JSON files or other content)
-                doctype_files = [f for f in os.listdir(item_path) 
-                               if not f.startswith('.') and not f == '__init__.py']
+                doctype_files = [f for f in os.listdir(item_path) if not f.startswith('.') and not f == '__pycache__']
                 if doctype_files:
                     doctype_count += 1
                     
@@ -655,8 +652,7 @@ def discover_component_types(app_name, module_name):
             comp_path = os.path.join(module_path, dir_name)
             if os.path.exists(comp_path) and os.path.isdir(comp_path):
                 # Check if directory has actual content
-                items = [item for item in os.listdir(comp_path) 
-                        if not item.startswith('.') and not item == '__init__.py']
+                items = [item for item in os.listdir(comp_path) if not item.startswith('.') and not item == '__pycache__']
                 if items:
                     component_types.append(display_name)
         
@@ -689,8 +685,7 @@ def discover_doctypes_in_module(app_name, module_name):
                 not item == '__pycache__'):
                 
                 # Check if this looks like a real doctype (has JSON files or other content)
-                doctype_files = [f for f in os.listdir(item_path) 
-                               if not f.startswith('.') and not f == '__init__.py']
+                doctype_files = [f for f in os.listdir(item_path) if not f.startswith('.') and not f == '__pycache__']
                 if doctype_files:
                     doctypes.append(item)
                     
