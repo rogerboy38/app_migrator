@@ -1,5 +1,5 @@
 # Create README.md
-cat > README.md << 'EOF'
+
 # App Migrator - Frappe App Migration Toolkit
 
 🚀 **Automate Frappe app migrations with precision and control**
