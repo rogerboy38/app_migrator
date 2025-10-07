@@ -223,5 +223,5 @@ Ready to push to your GitHub repository! 🚀
 
 ```bash
 # Install the app
-bench get-app app_migrator
+bench get-app app_migrator git clone https://github.com/rogerboy38/app_migrator.git
 bench --site [your-site] install-app app_migrator
