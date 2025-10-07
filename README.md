@@ -32,7 +32,7 @@ ERPNEXT smooth install!
 # 🦸‍♂️ App Migrator - Ultimate ERPNext Migration Toolkit
 
 ## 🎉 VICTORY ACHIEVED!
-**Successfully migrated sysmayal.v.frappe.cloud from ERPNext v14 to v15!**
+**Successfully migrated anysite.v.frappe.cloud from ERPNext v14 to v15!**
 
 > **Battle-tested migration toolkit** that solves real-world ERPNext upgrade challenges with precision and reliability.
 
