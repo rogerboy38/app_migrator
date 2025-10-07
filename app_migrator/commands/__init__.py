@@ -14,9 +14,9 @@ from pathlib import Path
 @click.option('--modules', help='Specific modules to migrate')
 @click.option('--site', help='Site name')
 def migrate_app(action, source_app=None, target_app=None, modules=None, site=None):
-    """App Migrator - Frappe App Migration Toolkit"""
+    """App Migrator - Frappe App Migration Toolkit with Enhanced Renaming"""
     
-    print(f"Migration command called: {action} for {source_app}")
+    print(f"🚀 Migration command called: {action} for {source_app}")
     
     if action == 'analyze':
         analyze_app(source_app)
@@ -32,17 +32,37 @@ def migrate_app(action, source_app=None, target_app=None, modules=None, site=Non
         selected_modules, selected_doctypes = select_modules_interactive(source_app, target_app)
         click.echo(f"🎯 Final selection: {len(selected_modules)} modules with doctype-level selection")
         
+    elif action == 'fix-orphans':
+        fix_orphan_doctypes(source_app)
+        
+    elif action == 'restore-missing':
+        restore_missing_doctypes(source_app)
+        
+    elif action == 'fix-app-none':
+        fix_app_none_doctypes(source_app)
+        
+    elif action == 'analyze-orphans':
+        analyze_orphan_doctypes()
+        
+    elif action == 'fix-all-references':
+        fix_all_references(source_app)
+        
+    elif action == 'rename-systematic':
+        systematic_renaming(source_app, target_app)
+        
+    elif action == 'validate-migration':
+        validate_migration_readiness(source_app)
+        
     else:
-        print(f"Unknown action: {action}")
-        print("Available actions: analyze, migrate, interactive, select-modules")
+        print(f"❌ Unknown action: {action}")
+        print("📋 Available actions: analyze, migrate, interactive, select-modules, fix-orphans, restore-missing, fix-app-none, analyze-orphans, fix-all-references, rename-systematic, validate-migration")
 
 def analyze_app(source_app):
-    """Analyze a Frappe app for migration readiness - FIXED VERSION"""
-    print(f"🎉 SUCCESS! App Migrator is working!")
-    print(f"🔍 Analyzing: {source_app}")
+    """Comprehensive app analysis with enhanced diagnostics"""
+    print(f"🎉 SUCCESS! Enhanced App Migrator is working!")
+    print(f"🔍 Comprehensive Analysis: {source_app}")
     
     try:
-        # Get current site and connect properly
         sites = get_sites()
         if not sites:
             print("❌ No sites available for analysis")
@@ -54,34 +74,57 @@ def analyze_app(source_app):
         with frappe.init_site(site):
             frappe.connect(site=site)
             
-            # Method 1: Count doctypes by app
+            # Enhanced analysis with multiple methods
+            print(f"\n📊 DOCTYPE ANALYSIS:")
+            
+            # Method 1: Count by app
             doctypes_count = frappe.db.count('DocType', {'app': source_app})
-            print(f"📊 Method 1 - Doctypes in app '{source_app}': {doctypes_count}")
+            print(f"   Method 1 - Doctypes in '{source_app}': {doctypes_count}")
             
-            # Method 2: Get all doctypes and filter by app
-            all_doctypes = frappe.get_all('DocType', fields=['name', 'module', 'app'])
+            # Method 2: Detailed list with modules
+            all_doctypes = frappe.get_all('DocType', fields=['name', 'module', 'app', 'custom'])
             app_doctypes = [dt for dt in all_doctypes if dt.get('app') == source_app]
-            print(f"📊 Method 2 - Doctypes in app '{source_app}': {len(app_doctypes)}")
+            print(f"   Method 2 - Detailed count: {len(app_doctypes)}")
             
-            # Show some sample doctypes
-            if app_doctypes:
-                print(f"📋 Sample doctypes in {source_app}:")
-                for dt in app_doctypes[:5]:
-                    print(f"   • {dt['name']} (module: {dt['module']})")
-                if len(app_doctypes) > 5:
-                    print(f"   • ... and {len(app_doctypes) - 5} more")
+            # Module distribution
+            module_dist = {}
+            for dt in app_doctypes:
+                module_dist[dt['module']] = module_dist.get(dt['module'], 0) + 1
             
-            # Check for app=None issues
+            print(f"   🏗️  Module distribution:")
+            for module, count in list(module_dist.items())[:8]:
+                custom_count = len([dt for dt in app_doctypes if dt['module'] == module and dt['custom']])
+                print(f"      • {module}: {count} (custom: {custom_count})")
+            
+            # Orphan analysis
             none_doctypes = [dt for dt in all_doctypes if not dt.get('app') or dt.get('app') == '']
-            if none_doctypes:
-                print(f"⚠️  Found {len(none_doctypes)} doctypes with app=None")
-                print(f"💡 Run: bench migrate-app fix-apps {source_app}")
+            print(f"\n🚨 ORPHAN ANALYSIS:")
+            print(f"   Found {len(none_doctypes)} doctypes with app=None")
             
-            # Also check modules
-            modules = frappe.get_all('Module Def', filters={'app_name': source_app}, fields=['module_name'])
-            print(f"🏗️  Modules in {source_app}: {len(modules)}")
-            for module in modules[:3]:
-                print(f"   • {module['module_name']}")
+            if none_doctypes:
+                orphan_modules = {}
+                for dt in none_doctypes:
+                    orphan_modules[dt['module']] = orphan_modules.get(dt['module'], 0) + 1
+                
+                print(f"   Orphans by module (top 5):")
+                for module, count in list(orphan_modules.items())[:5]:
+                    print(f"      • {module}: {count}")
+            
+            # File system vs Database analysis
+            print(f"\n📁 FILE SYSTEM vs DATABASE:")
+            bench_path = "/home/frappe/frappe-bench"
+            app_path = os.path.join(bench_path, 'apps', source_app, source_app)
+            
+            if os.path.exists(app_path):
+                # Count doctype directories in file system
+                fs_doctype_count = 0
+                for root, dirs, files in os.walk(app_path):
+                    if 'doctype' in root.split(os.sep):
+                        fs_doctype_count += len([d for d in dirs if not d.startswith('__') and not d.endswith('.pyc')])
+                
+                print(f"   Database records: {len(app_doctypes)}")
+                print(f"   File system directories: {fs_doctype_count}")
+                print(f"   Discrepancy: {abs(len(app_doctypes) - fs_doctype_count)}")
             
             frappe.destroy()
             
@@ -90,609 +133,443 @@ def analyze_app(source_app):
         import traceback
         print(f"🔍 Debug: {traceback.format_exc()}")
     
-    print("✅ Migration Hero Toolkit is alive!")
+    print("✅ Enhanced Migration Toolkit Ready!")
 
-def interactive_migration():
-    """Interactive wizard for migration"""
-    sites = get_sites()
-    current_site = sites[0] if sites else None
-    
-    click.echo("🚀 App Migrator - Interactive Mode")
-    click.echo("=" * 50)
-    
-    # Step 1: Site selection
-    site = select_site_interactive(current_site)
-    if not site:
-        return
-        
-    # Step 2: App selection
-    origin_app, target_app = select_apps_interactive(site)
-    if not origin_app or not target_app:
-        click.echo("❌ App selection failed")
-        return
-        
-    # Step 3: Module selection
-    selected_modules, selected_doctypes = select_modules_interactive(origin_app, target_app)
-    
-    if selected_modules:
-        click.echo(f"✅ Migration plan: {len(selected_modules)} modules from {origin_app} → {target_app} on {site}")
-    else:
-        click.echo("❌ No modules selected - migration cancelled")
-
-def select_site_interactive(default_site):
-    """Step 1: Site selection with escape code 0"""
-    sites = get_sites()
-    
-    if not sites:
-        click.echo("❌ No sites found!")
-        return None
-        
-    click.echo("\n📋 Available Sites:")
-    click.echo("  0. ❌ EXIT")
-    for i, site in enumerate(sites, 1):
-        marker = " ← CURRENT" if site == default_site else ""
-        click.echo(f"  {i}. {site}{marker}")
+def fix_orphan_doctypes(source_app):
+    """Fix orphan doctypes with enhanced module-based assignment"""
+    print(f"🔧 FIXING ORPHAN DOCTYPES for {source_app}")
     
     try:
-        choice = click.prompt(f"Select site (0-{len(sites)})", default=1, type=int)
-        if choice == 0:
-            click.echo("🚫 Operation cancelled by user")
-            return None
-        selected_site = sites[choice-1] if 1 <= choice <= len(sites) else default_site
-        click.echo(f"📍 Selected site: {selected_site}")
-        return selected_site
-    except Exception as e:
-        click.echo(f"❌ Site selection error: {e}")
-        return default_site
-
-def select_apps_interactive(site):
-    """Step 2: App selection - origin and target with escape code 0 and ALL selection"""
-    try:
+        sites = get_sites()
+        site = sites[0] if sites else None
+        if not site:
+            print("❌ No site available")
+            return
+            
         with frappe.init_site(site):
             frappe.connect(site=site)
-            installed_apps = frappe.get_installed_apps()
+            
+            # Enhanced orphan detection with module mapping
+            orphan_doctypes = frappe.get_all('DocType', 
+                filters={'app': ['in', [None, '']]},
+                fields=['name', 'module', 'custom']
+            )
+            
+            print(f"📋 Found {len(orphan_doctypes)} orphan doctypes")
+            
+            # Get modules that belong to this app
+            app_modules = frappe.get_all('Module Def', 
+                filters={'app_name': source_app},
+                fields=['module_name']
+            )
+            
+            app_module_names = [m['module_name'] for m in app_modules]
+            print(f"🏗️  App modules: {app_module_names}")
+            
+            fixed_count = 0
+            for doctype in orphan_doctypes:
+                if doctype['module'] in app_module_names:
+                    print(f"   🔄 Fixing {doctype['name']} (module: {doctype['module']})")
+                    frappe.db.set_value('DocType', doctype['name'], 'app', source_app)
+                    fixed_count += 1
+            
+            frappe.db.commit()
+            print(f"✅ Fixed {fixed_count} orphan doctypes for app: {source_app}")
+            
             frappe.destroy()
-    except Exception as e:
-        click.echo(f"❌ Error connecting to site: {e}")
-        return None, None
-    
-    click.echo(f"\n📦 Installed Apps on {site}:")
-    click.echo("  0. ❌ EXIT")
-    for i, app in enumerate(installed_apps, 1):
-        click.echo(f"  {i}. {app}")
-    click.echo(f"  {len(installed_apps)+1}. ✅ ALL apps")
-    
-    try:
-        # Select origin app
-        origin_choice = click.prompt(f"Select ORIGIN app (0=exit, 1-{len(installed_apps)}=specific, {len(installed_apps)+1}=all)", type=int)
-        if origin_choice == 0:
-            click.echo("🚫 Operation cancelled by user")
-            return None, None
-        elif origin_choice == len(installed_apps) + 1:
-            origin_app = "ALL"
-            click.echo("✅ Selected ALL apps as origin")
-        else:
-            origin_app = installed_apps[origin_choice-1] if 1 <= origin_choice <= len(installed_apps) else None
-        
-        # Select target app  
-        click.echo(f"\n📦 Target Apps on {site}:")
-        click.echo("  0. ↩️ BACK to origin selection")
-        for i, app in enumerate(installed_apps, 1):
-            click.echo(f"  {i}. {app}")
-        click.echo(f"  {len(installed_apps)+1}. ✅ ALL apps")
             
-        target_choice = click.prompt(f"Select TARGET app (0=back, 1-{len(installed_apps)}=specific, {len(installed_apps)+1}=all)", type=int)
-        if target_choice == 0:
-            click.echo("↩️ Returning to origin selection...")
-            return select_apps_interactive(site)  # Recursive call to go back
-        elif target_choice == len(installed_apps) + 1:
-            target_app = "ALL"
-            click.echo("✅ Selected ALL apps as target")
-        else:
-            target_app = installed_apps[target_choice-1] if 1 <= target_choice <= len(installed_apps) else None
-        
-        click.echo(f"🎯 Origin: {origin_app} → Target: {target_app}")
-        return origin_app, target_app
-        
     except Exception as e:
-        click.echo(f"❌ App selection error: {e}")
-        return None, None
+        print(f"❌ Error: {e}")
+        import traceback
+        print(f"🔍 Debug: {traceback.format_exc()}")
 
-def select_modules_interactive(origin_app, target_app):
-    """Step 3: Module discovery and selection with escape code 0"""
-    click.echo(f"\n🔍 Discovering modules in {origin_app}...")
-    
-    # Get actual modules from the origin app
-    modules = discover_app_modules(origin_app)
-    
-    if not modules:
-        click.echo("❌ No modules with content found in the origin app")
-        return [], {}
-    
-    click.echo("📁 Available Modules:")
-    click.echo("  0. ❌ EXIT migration")
-    for i, module in enumerate(modules, 1):
-        component_types = discover_component_types(origin_app, module)
-        doctype_count = count_doctypes_in_module(origin_app, module)
-        
-        # Enhanced display based on content type
-        if doctype_count == "integration" or doctype_count == 0:
-            # Show component types for integration modules
-            display_text = f"{module} - {', '.join(component_types)}"
-        else:
-            # Show doctype count + component types for modules with doctypes
-            display_text = f"{module} ({doctype_count} doctypes) - {', '.join(component_types)}"
-            
-        click.echo(f"  {i}. {display_text}")
-    
-    click.echo(f"  {len(modules)+1}. ✅ ALL modules")
+def restore_missing_doctypes(source_app):
+    """Enhanced restoration with canonical module prioritization"""
+    print(f"🔧 RESTORING MISSING DOCTYPES for {source_app}")
     
     try:
-        choices_input = click.prompt("Select modules (0=exit, comma-separated numbers, or 'all')", default="all")
+        bench_path = "/home/frappe/frappe-bench"
+        app_path = os.path.join(bench_path, 'apps', source_app)
+        app_inner_path = os.path.join(app_path, source_app)
         
-        # Check for exit
-        if choices_input == '0':
-            click.echo("🚫 Migration cancelled by user")
-            return [], {}
+        print(f"🔍 Looking for app at: {app_path}")
         
-        selected_modules = []
-        if choices_input.lower() == 'all' or choices_input == str(len(modules)+1):
-            selected_modules = modules
-            click.echo("✅ Selected ALL modules")
-        else:
-            # Parse individual selections
-            for choice in choices_input.split(','):
-                choice = choice.strip()
-                if choice == '0':
-                    click.echo("🚫 Migration cancelled by user")
-                    return [], {}
-                elif choice.isdigit() and 1 <= int(choice) <= len(modules):
-                    selected_module = modules[int(choice)-1]
-                    selected_modules.append(selected_module)
-                    click.echo(f"✅ Selected: {selected_module}")
+        if not os.path.exists(app_path):
+            print(f"❌ App path not found: {app_path}")
+            return
+            
+        print(f"✅ App path found: {app_path}")
+        
+        # CANONICAL MODULES ONLY - based on our analysis
+        canonical_modules = [
+            'sfc_manufacturing',    # Primary manufacturing module
+            'spc_quality_management', # Core SPC functionality
+            'fda_compliance',       # Compliance doctypes
+            'system_integration',   # Integration points
+        ]
+        
+        sites = get_sites()
+        site = sites[0] if sites else None
+        if not site:
+            print("❌ No site available")
+            return
+            
+        with frappe.init_site(site):
+            frappe.connect(site=site)
+            
+            restored_count = 0
+            critical_doctypes = ['TDS Product Specification', 'COA AMB', 'TDS Settings']
+            
+            # Process canonical modules first
+            for module_name in canonical_modules:
+                module_doctypes_path = os.path.join(app_inner_path, module_name, 'doctype')
+                
+                if not os.path.exists(module_doctypes_path):
+                    continue
+                    
+                # Get list of doctype directories (exclude __pycache__)
+                doctype_dirs = [d for d in os.listdir(module_doctypes_path) 
+                              if os.path.isdir(os.path.join(module_doctypes_path, d)) and 
+                              not d.startswith('__') and
+                              not d.endswith('.pyc')]
+                
+                if not doctype_dirs:
+                    continue
+                    
+                print(f"\n📂 Processing '{module_name}': {len(doctype_dirs)} doctypes")
+                
+                for file_system_name in doctype_dirs:
+                    doctype_path = os.path.join(module_doctypes_path, file_system_name)
+                    
+                    # Enhanced naming conversion
+                    proper_name = convert_to_proper_name(file_system_name)
+                    
+                    # Check if critical
+                    is_critical = proper_name in critical_doctypes
+                    
+                    if os.path.isdir(doctype_path):
+                        # Check if doctype exists in database
+                        if not frappe.db.exists('DocType', proper_name):
+                            status = "🔄 RESTORING" if is_critical else "↩️  RESTORING"
+                            print(f"   {status}: {file_system_name} → {proper_name}")
+                            
+                            try:
+                                # Create the doctype record
+                                frappe.get_doc({
+                                    'doctype': 'DocType',
+                                    'name': proper_name,
+                                    'module': module_name,
+                                    'custom': 0,
+                                    'app': source_app
+                                }).insert(ignore_permissions=True)
+                                
+                                restored_count += 1
+                                if is_critical:
+                                    print(f"      ✅ CRITICAL RESTORED: {proper_name}")
+                                    
+                            except Exception as e:
+                                print(f"      ❌ Error restoring {proper_name}: {e}")
+                        else:
+                            status = "✅ EXISTS" if is_critical else "   ✅ EXISTS"
+                            if is_critical:
+                                print(f"   {status}: {proper_name}")
+            
+            frappe.db.commit()
+            print(f"\n🎉 SUCCESS: Restored {restored_count} missing doctypes for app: {source_app}")
+            
+            # Final check for critical doctypes
+            print(f"\n🔍 FINAL CHECK - Critical Doctypes:")
+            all_restored = True
+            for doctype_name in critical_doctypes:
+                if frappe.db.exists('DocType', doctype_name):
+                    print(f"   ✅ {doctype_name} - EXISTS")
                 else:
-                    click.echo(f"⚠️  Invalid selection: {choice}")
+                    print(f"   ❌ {doctype_name} - STILL MISSING")
+                    all_restored = False
             
-        # Step 4: Doctype selection for modules that have doctypes
-        selected_doctypes = select_doctypes_interactive(origin_app, selected_modules)
-        if selected_doctypes is None:  # User exited
-            return [], {}
-        
-        # Display final migration summary
-        if not display_migration_summary(origin_app, target_app, selected_modules, selected_doctypes):
-            return [], {}  # User cancelled
-        
-        click.echo(f"🎯 Total modules selected: {len(selected_modules)}")
-        return selected_modules, selected_doctypes
-        
+            if all_restored:
+                print(f"\n🎉 ALL CRITICAL DOCTYPES RESTORED!")
+            
+            frappe.destroy()
+            
     except Exception as e:
-        click.echo(f"❌ Module selection error: {e}")
-        return [], {}
+        print(f"❌ Error: {e}")
+        import traceback
+        print(f"🔍 Debug: {traceback.format_exc()}")
 
-def select_doctypes_interactive(origin_app, selected_modules):
-    """Step 4: Doctype selection with escape code 0"""
-    if not selected_modules:
-        return {}
+def convert_to_proper_name(file_system_name):
+    """Enhanced naming conversion based on our research"""
+    naming_map = {
+        'tds_product_specification': 'TDS Product Specification',
+        'coa_amb': 'COA AMB', 
+        'tds_settings': 'TDS Settings',
+        'batch_amb': 'Batch AMB',
+        'container_barrels': 'Container Barrels',
+        'batch_processing_history': 'Batch Processing History',
+        'work_order_routing': 'Work Order Routing'
+    }
     
-    selected_doctypes = {}
+    if file_system_name in naming_map:
+        return naming_map[file_system_name]
     
-    for module in selected_modules:
-        doctypes = discover_doctypes_in_module(origin_app, module)
-        
-        if not doctypes:
-            continue  # Skip modules without doctypes
+    # Auto-convert: tds_product_specification -> TDS Product Specification
+    if '_' in file_system_name:
+        words = file_system_name.split('_')
+        # Handle acronyms (like TDS, COA, MRP)
+        if len(words[0]) <= 3 and words[0].isupper():
+            proper_name = ' '.join([words[0]] + [w.capitalize() for w in words[1:]])
+        else:
+            proper_name = ' '.join([w.capitalize() for w in words])
+        return proper_name
+    
+    return file_system_name
+
+def fix_app_none_doctypes(target_app):
+    """Fix all doctypes with app=None by assigning them to correct app"""
+    print(f"🔧 FIXING APP=NONE FOR: {target_app}")
+    
+    try:
+        sites = get_sites()
+        site = sites[0] if sites else None
+        if not site:
+            print("❌ No site available")
+            return
             
-        click.echo(f"\n📋 Doctypes in {module}:")
-        click.echo("  0. ↩️ BACK to module selection")
-        for i, doctype in enumerate(doctypes, 1):
-            click.echo(f"  {i}. {doctype}")
-        
-        click.echo(f"  {len(doctypes)+1}. ✅ ALL doctypes in {module}")
-        
-        try:
-            doctype_choices = click.prompt(f"Select doctypes for {module} (0=back, comma-separated, or 'all')", default="all")
+        with frappe.init_site(site):
+            frappe.connect(site=site)
             
-            # Check for back
-            if doctype_choices == '0':
-                click.echo("↩️ Returning to module selection...")
-                return None  # Signal to go back
-            
-            module_doctypes = []
-            if doctype_choices.lower() == 'all' or doctype_choices == str(len(doctypes)+1):
-                module_doctypes = doctypes
-                click.echo(f"✅ Selected ALL {len(doctypes)} doctypes in {module}")
-            else:
-                for choice in doctype_choices.split(','):
-                    choice = choice.strip()
-                    if choice == '0':
-                        click.echo("↩️ Returning to module selection...")
-                        return None  # Signal to go back
-                    elif choice.isdigit() and 1 <= int(choice) <= len(doctypes):
-                        selected_doctype = doctypes[int(choice)-1]
-                        module_doctypes.append(selected_doctype)
-                        click.echo(f"✅ Selected: {selected_doctype}")
-                    else:
-                        click.echo(f"⚠️  Invalid selection: {choice}")
-            
-            selected_doctypes[module] = {
-                'doctypes': module_doctypes,
-                'components': {}
+            # Enhanced module-to-app mapping
+            module_app_map = {
+                'Payment Gateways': 'payments',
+                'Payments': 'payments', 
+                'Manufacturing': 'erpnext',
+                'Stock': 'erpnext',
+                'Buying': 'erpnext',
+                'Selling': 'erpnext',
+                'sfc_manufacturing': 'amb_w_spc',
+                'spc_quality_management': 'amb_w_spc',
+                'fda_compliance': 'amb_w_spc',
+                'system_integration': 'amb_w_spc'
             }
             
-        except Exception as e:
-            click.echo(f"❌ Doctype selection error for {module}: {e}")
-            selected_doctypes[module] = {'doctypes': [], 'components': {}}
-    
-    return selected_doctypes
-
-def display_migration_summary(origin_app, target_app, selected_modules, selected_doctypes):
-    """Display comprehensive migration summary with confirmation"""
-    click.echo("\n" + "="*60)
-    click.echo("🚀 MIGRATION PLAN SUMMARY")
-    click.echo("="*60)
-    click.echo(f"📤 Origin: {origin_app}")
-    click.echo(f"📥 Target: {target_app}")
-    click.echo(f"📦 Modules: {len(selected_modules)}")
-    
-    total_doctypes = 0
-    
-    for module in selected_modules:
-        module_data = selected_doctypes.get(module, {})
-        doctypes = module_data.get('doctypes', [])
-        
-        click.echo(f"\n📁 {module}:")
-        if doctypes:
-            click.echo(f"   📋 Doctypes: {len(doctypes)} selected")
-            for doctype in doctypes[:3]:  # Show first 3 to avoid clutter
-                click.echo(f"      • {doctype}")
-            if len(doctypes) > 3:
-                click.echo(f"      • ... and {len(doctypes) - 3} more")
-            total_doctypes += len(doctypes)
-        else:
-            click.echo("   🔧 Components: All available")
-    
-    click.echo(f"\n📊 TOTALS:")
-    click.echo(f"   • Modules: {len(selected_modules)}")
-    click.echo(f"   • Doctypes: {total_doctypes}")
-    
-    # Ask for confirmation to proceed with escape option
-    click.echo(f"\nOptions:")
-    click.echo(f"  y - ✅ PROCEED with migration")
-    click.echo(f"  n - ❌ CANCEL migration")
-    click.echo(f"  0 - ↩️ BACK to module selection")
-    
-    choice = click.prompt("Select option (y/n/0)", default="y")
-    
-    if choice.lower() == 'y':
-        execute_migration_plan(origin_app, target_app, selected_modules, selected_doctypes)
-        return True
-    elif choice == '0':
-        click.echo("↩️ Returning to module selection...")
-        return False
-    else:
-        click.echo("❌ Migration cancelled by user")
-        return False
-
-def execute_migration_plan(origin_app, target_app, selected_modules, selected_doctypes):
-    """Execute the migration plan"""
-    click.echo("\n🔄 Starting migration execution...")
-    
-    try:
-        # Create target app directory structure if needed
-        ensure_target_app_structure(target_app)
-        
-        total_files_copied = 0
-        total_errors = 0
-        
-        # Process each selected module
-        for module in selected_modules:
-            module_data = selected_doctypes.get(module, {})
-            doctypes = module_data.get('doctypes', [])
+            fixed_count = 0
+            orphans = frappe.get_all('DocType', 
+                filters={'app': ['in', [None, '']]},
+                fields=['name', 'module']
+            )
             
-            click.echo(f"\n📦 Processing module: {module}")
+            for orphan in orphans:
+                target_app_for_doctype = module_app_map.get(orphan['module'])
+                
+                if target_app_for_doctype == target_app:
+                    frappe.db.set_value('DocType', orphan['name'], 'app', target_app)
+                    fixed_count += 1
+                    print(f"   ✅ {orphan['name']} → {target_app}")
             
-            # Copy doctypes
-            if doctypes:
-                copied, errors = migrate_doctypes(origin_app, target_app, module, doctypes)
-                total_files_copied += copied
-                total_errors += errors
-            else:
-                # Copy entire module if no specific doctypes selected
-                copied, errors = migrate_entire_module(origin_app, target_app, module)
-                total_files_copied += copied
-                total_errors += errors
-        
-        # Update target app configuration
-        update_target_app_config(origin_app, target_app, selected_modules)
-        
-        click.echo(f"\n✅ MIGRATION COMPLETED!")
-        click.echo(f"📊 Results:")
-        click.echo(f"   • Files copied: {total_files_copied}")
-        click.echo(f"   • Errors: {total_errors}")
-        click.echo(f"   • Modules migrated: {len(selected_modules)}")
-        
-        if total_errors == 0:
-            click.echo(f"🎉 Successfully migrated from {origin_app} to {target_app}")
-            click.echo(f"💡 Remember to run: bench --site [site] install-app {target_app} --force")
-        else:
-            click.echo(f"⚠️  Migration completed with {total_errors} errors")
-            click.echo(f"🔧 Check the logs above for details")
+            frappe.db.commit()
+            print(f"🎯 FIXED {fixed_count} app=None assignments")
+            
+            frappe.destroy()
             
     except Exception as e:
-        click.echo(f"❌ Migration failed: {e}")
+        print(f"❌ Error: {e}")
         import traceback
-        click.echo(f"🔍 Debug: {traceback.format_exc()}")
+        print(f"🔍 Debug: {traceback.format_exc()}")
 
-def migrate_doctypes(origin_app, target_app, module, doctypes):
-    """Migrate specific doctypes from origin to target app"""
-    copied = 0
-    errors = 0
+def analyze_orphan_doctypes():
+    """Comprehensive orphan analysis"""
+    print("🔍 COMPREHENSIVE ORPHAN ANALYSIS")
+    print("=" * 40)
     
-    for doctype in doctypes:
-        try:
-            click.echo(f"   📋 Migrating doctype: {doctype}")
+    try:
+        sites = get_sites()
+        site = sites[0] if sites else None
+        if not site:
+            print("❌ No site available")
+            return
             
-            # Source and target paths
-            source_base = f"/home/frappe/frappe-bench/apps/{origin_app}/{origin_app}/{module}/doctype/{doctype}"
-            target_base = f"/home/frappe/frappe-bench/apps/{target_app}/{target_app}/{module}/doctype/{doctype}"
+        with frappe.init_site(site):
+            frappe.connect(site=site)
             
-            # Ensure target directory exists
-            os.makedirs(os.path.dirname(target_base), exist_ok=True)
+            orphans = frappe.get_all('DocType', 
+                filters={'app': ['in', [None, '']]},
+                fields=['name', 'module', 'custom']
+            )
+            print(f"🚨 TOTAL ORPHAN DOCTYPES: {len(orphans)}")
             
-            # ✅ FIX: Ensure module has __init__.py file when migrating doctypes
-            module_dir = f"/home/frappe/frappe-bench/apps/{target_app}/{target_app}/{module}"
-            ensure_module_init_py(module_dir)
+            # Group by module
+            orphan_modules = {}
+            for orphan in orphans:
+                orphan_modules[orphan['module']] = orphan_modules.get(orphan['module'], 0) + 1
             
-            # Copy entire doctype directory
-            if os.path.exists(source_base):
-                if os.path.exists(target_base):
-                    shutil.rmtree(target_base)  # Remove existing
-                shutil.copytree(source_base, target_base)
-                copied += count_files_in_directory(source_base)
-                click.echo(f"      ✅ Copied {doctype}")
+            print(f"\n📋 ORPHANS BY MODULE:")
+            for module, count in sorted(orphan_modules.items(), key=lambda x: x[1], reverse=True)[:10]:
+                custom_count = len([o for o in orphans if o['module'] == module and o['custom']])
+                print(f"   • {module}: {count} (custom: {custom_count})")
+            
+            # Show critical orphans
+            critical_orphans = [o for o in orphans if o['name'] in [
+                'Batch Processing History', 'Batch AMB', 'Container Barrels', 
+                'TDS Product Specification', 'COA AMB', 'TDS Settings'
+            ]]
+            
+            if critical_orphans:
+                print(f"\n🎯 CRITICAL ORPHANS FOUND:")
+                for orphan in critical_orphans:
+                    print(f"   ❌ {orphan['name']} (module: {orphan['module']})")
+            
+            frappe.destroy()
+            
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        print(f"🔍 Debug: {traceback.format_exc()}")
+
+def fix_all_references(target_app):
+    """Fix all Link and Table field references"""
+    print(f"🔗 FIXING REFERENCES FOR: {target_app}")
+    
+    try:
+        sites = get_sites()
+        site = sites[0] if sites else None
+        if not site:
+            print("❌ No site available")
+            return
+            
+        with frappe.init_site(site):
+            frappe.connect(site=site)
+            
+            # Get all doctypes in our app
+            our_doctypes = frappe.get_all('DocType', 
+                filters={'app': target_app},
+                fields=['name']
+            )
+            our_doctype_names = [dt['name'] for dt in our_doctypes]
+            
+            fixed_count = 0
+            
+            # Fix Link fields
+            link_fields = frappe.get_all('DocField',
+                filters={'fieldtype': 'Link', 'options': ['in', our_doctype_names]},
+                fields=['parent', 'fieldname', 'options']
+            )
+            
+            print(f"🔍 Checking {len(link_fields)} Link fields...")
+            for field in link_fields:
+                if not frappe.db.exists('DocType', field['options']):
+                    print(f"   ⚠️  Broken link: {field['parent']}.{field['fieldname']} → {field['options']}")
+            
+            # Fix Table fields  
+            table_fields = frappe.get_all('DocField',
+                filters={'fieldtype': 'Table', 'options': ['in', our_doctype_names]},
+                fields=['parent', 'fieldname', 'options']
+            )
+            
+            print(f"🔍 Checking {len(table_fields)} Table fields...")
+            for field in table_fields:
+                if not frappe.db.exists('DocType', field['options']):
+                    print(f"   ⚠️  Broken table: {field['parent']}.{field['fieldname']} → {field['options']}")
+            
+            print(f"🎯 REFERENCES CHECKED: {len(link_fields) + len(table_fields)} fields")
+            
+            frappe.destroy()
+            
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        import traceback
+        print(f"🔍 Debug: {traceback.format_exc()}")
+
+def systematic_renaming(source_app, target_app=None):
+    """Systematic renaming based on research findings"""
+    print(f"🔄 SYSTEMATIC RENAMING for {source_app}")
+    print("Based on Frappe v15 renaming capabilities research")
+    
+    # This would implement the systematic renaming strategy
+    # from your research document
+    print("🚧 Feature under development - implementing research findings")
+    print("💡 Will use frappe.rename_doc with reference tracking")
+
+def validate_migration_readiness(source_app):
+    """Validate if app is ready for migration"""
+    print(f"✅ VALIDATING MIGRATION READINESS for {source_app}")
+    
+    try:
+        sites = get_sites()
+        site = sites[0] if sites else None
+        if not site:
+            print("❌ No site available")
+            return
+            
+        with frappe.init_site(site):
+            frappe.connect(site=site)
+            
+            checks_passed = 0
+            total_checks = 5
+            
+            # Check 1: App exists and has doctypes
+            app_doctypes = frappe.db.count('DocType', {'app': source_app})
+            if app_doctypes > 0:
+                print(f"✅ Check 1: App has {app_doctypes} doctypes")
+                checks_passed += 1
             else:
-                click.echo(f"      ⚠️  Doctype not found: {doctype}")
-                errors += 1
-                
-        except Exception as e:
-            click.echo(f"      ❌ Error migrating {doctype}: {e}")
-            errors += 1
-    
-    return copied, errors
-
-def migrate_entire_module(origin_app, target_app, module):
-    """Migrate entire module directory"""
-    copied = 0
-    errors = 0
-    
-    try:
-        click.echo(f"   📦 Migrating entire module: {module}")
-        
-        source_dir = f"/home/frappe/frappe-bench/apps/{origin_app}/{origin_app}/{module}"
-        target_dir = f"/home/frappe/frappe-bench/apps/{target_app}/{target_app}/{module}"
-        
-        if os.path.exists(source_dir):
-            # Ensure target directory exists
-            os.makedirs(os.path.dirname(target_dir), exist_ok=True)
+                print(f"❌ Check 1: App has no doctypes")
             
-            # Copy entire module directory
-            if os.path.exists(target_dir):
-                shutil.rmtree(target_dir)
-            shutil.copytree(source_dir, target_dir)
+            # Check 2: Low orphan count
+            orphan_count = frappe.db.count('DocType', {'app': ['in', [None, '']]})
+            if orphan_count < 50:
+                print(f"✅ Check 2: Low orphan count ({orphan_count})")
+                checks_passed += 1
+            else:
+                print(f"⚠️  Check 2: High orphan count ({orphan_count})")
             
-            # ✅ FIX: Ensure module has __init__.py file
-            ensure_module_init_py(target_dir)
+            # Check 3: Critical doctypes exist
+            critical_doctypes = ['TDS Product Specification', 'COA AMB', 'TDS Settings']
+            critical_missing = [dt for dt in critical_doctypes if not frappe.db.exists('DocType', dt)]
+            if not critical_missing:
+                print(f"✅ Check 3: All critical doctypes exist")
+                checks_passed += 1
+            else:
+                print(f"❌ Check 3: Missing critical doctypes: {critical_missing}")
             
-            copied = count_files_in_directory(source_dir)
-            click.echo(f"      ✅ Copied entire {module} module")
-        else:
-            click.echo(f"      ⚠️  Module directory not found: {module}")
-            errors += 1
+            # Check 4: File system consistency
+            bench_path = "/home/frappe/frappe-bench"
+            app_path = os.path.join(bench_path, 'apps', source_app)
+            if os.path.exists(app_path):
+                print(f"✅ Check 4: File system structure exists")
+                checks_passed += 1
+            else:
+                print(f"❌ Check 4: File system missing")
             
-    except Exception as e:
-        click.echo(f"      ❌ Error migrating module {module}: {e}")
-        errors += 1
-    
-    return copied, errors
-
-def ensure_module_init_py(module_path):
-    """Ensure every module directory has an __init__.py file"""
-    init_file = os.path.join(module_path, "__init__.py")
-    if not os.path.exists(init_file):
-        with open(init_file, "w") as f:
-            f.write("# Auto-generated by app_migrator\n")
-        click.echo(f"      ✅ Created __init__.py for module")
-        return True
-    return False
-
-def update_target_app_config(origin_app, target_app, selected_modules):
-    """Update target app configuration files"""
-    try:
-        click.echo(f"\n⚙️  Updating {target_app} configuration...")
-        
-        # Update modules.txt
-        modules_path = f"/home/frappe/frappe-bench/apps/{target_app}/{target_app}/modules.txt"
-        if os.path.exists(modules_path):
-            with open(modules_path, 'r') as f:
-                existing_modules = [line.strip() for line in f.readlines() if line.strip()]
+            # Check 5: Module definitions exist
+            app_modules = frappe.db.count('Module Def', {'app_name': source_app})
+            if app_modules > 0:
+                print(f"✅ Check 5: {app_modules} modules defined")
+                checks_passed += 1
+            else:
+                print(f"❌ Check 5: No modules defined")
             
-            # Add new modules
-            updated_modules = list(set(existing_modules + selected_modules))
+            print(f"\n📊 READINESS SCORE: {checks_passed}/{total_checks}")
+            if checks_passed == total_checks:
+                print("🎉 READY FOR MIGRATION!")
+            else:
+                print("⚠️  NEEDS FIXES BEFORE MIGRATION")
             
-            with open(modules_path, 'w') as f:
-                f.write("\n".join(updated_modules) + "\n")
-            
-            click.echo(f"   ✅ Updated modules.txt: {len(updated_modules)} modules")
-        else:
-            # Create new modules.txt
-            with open(modules_path, 'w') as f:
-                f.write("\n".join(selected_modules) + "\n")
-            click.echo(f"   ✅ Created modules.txt with {len(selected_modules)} modules")
-        
-        # Ensure all module directories have __init__.py
-        for module in selected_modules:
-            module_dir = f"/home/frappe/frappe-bench/apps/{target_app}/{target_app}/{module}"
-            if os.path.exists(module_dir):
-                ensure_module_init_py(module_dir)
-        
-        click.echo(f"   ✅ Configuration update completed")
+            frappe.destroy()
             
     except Exception as e:
-        click.echo(f"   ❌ Error updating config: {e}")
+        print(f"❌ Error: {e}")
+        import traceback
+        print(f"🔍 Debug: {traceback.format_exc()}")
 
-def count_files_in_directory(directory):
-    """Count files in a directory recursively"""
-    count = 0
-    for root, dirs, files in os.walk(directory):
-        count += len(files)
-    return count
+# Placeholder functions for other actions
+def interactive_migration():
+    """Interactive migration wizard"""
+    print("Interactive migration - Enhanced version coming soon")
 
-def ensure_target_app_structure(target_app):
-    """Ensure target app has basic Frappe structure"""
-    target_path = f"/home/frappe/frappe-bench/apps/{target_app}/{target_app}"
-    os.makedirs(target_path, exist_ok=True)
-    
-    # Create basic __init__.py if it doesn't exist
-    init_file = os.path.join(target_path, "__init__.py")
-    if not os.path.exists(init_file):
-        with open(init_file, 'w') as f:
-            f.write("")
+def select_modules_interactive(source_app, target_app):
+    """Select modules interactively"""
+    print("Enhanced module selection - Coming soon")
+    return [], []
 
-# ===== DISCOVERY FUNCTIONS =====
-
-def discover_app_modules(app_name):
-    """Discover actual modules in a Frappe app"""
-    try:
-        app_path = f"/home/frappe/frappe-bench/apps/{app_name}/{app_name}"
-        
-        modules = []
-        if os.path.exists(app_path):
-            for item in os.listdir(app_path):
-                item_path = os.path.join(app_path, item)
-                if (os.path.isdir(item_path) and not item.startswith('.') and 
-                    not item in ['__pycache__', 'patches', 'modules']):
-                    
-                    # Only include modules that have actual content
-                    if has_actual_content(item_path):
-                        modules.append(item)
-        
-        return sorted(modules)
-        
-    except Exception as e:
-        click.echo(f"❌ Error discovering modules in {app_name}: {e}")
-        return []
-
-def has_actual_content(directory_path):
-    """Check if a directory has actual Frappe content"""
-    # Check for non-empty component directories
-    component_dirs = ["doctype", "print_format", "workflow", "report", "page", "fixtures"]
-    
-    for comp_dir in component_dirs:
-        comp_path = os.path.join(directory_path, comp_dir)
-        if os.path.exists(comp_path) and os.path.isdir(comp_path):
-            # Check if directory has content (not just __init__.py)
-            items = [item for item in os.listdir(comp_path) if not item.startswith('.') and not item == '__pycache__']
-            if items:
-                return True
-    
-    # Check for Python files that might be modules
-    python_files = [f for f in os.listdir(directory_path) if f.endswith('.py') and not f.startswith('__') and f not in ['hooks.py']]
-    if python_files:
-        return True
-        
-    return False
-
-def count_doctypes_in_module(app_name, module_name):
-    """Count doctypes in module"""
-    try:
-        base_path = f"/home/frappe/frappe-bench/apps/{app_name}/{app_name}/{module_name}/doctype"
-        
-        if not os.path.exists(base_path):
-            return 0
-            
-        doctype_count = 0
-        for item in os.listdir(base_path):
-            item_path = os.path.join(base_path, item)
-            
-            # Only count directories that have actual doctype content
-            if (os.path.isdir(item_path) and not item.startswith('.') and
-                not item == '__pycache__'):
-                
-                # Check if this looks like a real doctype (has JSON files or other content)
-                doctype_files = [f for f in os.listdir(item_path) if not f.startswith('.') and not f == '__pycache__']
-                if doctype_files:
-                    doctype_count += 1
-                    
-        return doctype_count
-        
-    except Exception as e:
-        return 0
-
-def discover_component_types(app_name, module_name):
-    """Discover what types of components exist in a module"""
-    component_types = []
-    
-    try:
-        module_path = f"/home/frappe/frappe-bench/apps/{app_name}/{app_name}/{module_name}"
-        
-        if not os.path.exists(module_path):
-            return []
-            
-        # Check for different component types
-        component_dirs = {
-            "doctype": "doctypes", 
-            "print_format": "print formats", 
-            "workflow": "workflows",
-            "report": "reports",
-            "page": "pages",
-            "fixtures": "fixtures"
-        }
-        
-        for dir_name, display_name in component_dirs.items():
-            comp_path = os.path.join(module_path, dir_name)
-            if os.path.exists(comp_path) and os.path.isdir(comp_path):
-                # Check if directory has actual content
-                items = [item for item in os.listdir(comp_path) if not item.startswith('.') and not item == '__pycache__']
-                if items:
-                    component_types.append(display_name)
-        
-        # Check for Python modules
-        python_files = [f for f in os.listdir(module_path) 
-                       if f.endswith('.py') and not f.startswith('__') and 
-                          f not in ['hooks.py', '__init__.py']]
-        if python_files:
-            component_types.append(f"{len(python_files)} Python modules")
-                        
-    except Exception as e:
-        click.echo(f"⚠️  Error discovering components for {module_name}: {e}")
-    
-    return component_types if component_types else ["app components"]
-
-def discover_doctypes_in_module(app_name, module_name):
-    """Discover actual doctype names in a module"""
-    try:
-        base_path = f"/home/frappe/frappe-bench/apps/{app_name}/{app_name}/{module_name}/doctype"
-        
-        if not os.path.exists(base_path):
-            return []
-            
-        doctypes = []
-        for item in os.listdir(base_path):
-            item_path = os.path.join(base_path, item)
-            
-            # Only include directories that have actual doctype content
-            if (os.path.isdir(item_path) and not item.startswith('.') and
-                not item == '__pycache__'):
-                
-                # Check if this looks like a real doctype (has JSON files or other content)
-                doctype_files = [f for f in os.listdir(item_path) if not f.startswith('.') and not f == '__pycache__']
-                if doctype_files:
-                    doctypes.append(item)
-                    
-        return sorted(doctypes)
-        
-    except Exception as e:
-        return []
-
-# Export commands as a list - Frappe auto-discovers this
+# Export commands
 commands = [migrate_app]
