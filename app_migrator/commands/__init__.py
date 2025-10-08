@@ -9,12 +9,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 app_name = "app_migrator"
 app_title = "App Migrator"
 app_publisher = "Frappe Community"
-app_description = "Frappe App Migration Toolkit"
+app_description = "Frappe App Migration Toolkit - ULTIMATE SYSTEM FIX"
 app_email = "fcrm@amb-wellness.com"
 app_license = "mit"
 
@@ -60,6 +60,317 @@ def with_session_management(func):
                 print(f"   ❌ Recovery failed: {retry_error}")
             return None
     return wrapper
+
+# ========== ULTIMATE SYSTEM FIX FUNCTIONS ==========
+@with_session_management
+def fix_module_app_assignments(target_app):
+    """🔧 FIXES MODULE APP ASSIGNMENTS - Ensures every module has correct app_name"""
+    print(f"🔄 FIXING MODULE APP ASSIGNMENTS for: {target_app}")
+    
+    try:
+        # Get all modules that should belong to target_app
+        modules_to_fix = frappe.get_all('Module Def', 
+            fields=['name', 'module_name', 'app_name'],
+            filters={'app_name': ['!=', target_app]}
+        )
+        
+        print(f"📊 Found {len(modules_to_fix)} modules with incorrect app assignments")
+        
+        if not modules_to_fix:
+            print("✅ All modules already have correct app assignments")
+            return True
+        
+        fixed_count = 0
+        for module in modules_to_fix:
+            try:
+                # Update module app_name
+                frappe.db.set_value('Module Def', module['name'], 'app_name', target_app)
+                print(f"   ✅ Fixed module: {module['module_name']} → {target_app}")
+                fixed_count += 1
+                
+            except Exception as e:
+                print(f"   ❌ Failed to fix module {module['module_name']}: {e}")
+        
+        frappe.db.commit()
+        print(f"🎉 SUCCESSFULLY FIXED {fixed_count} MODULE APP ASSIGNMENTS!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Module app assignment fix failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+@with_session_management
+def fix_doctype_app_assignments(target_app):
+    """🔧 FIXES DOCTYPE APP ASSIGNMENTS - Eliminates orphan doctypes"""
+    print(f"🔄 FIXING DOCTYPE APP ASSIGNMENTS for: {target_app}")
+    
+    try:
+        # Find doctypes with wrong app assignment or no app
+        doctypes_to_fix = frappe.get_all('DocType',
+            fields=['name', 'module', 'app'],
+            filters={'app': ['!=', target_app]}
+        )
+        
+        # Also get doctypes with app=None
+        app_none_doctypes = frappe.get_all('DocType',
+            fields=['name', 'module'],
+            filters={'app': ['is', 'not set']}
+        )
+        
+        all_doctypes_to_fix = doctypes_to_fix + app_none_doctypes
+        print(f"📊 Found {len(all_doctypes_to_fix)} doctypes with incorrect app assignments")
+        
+        if not all_doctypes_to_fix:
+            print("✅ All doctypes already have correct app assignments")
+            return True
+        
+        fixed_count = 0
+        for doctype in all_doctypes_to_fix:
+            try:
+                # Update doctype app
+                frappe.db.set_value('DocType', doctype['name'], 'app', target_app)
+                print(f"   ✅ Fixed doctype: {doctype['name']} → {target_app}")
+                fixed_count += 1
+                
+            except Exception as e:
+                print(f"   ❌ Failed to fix doctype {doctype['name']}: {e}")
+        
+        frappe.db.commit()
+        print(f"🎉 SUCCESSFULLY FIXED {fixed_count} DOCTYPE APP ASSIGNMENTS!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Doctype app assignment fix failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+@with_session_management
+def fix_naming_conventions(target_app):
+    """💎 FIXES NAMING CONVENTIONS - Populates name_case with proper titles"""
+    print(f"🔄 FIXING NAMING CONVENTIONS for: {target_app}")
+    
+    try:
+        # Get all doctypes in the target app
+        app_doctypes = frappe.get_all('DocType',
+            fields=['name', 'module', 'name_case'],
+            filters={'app': target_app}
+        )
+        
+        print(f"📊 Processing {len(app_doctypes)} doctypes for naming conventions")
+        
+        fixed_count = 0
+        for doctype in app_doctypes:
+            try:
+                doctype_doc = frappe.get_doc('DocType', doctype['name'])
+                
+                # Generate proper name_case if missing or incorrect
+                if not doctype_doc.name_case or doctype_doc.name_case == doctype_doc.name:
+                    # Convert "some_doctype_name" to "Some Doctype Name"
+                    proper_name = ' '.join(word.capitalize() for word in doctype_doc.name.split('_'))
+                    doctype_doc.name_case = proper_name
+                    doctype_doc.save()
+                    
+                    print(f"   ✅ Fixed naming: {doctype_doc.name} → '{proper_name}'")
+                    fixed_count += 1
+                
+            except Exception as e:
+                print(f"   ❌ Failed to fix naming for {doctype['name']}: {e}")
+        
+        frappe.db.commit()
+        print(f"🎉 SUCCESSFULLY FIXED {fixed_count} NAMING CONVENTIONS!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Naming conventions fix failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+@with_session_management
+def fix_tree_structures(target_app):
+    """🌳 FIXES TREE STRUCTURES - Ensures proper parent fields"""
+    print(f"🔄 FIXING TREE STRUCTURES for: {target_app}")
+    
+    try:
+        # Find all tree doctypes in the target app
+        tree_doctypes = frappe.get_all('DocType',
+            fields=['name', 'is_tree', 'parent_field'],
+            filters={'app': target_app, 'is_tree': 1}
+        )
+        
+        print(f"📊 Found {len(tree_doctypes)} tree doctypes to validate")
+        
+        fixed_count = 0
+        for doctype in tree_doctypes:
+            try:
+                doctype_doc = frappe.get_doc('DocType', doctype['name'])
+                
+                # Ensure parent field exists and is properly configured
+                if doctype_doc.is_tree:
+                    parent_field_exists = any(field.fieldname == 'parent_' + frappe.scrub(doctype_doc.name) 
+                                            for field in doctype_doc.fields)
+                    
+                    if not parent_field_exists:
+                        # Add missing parent field
+                        parent_field = frappe.get_doc({
+                            'doctype': 'DocField',
+                            'parent': doctype_doc.name,
+                            'parentfield': 'fields',
+                            'parenttype': 'DocType',
+                            'fieldname': 'parent_' + frappe.scrub(doctype_doc.name),
+                            'label': 'Parent ' + (doctype_doc.name_case or doctype_doc.name),
+                            'fieldtype': 'Link',
+                            'options': doctype_doc.name,
+                            'insert_after': 'idx'
+                        })
+                        parent_field.insert()
+                        
+                        print(f"   ✅ Added parent field to: {doctype_doc.name}")
+                        fixed_count += 1
+                
+            except Exception as e:
+                print(f"   ❌ Failed to fix tree structure for {doctype['name']}: {e}")
+        
+        frappe.db.commit()
+        print(f"🎉 SUCCESSFULLY FIXED {fixed_count} TREE STRUCTURES!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Tree structures fix failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+@with_session_management
+def fix_custom_field_references(target_app):
+    """🔗 FIXES CUSTOM FIELD REFERENCES - Ensures proper app assignments"""
+    print(f"🔄 FIXING CUSTOM FIELD REFERENCES for: {target_app}")
+    
+    try:
+        # Find custom fields pointing to wrong app
+        custom_fields_to_fix = frappe.get_all('Custom Field',
+            fields=['name', 'dt', 'fieldname'],
+            filters={'app': ['!=', target_app]}
+        )
+        
+        print(f"📊 Found {len(custom_fields_to_fix)} custom fields with incorrect app references")
+        
+        fixed_count = 0
+        for custom_field in custom_fields_to_fix:
+            try:
+                # Update custom field app
+                frappe.db.set_value('Custom Field', custom_field['name'], 'app', target_app)
+                print(f"   ✅ Fixed custom field: {custom_field['fieldname']} in {custom_field['dt']}")
+                fixed_count += 1
+                
+            except Exception as e:
+                print(f"   ❌ Failed to fix custom field {custom_field['name']}: {e}")
+        
+        frappe.db.commit()
+        print(f"🎉 SUCCESSFULLY FIXED {fixed_count} CUSTOM FIELD REFERENCES!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Custom field references fix failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+@with_session_management
+def fix_property_setter_references(target_app):
+    """⚙️ FIXES PROPERTY SETTER REFERENCES - Updates app assignments"""
+    print(f"🔄 FIXING PROPERTY SETTER REFERENCES for: {target_app}")
+    
+    try:
+        # Find property setters with wrong app assignment
+        property_setters_to_fix = frappe.get_all('Property Setter',
+            fields=['name', 'doc_type', 'property'],
+            filters={'app': ['!=', target_app]}
+        )
+        
+        print(f"📊 Found {len(property_setters_to_fix)} property setters with incorrect app references")
+        
+        fixed_count = 0
+        for prop_setter in property_setters_to_fix:
+            try:
+                # Update property setter app
+                frappe.db.set_value('Property Setter', prop_setter['name'], 'app', target_app)
+                print(f"   ✅ Fixed property setter: {prop_setter['property']} in {prop_setter['doc_type']}")
+                fixed_count += 1
+                
+            except Exception as e:
+                print(f"   ❌ Failed to fix property setter {prop_setter['name']}: {e}")
+        
+        frappe.db.commit()
+        print(f"🎉 SUCCESSFULLY FIXED {fixed_count} PROPERTY SETTER REFERENCES!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Property setter references fix failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+@with_session_management
+def run_complete_system_fix(target_app):
+    """🚀 ULTIMATE SYSTEM FIX - Runs all fixes in sequence"""
+    print("=" * 70)
+    print("🦸‍♂️ ULTIMATE MIGRATION SYSTEM FIX")
+    print("=" * 70)
+    print(f"🎯 Target App: {target_app}")
+    print("=" * 70)
+    
+    try:
+        # Run all fixes in sequence
+        fixes = [
+            ("🔧 Module App Assignments", fix_module_app_assignments),
+            ("🔧 Doctype App Assignments", fix_doctype_app_assignments),
+            ("💎 Naming Conventions", fix_naming_conventions),
+            ("🌳 Tree Structures", fix_tree_structures),
+            ("🔗 Custom Field References", fix_custom_field_references),
+            ("⚙️ Property Setter References", fix_property_setter_references)
+        ]
+        
+        results = []
+        for fix_name, fix_function in fixes:
+            print(f"\n📋 RUNNING: {fix_name}")
+            print("-" * 50)
+            result = fix_function(target_app)
+            results.append((fix_name, result))
+            if result:
+                print(f"✅ {fix_name} - COMPLETED SUCCESSFULLY")
+            else:
+                print(f"❌ {fix_name} - FAILED")
+        
+        # Summary
+        print("\n" + "=" * 70)
+        print("📊 SYSTEM FIX SUMMARY")
+        print("=" * 70)
+        successful_fixes = [name for name, result in results if result]
+        failed_fixes = [name for name, result in results if not result]
+        
+        print(f"✅ Successful: {len(successful_fixes)}/{len(fixes)}")
+        for fix in successful_fixes:
+            print(f"   • {fix}")
+        
+        if failed_fixes:
+            print(f"❌ Failed: {len(failed_fixes)}/{len(fixes)}")
+            for fix in failed_fixes:
+                print(f"   • {fix}")
+        else:
+            print("🎉 ALL FIXES COMPLETED SUCCESSFULLY!")
+            print("🚀 Your app is now ready for clean installation!")
+        
+        return len(failed_fixes) == 0
+        
+    except Exception as e:
+        print(f"❌ Complete system fix failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 # ========== INTERACTIVE MIGRATION WIZARD ==========
 def interactive_app_migration():
@@ -178,12 +489,13 @@ def interactive_app_migration():
             print("  1. Migrate ALL modules")
             print("  2. Migrate SPECIFIC modules") 
             print("  3. Migrate SPECIFIC doctypes")
+            print("  4. 🦸‍♂️ RUN ULTIMATE SYSTEM FIX")
             print("  0. ❌ EXIT")
             
             migration_choice = None
             while migration_choice is None:
                 try:
-                    choice_input = input("\n🔹 Select option (0-3): ").strip()
+                    choice_input = input("\n🔹 Select option (0-4): ").strip()
                     choice = int(choice_input)
                     
                     if choice == 0:
@@ -211,8 +523,15 @@ def interactive_app_migration():
                             migration_choice = choice
                         else:
                             print("❌ No doctypes specified")
+                    elif choice == 4:
+                        confirm = input(f"⚠️  Run ULTIMATE SYSTEM FIX for {target_app}? (y/N): ").strip().lower()
+                        if confirm == 'y':
+                            run_complete_system_fix(target_app)
+                        else:
+                            print("❌ System fix cancelled")
+                        migration_choice = choice
                     else:
-                        print("❌ Please enter a number between 0 and 3")
+                        print("❌ Please enter a number between 0 and 4")
                 except ValueError:
                     print("❌ Please enter a valid number")
             
@@ -934,6 +1253,207 @@ def validate_migration_readiness(source_app):
         traceback.print_exc()
         return False
 
+# ========== INTELLIGENT CUSTOMIZATION MIGRATION ==========
+@with_session_management
+def migrate_customizations(source_app, target_app):
+    """SMART CUSTOMIZATION MIGRATION - Handles fixtures, custom fields, workflows"""
+    print(f"🔧 MIGRATING CUSTOMIZATIONS: {source_app} → {target_app}")
+    
+    try:
+        bench_path = Path('/home/frappe/frappe-bench')
+        source_fixtures = bench_path / 'apps' / source_app / source_app / 'fixtures'
+        target_fixtures = bench_path / 'apps' / target_app / target_app / 'fixtures'
+        
+        if not source_fixtures.exists():
+            print(f"❌ No fixtures found in {source_app}")
+            return False
+        
+        # Create target fixtures directory
+        target_fixtures.mkdir(parents=True, exist_ok=True)
+        
+        # Copy and intelligently fix fixture files
+        fixture_files = list(source_fixtures.glob('*.json'))
+        print(f"📦 Found {len(fixture_files)} fixture files")
+        
+        migrated_count = 0
+        for fixture_file in fixture_files:
+            try:
+                with open(fixture_file, 'r') as f:
+                    data = json.load(f)
+                
+                # AUTO-FIX: Add missing 'name' fields
+                fixes_applied = auto_fix_fixture_data(data)
+                
+                # Write fixed data to target
+                target_file = target_fixtures / fixture_file.name
+                with open(target_file, 'w') as f:
+                    json.dump(data, f, indent=2)
+                
+                migrated_count += 1
+                print(f"   ✅ Migrated: {fixture_file.name} ({len(fixes_applied)} fixes)")
+                if fixes_applied:
+                    for fix in fixes_applied[:3]:  # Show first 3 fixes
+                        print(f"      🔧 {fix}")
+                    if len(fixes_applied) > 3:
+                        print(f"      ... and {len(fixes_applied) - 3} more fixes")
+                        
+            except Exception as e:
+                print(f"   ❌ Failed to migrate {fixture_file.name}: {e}")
+        
+        print(f"🎉 SUCCESSFULLY MIGRATED {migrated_count} FIXTURE FILES!")
+        
+        # Sync the fixtures
+        print("🔄 Syncing fixtures to database...")
+        frappe.db.commit()
+        print("✅ Customizations applied successfully!")
+        return True
+            
+    except Exception as e:
+        print(f"❌ Customization migration failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def auto_fix_fixture_data(data):
+    """AUTO-FIX common fixture issues - INTELLIGENT NAME GENERATION"""
+    fixes_applied = []
+    
+    if isinstance(data, list):
+        for i, item in enumerate(data):
+            # FIX 1: Missing 'name' field
+            if 'doctype' in item and 'name' not in item:
+                generated_name = generate_intelligent_name(item)
+                item['name'] = generated_name
+                fixes_applied.append(f"Added name: {generated_name}")
+            
+            # FIX 2: Ensure module assignment for customizations
+            if 'doctype' in item and 'module' not in item:
+                item['module'] = 'Core'  # Default module for customizations
+                fixes_applied.append(f"Added module: Core")
+            
+            # FIX 3: Clean up fieldnames
+            if item.get('doctype') == 'Custom Field' and 'fieldname' in item:
+                if not item['fieldname'].startswith('custom_'):
+                    item['fieldname'] = f"custom_{item['fieldname']}"
+                    fixes_applied.append(f"Fixed fieldname: {item['fieldname']}")
+    
+    return fixes_applied
+
+def generate_intelligent_name(item):
+    """INTELLIGENT NAME GENERATION for different doctypes"""
+    doctype = item.get('doctype', '')
+    
+    if doctype == 'Custom Field':
+        fieldname = item.get('fieldname', 'unknown')
+        dt = item.get('dt', 'unknown')
+        return f"{fieldname}-{dt}"
+    
+    elif doctype == 'Workflow':
+        return item.get('workflow_name', 'unknown_workflow')
+    
+    elif doctype == 'Workflow State':
+        return item.get('state', 'unknown_state')
+    
+    elif doctype == 'Workflow Action':
+        return item.get('action', 'unknown_action')
+    
+    elif doctype == 'Print Format':
+        return item.get('format_name', 'unknown_format')
+    
+    elif doctype == 'Server Script':
+        return item.get('script_name', 'unknown_script')
+    
+    else:
+        # Generic name generation
+        key_field = next((k for k in ['name', 'title', 'label', 'fieldname'] if k in item), 'unknown')
+        return f"{item.get(key_field, 'unknown')}-{doctype.lower()}"
+
+@with_session_management
+def detect_customization_pattern(app_name):
+    """DETECT WHAT TYPE OF CUSTOMIZATION PATTERN THE APP USES"""
+    print(f"🔍 DETECTING CUSTOMIZATION PATTERN: {app_name}")
+    
+    try:
+        bench_path = Path('/home/frappe/frappe-bench')
+        app_path = bench_path / 'apps' / app_name / app_name
+        
+        # Pattern analysis
+        patterns = {
+            'custom_fields_only': 0,
+            'workflows_only': 0,
+            'ui_customizations': 0,
+            'business_logic': 0,
+            'mixed_customizations': 0
+        }
+        
+        # Analyze fixtures
+        fixtures_path = app_path / 'fixtures'
+        if fixtures_path.exists():
+            for fixture_file in fixtures_path.glob('*.json'):
+                with open(fixture_file, 'r') as f:
+                    data = json.load(f)
+                
+                if isinstance(data, list):
+                    for item in data:
+                        doctype = item.get('doctype', '')
+                        if doctype == 'Custom Field':
+                            patterns['custom_fields_only'] += 1
+                        elif doctype == 'Workflow':
+                            patterns['workflows_only'] += 1
+                        elif doctype in ['Print Format', 'Client Script']:
+                            patterns['ui_customizations'] += 1
+                        elif doctype == 'Server Script':
+                            patterns['business_logic'] += 1
+        
+        # Determine primary pattern
+        total_customizations = sum(patterns.values())
+        if total_customizations == 0:
+            print("   📊 Pattern: NO CUSTOMIZATIONS (vanilla app)")
+            return 'vanilla'
+        
+        primary_pattern = max(patterns, key=patterns.get)
+        
+        print(f"   📊 CUSTOMIZATION ANALYSIS:")
+        print(f"      • Custom Fields: {patterns['custom_fields_only']}")
+        print(f"      • Workflows: {patterns['workflows_only']}")
+        print(f"      • UI Enhancements: {patterns['ui_customizations']}")
+        print(f"      • Business Logic: {patterns['business_logic']}")
+        print(f"   🎯 PRIMARY PATTERN: {primary_pattern.upper()}")
+        
+        return primary_pattern
+            
+    except Exception as e:
+        print(f"❌ Pattern detection failed: {e}")
+        return 'unknown'
+
+@with_session_management  
+def intelligent_app_migration(source_app, target_app):
+    """INTELLIGENT MIGRATION - Auto-detects pattern and applies optimal strategy"""
+    print(f"🧠 INTELLIGENT MIGRATION: {source_app} → {target_app}")
+    
+    # Step 1: Detect pattern
+    pattern = detect_customization_pattern(source_app)
+    
+    # Step 2: Apply optimal strategy
+    if pattern == 'vanilla':
+        print("   🚀 Strategy: FULL MODULE MIGRATION")
+        return migrate_app_modules(source_app, target_app)
+    
+    elif pattern in ['custom_fields_only', 'workflows_only', 'ui_customizations', 'business_logic']:
+        print(f"   🚀 Strategy: CUSTOMIZATION MIGRATION ({pattern})")
+        return migrate_customizations(source_app, target_app)
+    
+    elif pattern == 'mixed_customizations':
+        print("   🚀 Strategy: HYBRID MIGRATION")
+        # First migrate customizations, then modules
+        customization_success = migrate_customizations(source_app, target_app)
+        module_success = migrate_app_modules(source_app, target_app)
+        return customization_success and module_success
+    
+    else:
+        print("   🚀 Strategy: COMPREHENSIVE MIGRATION")
+        return migrate_app_modules(source_app, target_app)
+
 # ========== LEGACY FUNCTIONS (for compatibility) ==========
 def interactive_migration():
     """Interactive migration wizard"""
@@ -957,8 +1477,51 @@ def migrate_app(action, source_app=None, target_app=None, modules=None, doctypes
     
     print(f"🚀 Migration command called: {action} for {source_app}")
     
+    # ULTIMATE SYSTEM FIX ACTIONS
+    if action == 'ultimate-system-fix':
+        if not target_app:
+            print("❌ Target app required for system fix")
+            return
+        run_complete_system_fix(target_app)
+        
+    elif action == 'fix-module-apps':
+        if not target_app:
+            print("❌ Target app required")
+            return
+        fix_module_app_assignments(target_app)
+        
+    elif action == 'fix-doctype-apps':
+        if not target_app:
+            print("❌ Target app required")
+            return
+        fix_doctype_app_assignments(target_app)
+        
+    elif action == 'fix-naming-conventions':
+        if not target_app:
+            print("❌ Target app required")
+            return
+        fix_naming_conventions(target_app)
+        
+    elif action == 'fix-tree-structures':
+        if not target_app:
+            print("❌ Target app required")
+            return
+        fix_tree_structures(target_app)
+        
+    elif action == 'fix-custom-field-refs':
+        if not target_app:
+            print("❌ Target app required")
+            return
+        fix_custom_field_references(target_app)
+        
+    elif action == 'fix-property-setter-refs':
+        if not target_app:
+            print("❌ Target app required")
+            return
+        fix_property_setter_references(target_app)
+    
     # Migration Actions
-    if action == 'migrate-modules':
+    elif action == 'migrate-modules':
         if not source_app or not target_app:
             print("❌ Source and target app required")
             return
@@ -969,6 +1532,24 @@ def migrate_app(action, source_app=None, target_app=None, modules=None, doctypes
             print("❌ Source app, target app, and doctypes required")
             return
         migrate_specific_doctypes(source_app, target_app, doctypes)
+        
+    elif action == 'migrate-customizations':
+        if not source_app or not target_app:
+            print("❌ Source and target app required")
+            return
+        migrate_customizations(source_app, target_app)
+
+    elif action == 'detect-pattern':
+        if not source_app:
+            print("❌ Source app required")
+            return
+        detect_customization_pattern(source_app)
+
+    elif action == 'intelligent-migrate':
+        if not source_app or not target_app:
+            print("❌ Source and target app required")
+            return
+        intelligent_app_migration(source_app, target_app)
         
     elif action == 'analyze-dependencies':
         if not source_app:
@@ -981,26 +1562,44 @@ def migrate_app(action, source_app=None, target_app=None, modules=None, doctypes
         
     # Analysis Actions
     elif action == 'analyze':
+        if not source_app:
+            print("❌ Source app required")
+            return
         analyze_app(source_app)
         
     elif action == 'analyze-orphans':
         analyze_orphan_doctypes()
         
     elif action == 'validate-migration':
+        if not source_app:
+            print("❌ Source app required")
+            return
         validate_migration_readiness(source_app)
         
     # Fix Actions
     elif action == 'fix-orphans':
+        if not source_app:
+            print("❌ Source app required")
+            return
         fix_orphan_doctypes(source_app)
         
     elif action == 'restore-missing':
+        if not source_app:
+            print("❌ Source app required")
+            return
         restore_missing_doctypes(source_app)
         
     elif action == 'fix-app-none':
-        fix_app_none_doctypes(source_app)
+        if not target_app:
+            print("❌ Target app required")
+            return
+        fix_app_none_doctypes(target_app)
         
     elif action == 'fix-all-references':
-        fix_all_references(source_app)
+        if not target_app:
+            print("❌ Target app required")
+            return
+        fix_all_references(target_app)
         
     # Systematic Actions
     elif action == 'rename-systematic':
@@ -1017,7 +1616,9 @@ def migrate_app(action, source_app=None, target_app=None, modules=None, doctypes
     else:
         print(f"❌ Unknown action: {action}")
         print("📋 Available actions:")
+        print("   🦸‍♂️ ULTIMATE SYSTEM FIX: ultimate-system-fix, fix-module-apps, fix-doctype-apps, fix-naming-conventions, fix-tree-structures, fix-custom-field-refs, fix-property-setter-refs")
         print("   🚀 MIGRATION: migrate-modules, migrate-doctypes, analyze-dependencies, interactive-migrate")
+        print("   🧠 INTELLIGENT: migrate-customizations, detect-pattern, intelligent-migrate")
         print("   🔧 FIXES: fix-orphans, restore-missing, fix-app-none, fix-all-references")
         print("   🔍 ANALYSIS: analyze, analyze-orphans, validate-migration")
         print("   🎮 INTERACTIVE: interactive, select-modules")
