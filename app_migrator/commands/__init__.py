@@ -7,8 +7,10 @@ import click
 import frappe
 import os
 import subprocess
+import time
 from frappe.utils import get_sites
 from pathlib import Path
+from datetime import datetime
 
 __version__ = "4.0.0"
 app_name = "app_migrator"
@@ -113,6 +115,132 @@ def smart_migration_recommendation():
     else:
         print(f"\n✅ All apps already synchronized")
 
+<<<<<<< HEAD
+=======
+def cross_bench_migration_analysis():
+    """Step 3: Cross-bench migration analysis"""
+    print("🔀 CROSS-BENCH MIGRATION ANALYSIS")
+    print("=" * 50)
+    
+    benches = detect_available_benches()
+    if len(benches) < 2:
+        print("❌ Need at least 2 benches")
+        return
+    
+    source_bench = benches[0]
+    target_bench = benches[1]
+    
+    print(f"🔀 MIGRATION PATH: {source_bench} → {target_bench}")
+    
+    source_apps = set(get_bench_apps(f"/home/frappe/{source_bench}"))
+    target_apps = set(get_bench_apps(f"/home/frappe/{target_bench}"))
+    
+    migratable = source_apps - target_apps
+    common = source_apps & target_apps
+    
+    print(f"\n📊 MIGRATION ANALYSIS:")
+    print(f"   ✅ Common apps: {len(common)}")
+    print(f"   📦 Migratable apps: {len(migratable)}")
+    
+    if migratable:
+        print(f"\n🎯 MIGRATION TARGETS:")
+        for app in sorted(migratable):
+            print(f"   • {app}")
+
+# ========== PROGRESS TRACKING FUNCTIONS ==========
+def monitor_directory_creation(app_name, timeout=600, check_interval=5):
+    """Monitor app directory creation with progress"""
+    target_path = f"/home/frappe/frappe-bench/apps/{app_name}"
+    print(f"👀 Monitoring directory: {target_path}")
+    
+    for i in range(timeout // check_interval):
+        if os.path.exists(target_path):
+            size = get_directory_size(target_path)
+            print(f"✅ Directory created: {app_name} ({size})")
+            return True
+        
+        # Progress indicator
+        dots = "." * (i % 4)
+        print(f"\r⏳ Waiting for {app_name} directory{dots} ({i*check_interval}s)", end="", flush=True)
+        time.sleep(check_interval)
+    
+    print(f"\r❌ Timeout: {app_name} directory not created after {timeout}s")
+    return False
+
+def get_directory_size(path):
+    """Get human-readable directory size"""
+    try:
+        result = subprocess.run(
+            f"du -sh {path}", 
+            shell=True, capture_output=True, text=True
+        )
+        return result.stdout.strip().split()[0]
+    except:
+        return "unknown size"
+
+def run_command_with_progress(command, description, timeout=600):
+    """Run command with progress feedback"""
+    print(f"🔄 {description}...")
+    
+    try:
+        # Start process
+        process = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        # Monitor process with timeout
+        start_time = time.time()
+        while process.poll() is None:
+            if time.time() - start_time > timeout:
+                process.terminate()
+                return False, f"Timeout after {timeout}s"
+            
+            # Show progress indicator
+            elapsed = int(time.time() - start_time)
+            print(f"\r⏳ {description}... ({elapsed}s)", end="", flush=True)
+            time.sleep(2)
+        
+        # Get result
+        stdout, stderr = process.communicate()
+        
+        if process.returncode == 0:
+            print(f"\r✅ {description} completed!")
+            return True, stdout
+        else:
+            print(f"\r❌ {description} failed!")
+            return False, stderr
+            
+    except Exception as e:
+        return False, str(e)
+
+def validate_migration_readiness(app_name):
+    """Check if migration is possible"""
+    # Check if app already exists in target
+    target_path = f"/home/frappe/frappe-bench/apps/{app_name}"
+    if os.path.exists(target_path):
+        print(f"❌ {app_name} already exists in target bench")
+        return False
+    
+    # Check disk space
+    try:
+        result = subprocess.run(
+            "df /home/frappe --output=avail | tail -1",
+            shell=True, capture_output=True, text=True
+        )
+        free_space = int(result.stdout.strip()) / 1024 / 1024  # Convert to GB
+        if free_space < 2:  # Less than 2GB free
+            print(f"❌ Insufficient disk space: {free_space:.1f}GB free")
+            return False
+    except:
+        pass  # Continue if disk check fails
+    
+    return True
+
+>>>>>>> b44e085 (STEP 60-1: Pre-progress-bar implementation)
 # ========== MAIN COMMAND HANDLER ==========
 @click.command('migrate-app')
 @click.argument('action')
@@ -214,6 +342,208 @@ def migrate_app(action, source_app=None, target_app=None, modules=None, site=Non
         except Exception as e:
             print(f"❌ Error: {e}")
     
+    # ========== ENTERPRISE SESSION COMMANDS ==========
+    elif action == 'start-session':
+        try:
+            from ..utils.session import MigrationSession
+            
+            if not source_app:  # Using source_app as session name
+                print("❌ Please specify session name: bench migrate-app start-session <session_name>")
+                return
+                
+            session = MigrationSession(source_app)
+            session_id = session.save()
+            
+            if session_id:
+                print(f"✅ ENTERPRISE SESSION STARTED: {source_app}")
+                print(f"📁 Session ID: {session_id}")
+                print(f"💾 Storage: {session.session_file}")
+                print(f"⏰ Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                print(f"🔧 Status: Active")
+                print(f"\n💡 Next: Use this session for migration operations")
+            else:
+                print("❌ Failed to create session")
+                
+        except Exception as e:
+            print(f"❌ Session creation failed: {e}")
+            
+    elif action == 'session-status':
+        try:
+            from ..utils.session import load_session, get_session_by_name
+            if not source_app:
+                print("❌ Please specify session ID or name: bench migrate-app session-status <session_id_or_name>")
+                return
+                
+            # Try loading by session_id first, then by name
+            session_data = load_session(source_app)
+            if not session_data:
+                session_data = get_session_by_name(source_app)
+                
+            if session_data:
+                metadata = session_data["metadata"]
+                progress = session_data["progress"]
+                migration = session_data["migration_data"]
+                
+                print(f"📊 ENTERPRISE SESSION STATUS")
+                print("=" * 50)
+                print(f"🏷️  Name: {metadata['name']}")
+                print(f"🆔 ID: {metadata['session_id']}")
+                print(f"📈 Status: {metadata['status'].upper()}")
+                print(f"🔧 Phase: {metadata['current_phase']}")
+                print(f"⏰ Started: {metadata['start_time']}")
+                
+                # ENHANCED: Progress calculation with visual bar
+                completed_ops = len([op for op in progress['completed_operations'] if op['status'] == 'completed'])
+                total_ops = len(progress.get('planned_operations', [])) or len(progress['completed_operations'])
+                success_rate = (completed_ops/total_ops)*100 if total_ops > 0 else 0
+                
+                # Progress bar visualization
+                progress_bar_length = 20
+                filled_length = int(progress_bar_length * completed_ops // total_ops) if total_ops > 0 else 0
+                bar = '█' * filled_length + '░' * (progress_bar_length - filled_length)
+                
+                print(f"\n📈 PROGRESS: [{bar}] {completed_ops}/{total_ops} ({success_rate:.1f}%)")
+                
+                if progress['current_operation']:
+                    print(f"🔄 CURRENT: {progress['current_operation']}")
+                
+                # Migration progress
+                if migration['apps_to_migrate']:
+                    completed_apps = len(migration['completed_apps'])
+                    total_apps = len(migration['apps_to_migrate'])
+                    app_success_rate = (completed_apps/total_apps)*100 if total_apps > 0 else 0
+                    
+                    print(f"\n🚀 MIGRATION PROGRESS:")
+                    print(f"   • Apps: {completed_apps}/{total_apps} completed ({app_success_rate:.1f}%)")
+                    print(f"   • Remaining: {total_apps - completed_apps}")
+                    
+                    # Show current app being processed
+                    if migration.get('current_app'):
+                        print(f"   • Processing: {migration['current_app']}")
+                    
+                # Recent operations
+                if progress['completed_operations']:
+                    print(f"\n🕐 RECENT OPERATIONS:")
+                    recent_ops = progress['completed_operations'][-5:]  # Last 5 operations
+                    for op in recent_ops:
+                        status_icon = "✅" if op['status'] == 'completed' else "❌"
+                        print(f"   {status_icon} {op['operation']} - {op['timestamp'][11:19]}")
+                        
+            else:
+                print(f"❌ Session not found: {source_app}")
+                print("💡 Available sessions: bench migrate-app list-sessions")
+                
+        except Exception as e:
+            print(f"❌ Session status check failed: {e}")
+            
+    elif action == 'list-sessions':
+        try:
+            from ..utils.session import list_all_sessions
+            sessions = list_all_sessions()
+            
+            if sessions:
+                print(f"📁 ENTERPRISE MIGRATION SESSIONS")
+                print("=" * 50)
+                
+                for session in sessions:
+                    metadata = session["data"]["metadata"]
+                    progress = session["data"]["progress"]
+                    
+                    completed_ops = len([op for op in progress['completed_operations'] if op['status'] == 'completed'])
+                    total_ops = len(progress['completed_operations'])
+                    
+                    status_icon = "🟢" if metadata['status'] == 'active' else "🔵" if metadata['status'] == 'completed' else "🔴"
+                    
+                    print(f"\n{status_icon} {metadata['name']}")
+                    print(f"   🆔 {metadata['session_id']}")
+                    print(f"   📊 {completed_ops}/{total_ops} ops • {metadata['status']}")
+                    print(f"   ⏰ {metadata['start_time'][:19]}")
+                    
+            else:
+                print("📭 No migration sessions found")
+                print("💡 Create one: bench migrate-app start-session <name>")
+                
+        except Exception as e:
+            print(f"❌ Session listing failed: {e}")
+    
+    # ========== MIGRATION COMMANDS ==========
+    elif action == 'clone-app':
+        if not source_app:  # Using source_app as app_name
+            print("❌ Please specify app name: bench migrate-app clone-app <app_name>")
+            return
+            
+        # Handle session parameter (using --site as temporary session ID)
+        session_id = None
+        if site:  # Using --site option for session ID temporarily
+            session_id = site
+            
+        print(f"🚀 CLONING APP (PROGRESS MODE): {source_app}")
+        
+        # Enhanced progress tracking
+        print(f"🔍 Validating migration readiness for {source_app}...")
+        
+        # Check if app already exists
+        target_path = f"/home/frappe/frappe-bench/apps/{source_app}"
+        if os.path.exists(target_path):
+            print(f"❌ {source_app} already exists in target bench")
+            if session_id:
+                from ..utils.session import update_session_progress
+                update_session_progress(session_id, f"clone_{source_app}", "failed", "App already exists")
+            return False
+        
+        # Execute with progress tracking
+        try:
+            # Step 1: Get app
+            print(f"📥 Downloading {source_app}...")
+            success, output = run_command_with_progress(
+                f"cd /home/frappe/frappe-bench && bench get-app {source_app}",
+                f"Downloading {source_app}",
+                timeout=600
+            )
+            
+            if not success:
+                print(f"❌ Download failed: {output}")
+                if session_id:
+                    from ..utils.session import update_session_progress
+                    update_session_progress(session_id, f"clone_{source_app}", "failed", f"Download failed: {output}")
+                return False
+            
+            # Step 2: Monitor directory creation
+            print(f"👀 Monitoring {source_app} installation...")
+            if not monitor_directory_creation(source_app):
+                if session_id:
+                    from ..utils.session import update_session_progress
+                    update_session_progress(session_id, f"clone_{source_app}", "failed", "Directory not created")
+                return False
+            
+            # Step 3: Install app
+            print(f"⚙️ Installing {source_app} to sites...")
+            success, output = run_command_with_progress(
+                f"cd /home/frappe/frappe-bench && bench install-app {source_app}",
+                f"Installing {source_app}",
+                timeout=300
+            )
+            
+            if success:
+                print(f"✅ {source_app} migration completed successfully!")
+                if session_id:
+                    from ..utils.session import update_session_progress
+                    update_session_progress(session_id, f"clone_{source_app}", "completed")
+                return True
+            else:
+                print(f"❌ Installation failed: {output}")
+                if session_id:
+                    from ..utils.session import update_session_progress
+                    update_session_progress(session_id, f"clone_{source_app}", "failed", f"Installation failed: {output}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Clone operation failed: {e}")
+            if session_id:
+                from ..utils.session import update_session_progress
+                update_session_progress(session_id, f"clone_{source_app}", "failed", str(e))
+            return False
+    
     # ========== HELP ==========
     else:
         print(f"❌ Unknown action: {action}")
@@ -222,12 +552,24 @@ def migrate_app(action, source_app=None, target_app=None, modules=None, site=Non
         print("   smart-recommendation    - Get migration recommendations")
         print("   list-benches            - List available benches")
         print("   bench-apps <bench>      - Show apps in bench")
+<<<<<<< HEAD
         print("   cross-bench-analysis    - Cross-bench migration analysis")
+=======
+        
+>>>>>>> b44e085 (STEP 60-1: Pre-progress-bar implementation)
         print("\n📋 SITE COMMANDS:")
         print("   db-info                 - Database information")
         print("   discover-sites          - Discover sites and apps")
         print("   list-sites              - List available sites")
         print("   show-apps <site>        - Show apps in site")
+        
+        print("\n🎯 ENTERPRISE SESSION COMMANDS:")
+        print("   start-session <name>    - Start new migration session")
+        print("   session-status <id>     - Check session status with details")
+        print("   list-sessions           - List all sessions")
+        
+        print("\n🚀 MIGRATION COMMANDS:")
+        print("   clone-app <app_name>    - Clone app between benches")
 
 # ========== COMMAND REGISTRATION ==========
 # This is CRITICAL - Frappe looks for this list
