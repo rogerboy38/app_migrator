@@ -1,263 +1,236 @@
+"""
+🏗️ App Migrator - Enterprise Multi-Bench Migration System
+Main module with proper command registration
+"""
+
 import click
 import frappe
-from frappe.utils import get_sites
 import os
-import shutil
-import json
-import re
 import subprocess
-import sys
+from frappe.utils import get_sites
 from pathlib import Path
 
-__version__ = "1.0.0"
-
+__version__ = "4.0.0"
 app_name = "app_migrator"
-app_title = "App Migrator"
-app_publisher = "Frappe Community"
-app_description = "Frappe App Migration Toolkit"
-app_email = "fcrm@amb-wellness.com"
-app_license = "mit"
 
+print(f"🚀 App Migrator v{__version__}")
+
+# ========== MULTI-BENCH FUNCTIONS ==========
+def detect_available_benches():
+    """Detect all available benches"""
+    benches = []
+    frappe_home = os.path.expanduser('~')
+    
+    for item in os.listdir(frappe_home):
+        if item.startswith('frappe-bench') and os.path.isdir(os.path.join(frappe_home, item)):
+            benches.append(item)
+    
+    return sorted(benches)
+
+def get_bench_apps(bench_path):
+    """Get installed apps from a bench"""
+    try:
+        result = subprocess.run(
+            f"cd {bench_path} && bench version",
+            shell=True, capture_output=True, text=True, timeout=30
+        )
+        lines = result.stdout.strip().split('\n')
+        apps = []
+        for line in lines:
+            if ' ' in line and not line.startswith('✅'):
+                app = line.split()[0]
+                apps.append(app)
+        return sorted(apps)
+    except Exception as e:
+        print(f"   ❌ Error getting apps: {e}")
+        return []
+
+def multi_bench_analysis():
+    """Step 52-1: Multi-bench ecosystem analysis"""
+    print("🔍 Step 52-1: MULTI-BENCH ECOSYSTEM ANALYSIS")
+    print("=" * 55)
+    
+    benches = detect_available_benches()
+    print(f"📋 Found {len(benches)} benches:")
+    
+    total_apps = 0
+    for bench in benches:
+        apps = get_bench_apps(f"/home/frappe/{bench}")
+        total_apps += len(apps)
+        print(f"\n📦 {bench}:")
+        print(f"   Apps: {len(apps)}")
+        if apps:
+            print(f"   {apps}")
+        else:
+            print(f"   💡 Empty bench")
+    
+    print(f"\n📈 SYSTEM SUMMARY: {len(benches)} benches, {total_apps} total apps")
+    return benches
+
+def smart_migration_recommendation():
+    """Step 52-2: Smart migration recommendations"""
+    print("🧠 Step 52-2: SMART MIGRATION RECOMMENDATION")
+    print("=" * 55)
+    
+    benches = detect_available_benches()
+    if len(benches) < 2:
+        print("❌ Need at least 2 benches for migration")
+        print("💡 Create new bench: cd /home/frappe/ && bench init frappe-bench-new")
+        return
+    
+    # Get bench info
+    bench_info = {}
+    for bench in benches:
+        apps = get_bench_apps(f"/home/frappe/{bench}")
+        bench_info[bench] = {
+            'apps': apps,
+            'app_count': len(apps)
+        }
+    
+    # Find optimal migration path
+    source_bench = max(bench_info.keys(), key=lambda x: bench_info[x]['app_count'])
+    target_bench = min(bench_info.keys(), key=lambda x: bench_info[x]['app_count'])
+    
+    print(f"🎯 RECOMMENDED MIGRATION PATH:")
+    print(f"   🚀 SOURCE: {source_bench} ({bench_info[source_bench]['app_count']} apps)")
+    print(f"   🎯 TARGET: {target_bench} ({bench_info[target_bench]['app_count']} apps)")
+    
+    source_apps = set(bench_info[source_bench]['apps'])
+    target_apps = set(bench_info[target_bench]['apps'])
+    migratable = source_apps - target_apps
+    
+    if migratable:
+        custom_apps = [app for app in migratable if app not in ['frappe', 'erpnext']]
+        if custom_apps:
+            print(f"\n📦 RECOMMENDED APPS TO MIGRATE:")
+            for app in custom_apps[:3]:  # Top 3
+                print(f"   • {app}")
+            
+            print(f"\n💡 QUICK MIGRATION COMMAND:")
+            print(f"   cd /home/frappe/{target_bench}")
+            print(f"   bench get-app {custom_apps[0]} /home/frappe/{source_bench}/apps/{custom_apps[0]}")
+            print(f"   bench --site [site_name] install-app {custom_apps[0]}")
+    else:
+        print(f"\n✅ All apps already synchronized")
+
+# ========== MAIN COMMAND HANDLER ==========
 @click.command('migrate-app')
 @click.argument('action')
 @click.argument('source_app', required=False)
 @click.argument('target_app', required=False)
 @click.option('--modules', help='Specific modules to migrate')
-@click.option('--site', help='Site name')
+@click.option('--site', help='Specific site to use')
 def migrate_app(action, source_app=None, target_app=None, modules=None, site=None):
-    """App Migrator - Frappe App Migration Toolkit with Enhanced Renaming"""
+    """🚀 App Migrator - Enterprise Multi-Bench Migration System"""
     
-    print(f"🚀 Migration command called: {action} for {source_app}")
+    print(f"🚀 App Migrator: {action}")
     
-    if action == 'analyze':
-        analyze_app(source_app)
+    # ========== MULTI-BENCH COMMANDS ==========
+    if action == 'multi-bench-analysis':
+        multi_bench_analysis()
         
-    elif action == 'fix-database-schema':
-        fix_database_schema()
+    elif action == 'smart-recommendation':
+        smart_migration_recommendation()
         
-    elif action == 'complete-erpnext-install':
-        complete_erpnext_installation()
-        
-    elif action == 'fix-tree-doctypes':
-        fix_all_tree_doctypes()
-        
-    elif action == 'migrate':
-        print(f"Migrating app: {source_app}")
-        # Add migrate functionality here
-        
-    elif action == 'interactive':
-        interactive_migration()
-        
-    elif action == 'select-modules':
-        selected_modules, selected_doctypes = select_modules_interactive(source_app, target_app)
-        click.echo(f"🎯 Final selection: {len(selected_modules)} modules with doctype-level selection")
-        
-    elif action == 'fix-orphans':
-        fix_orphan_doctypes(source_app)
-        
-    elif action == 'restore-missing':
-        restore_missing_doctypes(source_app)
-        
-    elif action == 'fix-app-none':
-        fix_app_none_doctypes(source_app)
-        
-    elif action == 'analyze-orphans':
-        analyze_orphan_doctypes()
-        
-    elif action == 'fix-all-references':
-        fix_all_references(source_app)
-        
-    elif action == 'rename-systematic':
-        systematic_renaming(source_app, target_app)
-        
-    elif action == 'validate-migration':
-        validate_migration_readiness(source_app)
-        
+    elif action == 'list-benches':
+        benches = detect_available_benches()
+        print("🏗️ AVAILABLE BENCHES:")
+        for i, bench in enumerate(benches, 1):
+            print(f"   {i}. {bench}")
+            
+    elif action == 'bench-apps':
+        if not source_app:
+            print("❌ Please specify bench name: bench migrate-app bench-apps <bench_name>")
+            return
+            
+        apps = get_bench_apps(f"/home/frappe/{source_app}")
+        print(f"📦 APPS IN {source_app}:")
+        for i, app in enumerate(apps, 1):
+            print(f"   {i}. {app}")
+        print(f"   Total: {len(apps)} apps")
+    
+    elif action == 'cross-bench-analysis':
+        print("🔀 CROSS-BENCH MIGRATION ANALYSIS")
+        benches = detect_available_benches()
+        if len(benches) >= 2:
+            source = benches[0]
+            target = benches[1]
+            print(f"   Analyzing: {source} → {target}")
+            # Add detailed analysis here
+    
+    # ========== SITE COMMANDS ==========
+    elif action == 'db-info':
+        print("🔍 DATABASE INFORMATION")
+        print("=" * 30)
+        sites = get_sites()
+        for site_name in sites:
+            try:
+                frappe.init(site_name)
+                frappe.connect(site=site_name)
+                print(f"\n🌐 {site_name}:")
+                print(f"   Database: {frappe.conf.db_name}")
+                print(f"   Host: {frappe.conf.db_host}")
+                apps = frappe.get_installed_apps()
+                print(f"   Apps: {len(apps)}")
+                frappe.db.close()
+            except Exception as e:
+                print(f"   Error: {e}")
+                
+    elif action == 'discover-sites':
+        print("🔍 DISCOVERING SITES AND APPS")
+        sites = get_sites()
+        print(f"📋 Found {len(sites)} sites: {sites}")
+        for site_name in sites:
+            print(f"\n🌐 {site_name}:")
+            try:
+                frappe.init(site_name)
+                frappe.connect(site=site_name)
+                apps = frappe.get_installed_apps()
+                print(f"   Apps: {len(apps)} - {apps}")
+                frappe.db.close()
+            except Exception as e:
+                print(f"   Error: {e}")
+    
+    elif action == 'list-sites':
+        sites = get_sites()
+        print("🌐 AVAILABLE SITES:")
+        for i, site in enumerate(sites, 1):
+            print(f"   {i}. {site}")
+            
+    elif action == 'show-apps':
+        if not source_app:
+            print("❌ Please specify a site: bench migrate-app show-apps <site_name>")
+            return
+            
+        try:
+            frappe.init(source_app)
+            frappe.connect(site=source_app)
+            apps = frappe.get_installed_apps()
+            print(f"📦 APPS IN {source_app}:")
+            for i, app in enumerate(apps, 1):
+                print(f"   {i}. {app}")
+            print(f"   Total: {len(apps)} apps")
+            frappe.db.close()
+        except Exception as e:
+            print(f"❌ Error: {e}")
+    
+    # ========== HELP ==========
     else:
         print(f"❌ Unknown action: {action}")
-        print("📋 Available actions: analyze, fix-database-schema, complete-erpnext-install, fix-tree-doctypes, migrate, interactive, select-modules, fix-orphans, restore-missing, fix-app-none, analyze-orphans, fix-all-references, rename-systematic, validate-migration")
+        print("\n📋 MULTI-BENCH COMMANDS:")
+        print("   multi-bench-analysis    - Analyze all benches")
+        print("   smart-recommendation    - Get migration recommendations")
+        print("   list-benches            - List available benches")
+        print("   bench-apps <bench>      - Show apps in bench")
+        print("   cross-bench-analysis    - Cross-bench migration analysis")
+        print("\n📋 SITE COMMANDS:")
+        print("   db-info                 - Database information")
+        print("   discover-sites          - Discover sites and apps")
+        print("   list-sites              - List available sites")
+        print("   show-apps <site>        - Show apps in site")
 
-def fix_database_schema():
-    """Fix missing database columns that prevent app installation"""
-    print("🔧 FIXING DATABASE SCHEMA FOR MODULE DEF TABLE")
-    
-    try:
-        sites = get_sites()
-        site = sites[0] if sites else None
-        if not site:
-            print("❌ No site available")
-            return
-            
-        with frappe.init_site(site):
-            frappe.connect(site=site)
-            
-            # Check current table structure
-            print("📊 CHECKING TABLE STRUCTURE...")
-            
-            # Get current columns in tabModule Def
-            current_columns = frappe.db.sql("""
-                SHOW COLUMNS FROM `tabModule Def`
-            """, as_dict=True)
-            
-            current_column_names = [col['Field'] for col in current_columns]
-            print(f"   Current columns: {current_column_names}")
-            
-            # Required columns for Frappe v15
-            required_columns = [
-                'parent', 'parentfield', 'parenttype', 'idx',
-                'module_name', 'custom', 'app_name', 'restrict_to_domain',
-                '_user_tags', '_comments', '_assign', '_liked_by', 'package'
-            ]
-            
-            missing_columns = [col for col in required_columns if col not in current_column_names]
-            
-            if missing_columns:
-                print(f"🚨 MISSING COLUMNS: {missing_columns}")
-                print("🔄 ADDING MISSING COLUMNS...")
-                
-                for column in missing_columns:
-                    try:
-                        if column in ['parent', 'parentfield', 'parenttype']:
-                            frappe.db.sql(f"""
-                                ALTER TABLE `tabModule Def` 
-                                ADD COLUMN `{column}` varchar(140)
-                            """)
-                            print(f"   ✅ Added {column} (varchar)")
-                            
-                        elif column == 'idx':
-                            frappe.db.sql(f"""
-                                ALTER TABLE `tabModule Def` 
-                                ADD COLUMN `{column}` int(8) NOT NULL DEFAULT 0
-                            """)
-                            print(f"   ✅ Added {column} (int)")
-                            
-                        elif column in ['custom', 'restrict_to_domain']:
-                            frappe.db.sql(f"""
-                                ALTER TABLE `tabModule Def` 
-                                ADD COLUMN `{column}` int(1) NOT NULL DEFAULT 0
-                            """)
-                            print(f"   ✅ Added {column} (int)")
-                            
-                        elif column in ['module_name', 'app_name']:
-                            frappe.db.sql(f"""
-                                ALTER TABLE `tabModule Def` 
-                                ADD COLUMN `{column}` varchar(140)
-                            """)
-                            print(f"   ✅ Added {column} (varchar)")
-                            
-                        elif column in ['_user_tags', '_comments', '_assign', '_liked_by']:
-                            frappe.db.sql(f"""
-                                ALTER TABLE `tabModule Def` 
-                                ADD COLUMN `{column}` text
-                            """)
-                            print(f"   ✅ Added {column} (text)")
-                            
-                        elif column == 'package':
-                            frappe.db.sql(f"""
-                                ALTER TABLE `tabModule Def` 
-                                ADD COLUMN `{column}` varchar(140)
-                            """)
-                            print(f"   ✅ Added {column} (varchar)")
-                            
-                    except Exception as e:
-                        print(f"   ⚠️  Could not add {column}: {e}")
-                
-                print("🎉 DATABASE SCHEMA UPDATED!")
-                
-            else:
-                print("✅ ALL REQUIRED COLUMNS EXIST")
-            
-            frappe.db.commit()
-            frappe.destroy()
-            
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
+# ========== COMMAND REGISTRATION ==========
+# This is CRITICAL - Frappe looks for this list
+commands = [migrate_app]
 
-def complete_erpnext_installation():
-    """Complete ERPNext installation after fixing schema"""
-    print("🚀 COMPLETING ERPNext INSTALLATION")
-    
-    try:
-        # First fix the database schema
-        fix_database_schema()
-        
-        # Then install ERPNext
-        print("\n📦 INSTALLING ERPNext...")
-        
-        result = subprocess.run([
-            sys.executable, '-m', 'bench', '--site', 'sysmayal.v.frappe.cloud', 
-            'install-app', 'erpnext', '--force'
-        ], capture_output=True, text=True, cwd='/home/frappe/frappe-bench')
-        
-        if result.returncode == 0:
-            print("✅ ERPNext INSTALLED SUCCESSFULLY!")
-            print(result.stdout)
-        else:
-            print("❌ ERPNext INSTALLATION FAILED:")
-            print(result.stderr)
-            
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
-
-def fix_all_tree_doctypes():
-    """Fix tree doctypes that need parent fields"""
-    print("🌳 FIXING TREE DOCTYPE STRUCTURES")
-    
-    try:
-        sites = get_sites()
-        site = sites[0] if sites else None
-        if not site:
-            print("❌ No site available")
-            return
-            
-        with frappe.init_site(site):
-            frappe.connect(site=site)
-            
-            # Get all tree doctypes
-            tree_doctypes = frappe.get_all('DocType', 
-                filters={'is_tree': 1},
-                fields=['name']
-            )
-            
-            print(f"🔍 Found {len(tree_doctypes)} tree doctypes")
-            
-            for doctype in tree_doctypes:
-                doctype_name = doctype['name']
-                print(f"   Checking {doctype_name}...")
-                
-                # Check if parent fields exist in the table
-                table_name = f"tab{doctype_name}"
-                try:
-                    columns = frappe.db.sql(f"SHOW COLUMNS FROM `{table_name}`", as_dict=True)
-                    column_names = [col['Field'] for col in columns]
-                    
-                    required_parent_fields = ['lft', 'rgt']  # Tree structure fields
-                    missing_parent_fields = [field for field in required_parent_fields if field not in column_names]
-                    
-                    if missing_parent_fields:
-                        print(f"   ⚠️  Missing tree fields: {missing_parent_fields}")
-                        # Add missing tree fields
-                        for field in missing_parent_fields:
-                            frappe.db.sql(f"""
-                                ALTER TABLE `{table_name}` 
-                                ADD COLUMN `{field}` int(8) NOT NULL DEFAULT 0
-                            """)
-                        print(f"   ✅ Added missing tree fields to {doctype_name}")
-                        
-                except Exception as e:
-                    print(f"   ❌ Error checking {doctype_name}: {e}")
-            
-            frappe.db.commit()
-            print("🎉 TREE DOCTYPE FIXES COMPLETED!")
-            frappe.destroy()
-            
-    except Exception as e:
-        print(f"❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
-
-# Include all the existing functions (they should be below this point)
+print("✅ App Migrator commands registered successfully!")

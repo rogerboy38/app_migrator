@@ -129,6 +129,387 @@ class InputValidator:
         
         return options
 
+# ========== MULTI-BENCH MIGRATION SYSTEM ==========
+def multi_bench_migration_wizard():
+    """Step 48-1: Multi-bench migration wizard"""
+    print("🚀 MULTI-BENCH MIGRATION WIZARD")
+    print("=" * 55)
+    
+    benches = detect_available_benches()
+    
+    if len(benches) < 2:
+        print("❌ Need at least 2 benches for cross-bench migration")
+        print("💡 To create new bench:")
+        print("   cd /home/frappe/")
+        print("   bench init frappe-bench-migration --python /home/frappe/frappe-bench/env/bin/python")
+        return
+    
+    print(f"\n🔍 ANALYZING BENCHES...")
+    bench_info = {}
+    
+    for bench in benches:
+        bench_path = os.path.join(os.path.expanduser('~'), bench)
+        apps = get_bench_apps(bench_path)
+        sites = get_bench_sites(bench_path)
+        
+        bench_info[bench] = {
+            'path': bench_path,
+            'apps': apps,
+            'sites': sites,
+            'app_count': len(apps)
+        }
+        
+        print(f"\n📦 {bench}:")
+        print(f"   Apps: {len(apps)}")
+        print(f"   Sites: {sites}")
+    
+    # Strategy selection
+    print(f"\n🎯 MIGRATION STRATEGIES:")
+    print(f"   1. 🏗️  CROSS-BENCH APP MIGRATION")
+    print(f"      - Move apps between different benches")
+    print(f"      - True database separation")
+    print(f"      - Independent app sets")
+    
+    print(f"   2. 🔄 BENCH-TO-BENCH SITE MIGRATION") 
+    print(f"      - Copy entire sites between benches")
+    print(f"      - Complete environment cloning")
+    
+    choice = input(f"\nSelect strategy (1-2): ").strip()
+    
+    if choice == '1':
+        return cross_bench_app_migration(bench_info)
+    elif choice == '2':
+        return bench_to_bench_site_migration(bench_info)
+    else:
+        print("❌ Invalid choice")
+
+def cross_bench_app_migration(bench_info):
+    """Step 48-2: Cross-bench app migration"""
+    print("\n📦 CROSS-BENCH APP MIGRATION")
+    print("=" * 50)
+    
+    benches = list(bench_info.keys())
+    
+    print(f"🎯 SELECT SOURCE BENCH:")
+    for i, bench in enumerate(benches, 1):
+        print(f"   {i}. {bench} ({bench_info[bench]['app_count']} apps)")
+    
+    source_idx = int(input(f"Select source (1-{len(benches)}): ")) - 1
+    source_bench = benches[source_idx]
+    
+    print(f"\n🎯 SELECT TARGET BENCH:")
+    for i, bench in enumerate(benches, 1):
+        if i-1 != source_idx:
+            print(f"   {i}. {bench} ({bench_info[bench]['app_count']} apps)")
+    
+    target_idx = int(input(f"Select target (1-{len(benches)}): ")) - 1
+    target_bench = benches[target_idx]
+    
+    print(f"\n🔀 MIGRATION PATH:")
+    print(f"   Source: {source_bench} → Target: {target_bench}")
+    
+    source_apps = set(bench_info[source_bench]['apps'])
+    target_apps = set(bench_info[target_bench]['apps'])
+    
+    migratable = source_apps - target_apps
+    
+    if migratable:
+        print(f"\n✅ APPS AVAILABLE FOR MIGRATION ({len(migratable)}):")
+        for app in migratable:
+            print(f"   • {app}")
+        
+        # Filter custom apps
+        custom_apps = [app for app in migratable if app not in ['frappe', 'erpnext']]
+        if custom_apps:
+            print(f"\n🎯 RECOMMENDED MIGRATION TARGETS:")
+            for app in custom_apps:
+                print(f"   • {app}")
+    else:
+        print(f"\n⚠️  No unique apps to migrate")
+    
+    return migratable
+
+def get_bench_sites(bench_path):
+    """Get sites from a bench"""
+    import subprocess
+    try:
+        result = subprocess.run(
+            f"cd {bench_path} && bench list-sites 2>/dev/null || ls sites/",
+            shell=True, capture_output=True, text=True
+        )
+        sites = [line.strip() for line in result.stdout.split('\n') if line.strip()]
+        return sites
+    except:
+        return []
+
+
+# ========== DATABASE INTELLIGENCE SYSTEM ==========
+class DatabaseIntelligence:
+    """Intelligent database analysis for migration strategies"""
+    
+    @staticmethod
+    def analyze_database_setup():
+        """Step 46-1: Analyze database configuration"""
+        print("🔍 Step 46-1: DATABASE INTELLIGENCE ANALYSIS")
+        print("=" * 50)
+        
+        sites = get_sites()
+        if len(sites) < 2:
+            print("❌ Need at least 2 sites for migration analysis")
+            return None
+        
+        site_info = {}
+        
+        for site in sites:
+            print(f"\n🌐 Analyzing: {site}")
+            try:
+                frappe.init(site)
+                frappe.connect(site=site)
+                
+                # Get critical database info
+                db_name = frappe.conf.db_name
+                db_host = frappe.conf.db_host
+                db_port = frappe.conf.db_port
+                apps = frappe.get_installed_apps()
+                
+                site_info[site] = {
+                    'db_name': db_name,
+                    'db_host': db_host,
+                    'db_port': db_port,
+                    'apps': apps,
+                    'app_count': len(apps),
+                    'app_names': set(apps)
+                }
+                
+                print(f"   🗄️  Database: {db_name}")
+                print(f"   🌐 Host: {db_host}:{db_port}")
+                print(f"   📦 Apps: {len(apps)}")
+                
+                frappe.db.close()
+                
+            except Exception as e:
+                print(f"   ❌ Analysis failed: {e}")
+                return None
+        
+        return site_info
+    
+    @staticmethod
+    def determine_migration_strategy(site_info):
+        """Step 46-2: Determine migration strategy based on database setup"""
+        print("\n🎯 Step 46-2: MIGRATION STRATEGY ANALYSIS")
+        print("=" * 50)
+        
+        if not site_info or len(site_info) < 2:
+            return None
+        
+        sites = list(site_info.keys())
+        site1, site2 = sites[0], sites[1]
+        
+        db1 = site_info[site1]['db_name']
+        db2 = site_info[site2]['db_name']
+        host1 = site_info[site1]['db_host']
+        host2 = site_info[site2]['db_host']
+        
+        apps1 = site_info[site1]['app_names']
+        apps2 = site_info[site2]['app_names']
+        
+        print(f"📊 DATABASE COMPARISON:")
+        print(f"   {site1}: {db1} @ {host1}")
+        print(f"   {site2}: {db2} @ {host2}")
+        
+        # Strategy Determination
+        if db1 == db2:
+            print(f"\n🚨 CRITICAL: SAME DATABASE DETECTED!")
+            print(f"   Both sites point to: {db1}")
+            print(f"   💡 Strategy: SINGLE-DATABASE APP MIGRATION")
+            
+            strategy = {
+                'type': 'SAME_DATABASE',
+                'reason': f"Both sites use database '{db1}'",
+                'recommendation': 'Migrate between apps within the same database',
+                'limitations': ['Cannot have different app sets', 'Changes affect both sites'],
+                'migration_type': 'app_to_app_same_db'
+            }
+            
+        else:
+            print(f"\n✅ SEPARATE DATABASES DETECTED!")
+            print(f"   {site1}: {db1}")
+            print(f"   {site2}: {db2}")
+            print(f"   💡 Strategy: CROSS-DATABASE MIGRATION")
+            
+            migratable_apps = apps1 - apps2
+            if migratable_apps:
+                print(f"   📦 Apps available for migration: {len(migratable_apps)}")
+            else:
+                print(f"   ⚠️  No unique apps to migrate")
+            
+            strategy = {
+                'type': 'SEPARATE_DATABASES', 
+                'reason': f"Sites use different databases",
+                'recommendation': 'Full cross-site app migration possible',
+                'advantages': ['Independent app sets', 'True multi-tenant'],
+                'migration_type': 'cross_site_full'
+            }
+        
+        # App analysis
+        common_apps = apps1 & apps2
+        unique_to_site1 = apps1 - apps2
+        unique_to_site2 = apps2 - apps1
+        
+        print(f"\n📦 APP DISTRIBUTION:")
+        print(f"   Common apps: {len(common_apps)}")
+        print(f"   Unique to {site1}: {len(unique_to_site1)}")
+        print(f"   Unique to {site2}: {len(unique_to_site2)}")
+        
+        if unique_to_site1:
+            print(f"   🔵 {site1} unique: {unique_to_site1}")
+        if unique_to_site2:
+            print(f"   🟢 {site2} unique: {unique_to_site2}")
+        
+        strategy['app_analysis'] = {
+            'common_apps': common_apps,
+            'unique_to_source': unique_to_site1,
+            'unique_to_target': unique_to_site2
+        }
+        
+        return strategy
+
+# ========== ENHANCED WIZARD WITH DATABASE INTELLIGENCE ==========
+def intelligent_migration_wizard():
+    """🚀 INTELLIGENT MIGRATION WIZARD - Database Aware"""
+    print("🚀 INTELLIGENT MIGRATION WIZARD v4.0")
+    print("=" * 55)
+    
+    # STEP 1: Database Intelligence Analysis
+    print("\n🔍 STEP 1: DATABASE INTELLIGENCE ANALYSIS")
+    print("=" * 40)
+    
+    db_intel = DatabaseIntelligence()
+    site_info = db_intel.analyze_database_setup()
+    
+    if not site_info:
+        print("❌ Cannot analyze site configuration")
+        return
+    
+    # STEP 2: Strategy Determination
+    strategy = db_intel.determine_migration_strategy(site_info)
+    
+    if not strategy:
+        print("❌ Cannot determine migration strategy")
+        return
+    
+    # STEP 3: Strategy Selection Based on Database Setup
+    print(f"\n🔧 STEP 2: STRATEGY SELECTION")
+    print("=" * 40)
+    
+    sites = list(site_info.keys())
+    source_site, target_site = sites[0], sites[1]
+    
+    if strategy['type'] == 'SAME_DATABASE':
+        print(f"🚨 DATABASE CONSTRAINT DETECTED!")
+        print(f"   Both sites use: {site_info[source_site]['db_name']}")
+        print(f"   Available strategy:")
+        print(f"   1. 🛡️ SAME-DB SAFE COPY")
+        print(f"      - Copy modules between apps in same database")
+        print(f"      - Both sites will see the changes")
+        print(f"      - Limited to app-to-app migration")
+        
+        choice = input(f"\nSelect strategy (1): ").strip()
+        if choice == '1':
+            return execute_same_db_migration(source_site, target_site, site_info, strategy)
+        else:
+            print("❌ Invalid choice")
+            return
+            
+    else:  # SEPARATE_DATABASES
+        print(f"✅ SEPARATE DATABASES DETECTED!")
+        print(f"   {source_site}: {site_info[source_site]['db_name']}")
+        print(f"   {target_site}: {site_info[target_site]['db_name']}")
+        print(f"   Available strategies:")
+        print(f"   1. 🛡️ CROSS-SITE SAFE CUSTOMIZATION")
+        print(f"      - Copy apps/modules between different databases")
+        print(f"      - True multi-site migration")
+        print(f"      - Source and target remain independent")
+        print(f"   2. 🚨 COMPLETE SACRIFICE")
+        print(f"      - Move ALL apps from source to target")
+        print(f"      - Source site becomes empty")
+        print(f"      - For advanced users only")
+        
+        choice = input(f"\nSelect strategy (1-2): ").strip()
+        if choice == '1':
+            return execute_cross_site_safe(source_site, target_site, site_info, strategy)
+        elif choice == '2':
+            return execute_complete_sacrifice(source_site, target_site, site_info, strategy)
+        else:
+            print("❌ Invalid choice")
+            return
+
+def execute_same_db_migration(source_site, target_site, site_info, strategy):
+    """Execute migration when sites share same database"""
+    print(f"\n🎯 EXECUTING SAME-DB MIGRATION")
+    print("=" * 40)
+    print(f"   Database: {site_info[source_site]['db_name']}")
+    print(f"   Strategy: App-to-app migration within same database")
+    
+    # Since same DB, show apps available in the database
+    all_apps = site_info[source_site]['apps']
+    print(f"\n📦 APPS IN DATABASE ({len(all_apps)}):")
+    for i, app in enumerate(all_apps, 1):
+        print(f"   {i}. {app}")
+    
+    # Continue with app selection for same-db migration
+    # ... existing app selection logic ...
+
+def execute_cross_site_safe(source_site, target_site, site_info, strategy):
+    """Execute safe cross-site migration"""
+    print(f"\n🎯 EXECUTING CROSS-SITE SAFE MIGRATION")
+    print("=" * 40)
+    print(f"   Source DB: {site_info[source_site]['db_name']}")
+    print(f"   Target DB: {site_info[target_site]['db_name']}")
+    print(f"   Strategy: Safe customization copy between sites")
+    
+    # Show migratable apps
+    migratable = strategy['app_analysis']['unique_to_source']
+    if migratable:
+        print(f"\n📦 MIGRATABLE APPS ({len(migratable)}):")
+        for app in migratable:
+            print(f"   • {app}")
+    else:
+        print(f"\n⚠️  No unique apps to migrate")
+    
+    # Continue with cross-site migration logic
+    # ... existing cross-site logic ...
+
+# ========== UPDATE COMMAND HANDLER ==========
+@click.command('migrate-app')
+@click.argument('action')
+# ... other parameters ...
+def migrate_app(action, source_app=None, target_app=None, modules=None, site=None):
+    """App Migrator - Intelligent Database Aware Version"""
+    
+    if action == 'intelligent-wizard':
+        intelligent_migration_wizard()
+        
+    elif action == 'db-analysis':
+        db_intel = DatabaseIntelligence()
+        site_info = db_intel.analyze_database_setup()
+        if site_info:
+            db_intel.determine_migration_strategy(site_info)
+            
+    elif action == 'db-info':
+        print("🔍 DATABASE INFORMATION")
+        print("=" * 30)
+        sites = get_sites()
+        for site in sites:
+            frappe.init(site)
+            frappe.connect(site=site)
+            print(f"\n🌐 {site}:")
+            print(f"   Database: {frappe.conf.db_name}")
+            print(f"   Host: {frappe.conf.db_host}")
+            print(f"   Apps: {len(frappe.get_installed_apps())}")
+            frappe.db.close()
+
+
 # ========== MULTI-SITE SESSION MANAGEMENT ==========
 class MultiSiteSession:
     """Advanced session management for multi-site operations"""
@@ -987,18 +1368,6 @@ def migrate_app(action, source_site=None, target_site=None, source_app=None, tar
             return
         engine.migrate_cross_site_enterprise(source_site, target_site, source_app, target_app, modules)
         
-# ========== DISCOVERY COMMANDS ==========
-    elif action == 'discover-sites':
-        discover_real_sites()
-    
-    elif action == 'scan-sites':
-        comprehensive_site_scan()
-    
-    elif action == 'debug-sites':
-        real_sites = discover_real_sites()
-        if real_sites:
-           analyze_site_apps(real_sites)
-
     elif action == 'list-sites':
         print("🌐 Available Sites:")
         for i, site in enumerate(engine.session.available_sites, 1):
@@ -1021,125 +1390,6 @@ def migrate_app(action, source_site=None, target_site=None, source_app=None, tar
             print("❌ App name required")
             return
         show_app_modules(source_app)
-# ========== REAL SITE DISCOVERY COMMANDS ==========
-def discover_real_sites():
-    """Step 43-0-A: Discover actual sites and their apps"""
-    print("🔍 Step 43-0-A: REAL SITE DISCOVERY")
-    print("=" * 50)
-    
-    # Method 1: Use frappe.utils.get_sites()
-    print("📋 Method 1: Using frappe.utils.get_sites()")
-    try:
-        from frappe.utils import get_sites
-        sites = get_sites()
-        print(f"   Found {len(sites)} sites: {sites}")
-    except Exception as e:
-        print(f"   ❌ Error: {e}")
-        sites = []
-    
-    # Method 2: Check sites directory
-    print("\n📁 Method 2: Checking sites directory")
-    try:
-        sites_path = Path('/home/frappe/frappe-bench/sites')
-        if sites_path.exists():
-            site_dirs = [d.name for d in sites_path.iterdir() if d.is_dir() and not d.name.startswith('.')]
-            print(f"   Found {len(site_dirs)} site directories: {site_dirs}")
-        else:
-            print("   ❌ Sites directory not found")
-            site_dirs = []
-    except Exception as e:
-        print(f"   ❌ Error: {e}")
-        site_dirs = []
-    
-    # Method 3: Check common.conf files
-    print("\n⚙️  Method 3: Checking site config files")
-    try:
-        sites_path = Path('/home/frappe/frappe-bench/sites')
-        config_files = list(sites_path.glob('*/site_config.json'))
-        config_sites = [f.parent.name for f in config_files]
-        print(f"   Found {len(config_sites)} sites with config: {config_sites}")
-    except Exception as e:
-        print(f"   ❌ Error: {e}")
-        config_sites = []
-    
-    # Combine all methods to get real sites
-    all_sites = list(set(sites + site_dirs + config_sites))
-    print(f"\n🎯 COMBINED RESULT: {len(all_sites)} unique sites found")
-    for i, site in enumerate(all_sites, 1):
-        print(f"   {i}. {site}")
-    
-    return all_sites
-
-def analyze_site_apps(site_list):
-    """Step 43-0-B: Analyze apps for each discovered site"""
-    print(f"\n🔍 Step 43-0-B: ANALYZING APPS FOR {len(site_list)} SITES")
-    print("=" * 50)
-    
-    site_apps_map = {}
-    
-    for i, site in enumerate(site_list, 1):
-        print(f"\n📊 {i}/{len(site_list)} Analyzing: {site}")
-        
-        try:
-            # Try to connect to site
-            frappe.init(site)
-            frappe.connect(site=site)
-            
-            # Get installed apps
-            apps = frappe.get_installed_apps()
-            site_apps_map[site] = apps
-            
-            # Get database info
-            db_name = frappe.conf.db_name
-            
-            print(f"   ✅ SUCCESS")
-            print(f"   📦 Apps: {len(apps)}")
-            print(f"   🗄️  Database: {db_name}")
-            
-            if apps:
-                # Show apps in groups of 5
-                for j in range(0, len(apps), 5):
-                    app_chunk = apps[j:j+5]
-                    print(f"      {', '.join(app_chunk)}")
-            
-            frappe.db.close()
-            
-        except Exception as e:
-            print(f"   ❌ FAILED: {str(e)}")
-            site_apps_map[site] = None
-    
-    return site_apps_map
-
-def comprehensive_site_scan():
-    """Step 43-0-C: Comprehensive site and app discovery"""
-    print("🚀 Step 43-0-C: COMPREHENSIVE SITE SCAN")
-    print("=" * 50)
-    
-    # Discover sites
-    real_sites = discover_real_sites()
-    
-    if not real_sites:
-        print("❌ No sites found!")
-        return
-    
-    # Analyze apps for each site
-    site_apps_map = analyze_site_apps(real_sites)
-    
-    # Summary
-    print(f"\n📈 SCAN SUMMARY")
-    print("=" * 30)
-    successful_sites = {site: apps for site, apps in site_apps_map.items() if apps is not None}
-    failed_sites = {site: apps for site, apps in site_apps_map.items() if apps is None}
-    
-    print(f"✅ Successful: {len(successful_sites)} sites")
-    print(f"❌ Failed: {len(failed_sites)} sites")
-    
-    if successful_sites:
-        print(f"\n🎯 RECOMMENDED SITES FOR MIGRATION:")
-        for site, apps in successful_sites.items():
-            print(f"   • {site} ({len(apps)} apps)")
-    
-    return site_apps_map
     
     # ========== MIGRATION COMMANDS ==========
     elif action == 'safe-copy-modules':
