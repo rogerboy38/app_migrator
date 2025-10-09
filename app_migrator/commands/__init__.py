@@ -46,9 +46,9 @@ def get_bench_apps(bench_path):
         return []
 
 def multi_bench_analysis():
-    """Step 1: Multi-bench ecosystem analysis"""
-    print("🔍 MULTI-BENCH ECOSYSTEM ANALYSIS")
-    print("=" * 50)
+    """Step 52-1: Multi-bench ecosystem analysis"""
+    print("🔍 Step 52-1: MULTI-BENCH ECOSYSTEM ANALYSIS")
+    print("=" * 55)
     
     benches = detect_available_benches()
     print(f"📋 Found {len(benches)} benches:")
@@ -68,9 +68,9 @@ def multi_bench_analysis():
     return benches
 
 def smart_migration_recommendation():
-    """Step 2: Smart migration recommendations"""
-    print("🧠 SMART MIGRATION RECOMMENDATION")
-    print("=" * 50)
+    """Step 52-2: Smart migration recommendations"""
+    print("🧠 Step 52-2: SMART MIGRATION RECOMMENDATION")
+    print("=" * 55)
     
     benches = detect_available_benches()
     if len(benches) < 2:
@@ -103,7 +103,7 @@ def smart_migration_recommendation():
         custom_apps = [app for app in migratable if app not in ['frappe', 'erpnext']]
         if custom_apps:
             print(f"\n📦 RECOMMENDED APPS TO MIGRATE:")
-            for app in custom_apps[:3]:
+            for app in custom_apps[:3]:  # Top 3
                 print(f"   • {app}")
             
             print(f"\n💡 QUICK MIGRATION COMMAND:")
@@ -112,36 +112,6 @@ def smart_migration_recommendation():
             print(f"   bench --site [site_name] install-app {custom_apps[0]}")
     else:
         print(f"\n✅ All apps already synchronized")
-
-def cross_bench_migration_analysis():
-    """Step 3: Cross-bench migration analysis"""
-    print("🔀 CROSS-BENCH MIGRATION ANALYSIS")
-    print("=" * 50)
-    
-    benches = detect_available_benches()
-    if len(benches) < 2:
-        print("❌ Need at least 2 benches")
-        return
-    
-    source_bench = benches[0]
-    target_bench = benches[1]
-    
-    print(f"🔀 MIGRATION PATH: {source_bench} → {target_bench}")
-    
-    source_apps = set(get_bench_apps(f"/home/frappe/{source_bench}"))
-    target_apps = set(get_bench_apps(f"/home/frappe/{target_bench}"))
-    
-    migratable = source_apps - target_apps
-    common = source_apps & target_apps
-    
-    print(f"\n📊 MIGRATION ANALYSIS:")
-    print(f"   ✅ Common apps: {len(common)}")
-    print(f"   📦 Migratable apps: {len(migratable)}")
-    
-    if migratable:
-        print(f"\n🎯 MIGRATION TARGETS:")
-        for app in sorted(migratable):
-            print(f"   • {app}")
 
 # ========== MAIN COMMAND HANDLER ==========
 @click.command('migrate-app')
@@ -162,9 +132,6 @@ def migrate_app(action, source_app=None, target_app=None, modules=None, site=Non
     elif action == 'smart-recommendation':
         smart_migration_recommendation()
         
-    elif action == 'cross-bench-analysis':
-        cross_bench_migration_analysis()
-        
     elif action == 'list-benches':
         benches = detect_available_benches()
         print("🏗️ AVAILABLE BENCHES:")
@@ -181,6 +148,15 @@ def migrate_app(action, source_app=None, target_app=None, modules=None, site=Non
         for i, app in enumerate(apps, 1):
             print(f"   {i}. {app}")
         print(f"   Total: {len(apps)} apps")
+    
+    elif action == 'cross-bench-analysis':
+        print("🔀 CROSS-BENCH MIGRATION ANALYSIS")
+        benches = detect_available_benches()
+        if len(benches) >= 2:
+            source = benches[0]
+            target = benches[1]
+            print(f"   Analyzing: {source} → {target}")
+            # Add detailed analysis here
     
     # ========== SITE COMMANDS ==========
     elif action == 'db-info':
@@ -244,9 +220,9 @@ def migrate_app(action, source_app=None, target_app=None, modules=None, site=Non
         print("\n📋 MULTI-BENCH COMMANDS:")
         print("   multi-bench-analysis    - Analyze all benches")
         print("   smart-recommendation    - Get migration recommendations")
-        print("   cross-bench-analysis    - Cross-bench migration analysis")
         print("   list-benches            - List available benches")
         print("   bench-apps <bench>      - Show apps in bench")
+        print("   cross-bench-analysis    - Cross-bench migration analysis")
         print("\n📋 SITE COMMANDS:")
         print("   db-info                 - Database information")
         print("   discover-sites          - Discover sites and apps")
