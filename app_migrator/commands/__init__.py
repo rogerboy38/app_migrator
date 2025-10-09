@@ -115,8 +115,6 @@ def smart_migration_recommendation():
     else:
         print(f"\n✅ All apps already synchronized")
 
-<<<<<<< HEAD
-=======
 def cross_bench_migration_analysis():
     """Step 3: Cross-bench migration analysis"""
     print("🔀 CROSS-BENCH MIGRATION ANALYSIS")
@@ -240,7 +238,6 @@ def validate_migration_readiness(app_name):
     
     return True
 
->>>>>>> b44e085 (STEP 60-1: Pre-progress-bar implementation)
 # ========== MAIN COMMAND HANDLER ==========
 @click.command('migrate-app')
 @click.argument('action')
@@ -552,11 +549,7 @@ def migrate_app(action, source_app=None, target_app=None, modules=None, site=Non
         print("   smart-recommendation    - Get migration recommendations")
         print("   list-benches            - List available benches")
         print("   bench-apps <bench>      - Show apps in bench")
-<<<<<<< HEAD
-        print("   cross-bench-analysis    - Cross-bench migration analysis")
-=======
         
->>>>>>> b44e085 (STEP 60-1: Pre-progress-bar implementation)
         print("\n📋 SITE COMMANDS:")
         print("   db-info                 - Database information")
         print("   discover-sites          - Discover sites and apps")
