@@ -118,7 +118,7 @@
 cd /path/to/your/bench
 
 # Get the app from repository
-bench get-app https://github.com/yourusername/app_migrator.git
+bench get-app https://github.com/rogerboy38/app_migrator.git
 
 # Or if you have the local directory
 bench get-app /path/to/app_migrator_v5
