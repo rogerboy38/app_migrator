@@ -9,6 +9,12 @@ app_version = "5.0.0"
 # Required apps
 required_apps = ["frappe"]
 
+# Application Assets
+# ------------------
+# Include JS and CSS assets for the app
+app_include_js = "app_migrator.bundle.js"
+app_include_css = "app_migrator.bundle.css"
+
 # Bench Commands
 # Register CLI commands
 # Format: bench --site [site] migrate-app <command>

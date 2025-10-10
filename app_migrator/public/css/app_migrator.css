@@ -1,0 +1,11 @@
+/* App Migrator - Frontend Styles */
+/* This file contains custom CSS styles for the App Migrator application */
+
+.app-migrator-container {
+    padding: 15px;
+}
+
+.app-migrator-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
