@@ -1,0 +1,27 @@
+{
+  "name": "app_migrator",
+  "version": "5.0.0",
+  "description": "Frappe App Migration Toolkit - Ultimate Edition",
+  "main": "app_migrator/public/js/app_migrator.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rogerboy38/app_migrator.git"
+  },
+  "keywords": [
+    "frappe",
+    "migration",
+    "erpnext",
+    "doctype",
+    "app-migration",
+    "data-migration"
+  ],
+  "author": "Frappe Community",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rogerboy38/app_migrator/issues"
+  },
+  "homepage": "https://github.com/rogerboy38/app_migrator#readme"
+}
