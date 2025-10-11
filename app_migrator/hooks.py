@@ -13,8 +13,8 @@ required_apps = ["frappe"]
 # ------------------
 
 # include js, css files in header of desk.html
-app_include_css = "/assets/app_migrator/css/app_migrator.css"
-app_include_js = "/assets/app_migrator/js/app_migrator.js"
+# app_include_css = "/assets/app_migrator/css/app_migrator.css"
+# app_include_js = "/assets/app_migrator/js/app_migrator.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/app_migrator/css/app_migrator.css"
