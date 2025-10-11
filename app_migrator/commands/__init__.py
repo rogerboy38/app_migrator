@@ -6,7 +6,6 @@ This module contains all migration commands for App Migrator V5.0.0
 Merged from V2 and V4 with enhancements
 """
 
-__version__ = "5.2.0"
 
 # Import all command modules
 from .doctype_classifier import (
