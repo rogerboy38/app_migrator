@@ -589,3 +589,30 @@ Special thanks to:
 **Versioning**: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 *Last Updated: October 11, 2025*
+
+## v5.1.0 - 2024-10-11
+
+### Major Features
+- 🛠️ **NEW**: Auto-fix capability for structurally broken Frappe apps
+- 🔍 Comprehensive diagnosis of hooks.py, apps.txt, git, and package issues
+- ⚡ Quick repair mode for fast fixes without slow bench commands
+- 🔄 Self-healing - can fix the app_migrator itself when broken
+
+### Technical Improvements
+- Enhanced command registration system
+- Better error handling and validation
+- Production-ready auto-repair system
+- Improved documentation and user feedback
+
+### Research-Based
+- Built from real-world analysis of common Frappe app structural problems
+- Battle-tested on multiple broken app scenarios
+- Proven effective in production environments
+
+### Usage
+```bash
+# Install v5.1.0
+bench get-app app_migrator@v5.1.0
+
+# Use auto-fix feature
+python apps/app_migrator/app_migrator/commands/fix_app.py broken_app --site yoursitename --quick

@@ -646,3 +646,22 @@ If you find this project useful, please consider giving it a star! ⭐
 **Made with ❤️ by the App Migrator Team**
 
 *Last Updated: October 11, 2025*
+
+## 🛠️ Auto-Fix Feature (v5.1.0+)
+
+App Migrator now includes an **auto-fix capability** that can automatically diagnose and repair common structural issues in Frappe apps.
+
+### What It Fixes:
+- ✅ **Missing hooks.py** in package directory
+- ✅ **Apps.txt synchronization** issues
+- ✅ **Embedded git repository** problems  
+- ✅ **Missing __init__.py** files
+- ✅ **Basic app structure** validation
+
+### Usage:
+```bash
+# Using the fix-app command
+bench app-migrator fix-app <app_name> --site <site_name> --quick
+
+# Or directly via Python
+python apps/app_migrator/app_migrator/commands/fix_app.py <app_name> --site <site_name> --quick
