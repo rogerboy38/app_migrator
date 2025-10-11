@@ -1,12 +1,12 @@
 """
-App Migrator V5.0.0 Commands Module
+App Migrator V5.2.0 Commands Module
 Complete command module initialization
 
 This module contains all migration commands for App Migrator V5.0.0
 Merged from V2 and V4 with enhancements
 """
 
-__version__ = "5.0.0"
+__version__ = "5.2.0"
 
 # Import all command modules
 from .doctype_classifier import (
@@ -163,7 +163,7 @@ import frappe
 @click.option('--detailed', is_flag=True, help='Show detailed analysis')
 def migrate_app_command(action=None, source_app=None, target_app=None, modules=None, site=None, session_id=None, bench_path=None, output_format='text', detailed=False):
     """
-    App Migrator v5.0.0 - Ultimate Edition
+    App Migrator v5.2.0 - Ultimate Edition
     
     Complete Frappe app migration system with enhanced commands
     
