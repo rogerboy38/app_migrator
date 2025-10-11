@@ -7,6 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.0.3] - 2025-10-11 - 🐛 Critical Bug Fixes & UX Enhancements
+
+### 🐛 Fixed
+
+#### Critical App Discovery Bug
+- **Issue**: Interactive command was only showing apps installed on the current site, not all apps available in the bench
+- **Root Cause**: Used site-specific app query instead of bench-level app discovery
+- **Fix**: Now uses `frappe.get_installed_apps()` to discover ALL apps in the bench's `apps/` directory
+- **Impact**: Users can now see and select from all available apps in their bench, not just site-installed ones
+- **Files Modified**: `app_migrator/commands/enhanced_interactive_wizard.py`
+
+#### Performance Hang Fix
+- **Issue**: Command would hang when scanning large app directories with many modules
+- **Fix**: Optimized app scanning and module classification algorithms
+- **Impact**: Significantly faster response times, especially for large ERPNext installations
+
+### ✨ Added
+
+#### Zero-Module App Handler
+- **Feature**: Apps with zero modules now display a `(0 modules)` tag in the selection list
+- **Enhanced Workflow**: When a user selects an app with 0 modules, they are now prompted with helpful options:
+  - Try selecting another app
+  - View app details
+  - Exit the wizard
+- **User Experience**: Prevents confusion and provides clear guidance for edge cases
+- **Implementation**: `select_app()` function now returns either a string (app name) or dict (action)
+
+### 🔧 Changed
+
+#### Function Signature Updates
+- **`select_app()` return type**: Changed from `str` to `str | dict` to support new workflows
+- **Calling Code**: All internal code that calls `select_app()` updated to handle both return types
+- **Example**:
+  ```python
+  # New pattern
+  result = select_app(apps)
+  if isinstance(result, dict):
+      # Handle special action (e.g., zero-module case)
+      handle_action(result)
+  else:
+      # Normal flow - result is an app name
+      process_app(result)
+  ```
+
+### 📚 Documentation
+
+- **Added**: `SESSION_HANDOUT.md` - Comprehensive handout for session transitions and AI agent context
+- **Updated**: `AI_AGENT_TECHNICAL_SPECS.md` - Added v5.0.3 function signatures and API changes
+- **Updated**: `CHANGELOG.md` - This file
+
+### 🔒 Breaking Changes
+
+- **None for end users**: All changes are internal
+- **Internal API**: `select_app()` function signature changed - requires type checking by callers
+- **Migration**: All internal calling code has been updated in this release
+
+### 🎓 Lessons Learned
+
+1. **App Discovery**: Always use framework-level APIs (`frappe.get_installed_apps()`) for bench-wide operations
+2. **Zero States**: Proper handling of edge cases (like 0 modules) significantly improves UX
+3. **Performance**: Large directory scans need optimization from the start
+4. **Type Safety**: When changing return types, ensure all callers are updated
+
+### 📝 Migration Guide from v5.0.2
+
+**For Users**:
+- No action required - just pull the latest version
+- Interactive command will now show all available apps
+
+**For Developers**:
+- If you have custom code calling `select_app()`, update to handle dict returns:
+  ```python
+  result = select_app(apps)
+  if isinstance(result, dict):
+      # New: Handle action dict
+      pass
+  else:
+      # Existing: Handle app name string
+      pass
+  ```
+
+---
+
 ## [5.0.2] - 2025-10-11 - 🔧 Build System Fix
 
 ### 🐛 Fixed

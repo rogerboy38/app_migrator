@@ -1,8 +1,8 @@
-# 🤖 App Migrator v5.0.0 - AI Agent Technical Specification
+# 🤖 App Migrator v5.0.3 - AI Agent Technical Specification
 
 > **Complete technical reference for AI agents** - Architecture, APIs, patterns, and integration guidelines
 
-**Version**: 5.0.0  
+**Version**: 5.0.3  
 **Last Updated**: October 11, 2025  
 **Author**: MiniMax Agent  
 **Purpose**: Enable AI agents to understand, integrate, and work with App Migrator
@@ -28,7 +28,7 @@
 
 ### What is App Migrator?
 
-App Migrator v5.0.0 is a comprehensive Frappe/ERPNext application migration toolkit that provides:
+App Migrator v5.0.3 is a comprehensive Frappe/ERPNext application migration toolkit that provides:
 - **23 specialized commands** across **12 modules**
 - **Intelligent DocType classification** (Standard/Customized/Custom/Orphan)
 - **Interactive migration wizard** for guided workflows
@@ -37,6 +37,38 @@ App Migrator v5.0.0 is a comprehensive Frappe/ERPNext application migration tool
 - **Multi-bench support** for complex environments
 - **Session management** with persistence and auto-reconnect
 - **Progress tracking** for long-running operations
+
+### What's New in v5.0.3?
+
+#### 🐛 Critical Bug Fixes
+
+1. **App Discovery Fix** - Fixed interactive command to show ALL apps in bench
+   - **Issue**: Only showed site-installed apps, missing bench-level apps
+   - **Solution**: Now uses `frappe.get_installed_apps()` for complete app discovery
+   - **Impact**: Users can see and select from all available apps
+
+2. **Performance Optimization** - Eliminated hangs during large directory scans
+   - **Issue**: Command would hang with large app structures
+   - **Solution**: Optimized scanning and classification algorithms
+   - **Impact**: Faster response times for large installations
+
+#### ✨ New Features
+
+1. **Zero-Module Handler** - Enhanced UX for apps with no modules
+   - Visual tag: `(0 modules)` indicator in app list
+   - Interactive prompt when zero-module app selected
+   - Helpful options: try another app, view details, or exit
+
+2. **Enhanced Function API**
+   - `select_app()` now returns `str | dict` for flexible workflows
+   - Better edge case handling
+   - Improved error messages and user guidance
+
+#### 📝 Documentation Updates
+
+- **NEW**: `SESSION_HANDOUT.md` - Complete context for session transitions
+- **UPDATED**: `CHANGELOG.md` - Detailed v5.0.3 changes
+- **UPDATED**: `AI_AGENT_TECHNICAL_SPECS.md` - This file
 
 ### Key Capabilities
 
