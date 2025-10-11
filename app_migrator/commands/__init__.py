@@ -1,8 +1,7 @@
-"""
-App Migrator V5.2.0 Commands Module
+"""App Migrator V5.2.0 Commands Module
 Complete command module initialization
 
-This module contains all migration commands for App Migrator V5.0.0
+This module contains all migration commands for App Migrator V5.2.0
 Merged from V2 and V4 with enhancements
 """
 
@@ -33,12 +32,9 @@ from .enhanced_interactive_wizard import (
     filter_by_status
 )
 
-from .database_schema import (
-    verify_database_schema,
-    fix_database_schema,
-    fix_tree_doctypes,
-    complete_erpnext_install,
-    run_database_diagnostics
+from .database_intel import (
+    get_database_info,
+    analyze_site_compatibility
 )
 
 from .data_quality import (
@@ -89,6 +85,19 @@ from .progress_tracker import (
     run_with_progress
 )
 
+# Import Intelligence Engine
+try:
+    from .intelligence_engine import (
+        MigrationIntelligence,
+        predict_migration_success,
+        generate_intelligent_migration_plan,
+        display_intelligence_dashboard
+    )
+    INTELLIGENCE_AVAILABLE = True
+except ImportError as e:
+    INTELLIGENCE_AVAILABLE = False
+    print(f"⚠️  Intelligence Engine not available: {e}")
+
 # Re-export commonly used functions
 __all__ = [
     # Version
@@ -105,10 +114,8 @@ __all__ = [
     'guided_migration_workflow',
     
     # Database Schema
-    'verify_database_schema',
-    'fix_database_schema',
-    'fix_tree_doctypes',
-    'complete_erpnext_install',
+    'get_database_info',
+    'analyze_site_compatibility',
     
     # Data Quality
     'fix_orphan_doctypes',
@@ -164,9 +171,9 @@ import frappe
 @click.option('--detailed', is_flag=True, help='Show detailed analysis')
 def migrate_app_command(action=None, source_app=None, target_app=None, modules=None, site=None, session_id=None, bench_path=None, output_format='text', detailed=False):
     """
-    App Migrator v5.2.0 - Ultimate Edition
+    App Migrator v5.2.0 - Ultimate Edition with Intelligence
     
-    Complete Frappe app migration system with enhanced commands
+    Complete Frappe app migration system with enhanced commands and predictive analytics
     
     Usage:
         bench --site <site> migrate-app <command> [args]
@@ -175,8 +182,7 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
         bench --site mysite migrate-app interactive
         bench --site mysite migrate-app list-benches
         bench --site mysite migrate-app analyze myapp
-        bench --site mysite migrate-app security-analysis myapp
-        bench --site mysite migrate-app performance myapp
+        bench --site mysite migrate-app intelligence-dashboard
     """
     
     if not action:
@@ -185,8 +191,64 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
     
     print(f"🚀 App Migrator v{__version__}: {action}")
     
+    # ===== INTELLIGENCE COMMANDS =====
+    if action == 'intelligence-dashboard':
+        if INTELLIGENCE_AVAILABLE:
+            display_intelligence_dashboard()
+        else:
+            print("❌ Intelligence Engine not available")
+        return
+        
+    elif action == 'predict-success':
+        if not source_app:
+            print("❌ Please specify app name: bench --site <site> migrate-app predict-success <app_name>")
+            return
+        if INTELLIGENCE_AVAILABLE:
+            report = predict_migration_success(source_app, target_app or source_app)
+        else:
+            print("❌ Intelligence Engine not available")
+        return
+
+    elif action == 'intelligent-validate':
+        if not source_app or not target_app:
+            print("❌ Please specify source and target apps: bench --site <site> migrate-app intelligent-validate <source> <target>")
+            return
+        if INTELLIGENCE_AVAILABLE:
+            intelligence = MigrationIntelligence()
+            intelligence.intelligent_validate_migration(source_app, target_app)
+        else:
+            print("❌ Intelligence Engine not available")
+        return
+
+    elif action == 'generate-intelligent-plan':
+        if not source_app or not target_app:
+            print("❌ Please specify source and target apps: bench --site <site> migrate-app generate-intelligent-plan <source> <target>")
+            return
+        if INTELLIGENCE_AVAILABLE:
+            plan = generate_intelligent_migration_plan(source_app, target_app)
+            print("🧠 Generated Intelligent Migration Plan:")
+            import json
+            print(json.dumps(plan, indent=2))
+        else:
+            print("❌ Intelligence Engine not available")
+        return
+
+    elif action == 'prevent-issues':
+        if not source_app:
+            print("❌ Please specify app name: bench --site <site> migrate-app prevent-issues <app_name>")
+            return
+        if INTELLIGENCE_AVAILABLE:
+            intelligence = MigrationIntelligence()
+            prevention_report = intelligence.prevent_issues_before_migration(source_app)
+            print("🛡️ Prevention Report:")
+            import json
+            print(json.dumps(prevention_report, indent=2))
+        else:
+            print("❌ Intelligence Engine not available")
+        return
+
     # ===== INTERACTIVE COMMANDS =====
-    if action == 'interactive':
+    elif action == 'interactive':
         interactive_migration_wizard()
         
     # ===== MULTI-BENCH COMMANDS =====
@@ -213,15 +275,19 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
         
     # ===== DATABASE COMMANDS =====
     elif action == 'fix-database-schema':
+        from .database_schema import fix_database_schema
         fix_database_schema()
         
     elif action == 'complete-erpnext-install':
+        from .database_schema import complete_erpnext_install
         complete_erpnext_install()
         
     elif action == 'fix-tree-doctypes':
+        from .database_schema import fix_tree_doctypes
         fix_tree_doctypes()
         
     elif action == 'db-diagnostics':
+        from .database_schema import run_database_diagnostics
         run_database_diagnostics()
         
     # ===== ENHANCED ANALYSIS COMMANDS =====
@@ -357,8 +423,16 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
 def display_help():
     """Display comprehensive help for all enhanced commands"""
     print("\n" + "=" * 80)
-    print("📚 APP MIGRATOR v5.0.0 - ULTIMATE EDITION")
+    print("📚 APP MIGRATOR v5.2.0 - ULTIMATE EDITION WITH INTELLIGENCE")
     print("=" * 80)
+    
+    print("\n🧠 INTELLIGENCE COMMANDS:")
+    print("   intelligence-dashboard      - Display intelligence system status")
+    print("   predict-success <app>       - Predict migration success probability")
+    print("   intelligent-validate <source> <target> - Enhanced validation with predictions")
+    print("   generate-intelligent-plan <source> <target> - Create intelligent migration plan")
+    print("   prevent-issues <app>        - Proactive issue prevention")
+    
     print("\n🎨 INTERACTIVE COMMANDS:")
     print("   interactive              - Enhanced guided migration wizard")
     
@@ -406,6 +480,9 @@ def display_help():
     print("   --bench-path             - Specific bench path for analysis")
     
     print("\n💡 EXAMPLES:")
+    print("   bench --site mysite migrate-app intelligence-dashboard")
+    print("   bench --site mysite migrate-app predict-success erpnext")
+    print("   bench --site mysite migrate-app intelligent-validate frappe erpnext")
     print("   bench --site mysite migrate-app interactive")
     print("   bench --site mysite migrate-app analyze erpnext --detailed")
     print("   bench --site mysite migrate-app security-analysis custom_app --output-format json")
