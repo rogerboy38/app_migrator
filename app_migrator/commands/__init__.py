@@ -73,7 +73,13 @@ from .analysis_tools import (
     detect_available_benches,
     get_bench_apps,
     multi_bench_analysis,
-    get_directory_size
+    get_directory_size,
+    # Enhanced analysis functions
+    analyze_app_security,
+    analyze_performance_metrics,
+    analyze_data_volume,
+    generate_migration_report,
+    compare_app_versions
 )
 
 from .progress_tracker import (
@@ -125,6 +131,11 @@ __all__ = [
     'analyze_bench_health',
     'analyze_app_comprehensive',
     'multi_bench_analysis',
+    'analyze_app_security',
+    'analyze_performance_metrics',
+    'analyze_data_volume',
+    'generate_migration_report',
+    'compare_app_versions',
     
     # Progress Tracking
     'ProgressTracker',
@@ -134,7 +145,7 @@ __all__ = [
 print(f"✅ App Migrator V{__version__} Commands Module loaded successfully!")
 
 # ============================================================================
-# UNIFIED COMMAND REGISTRY - All 23 Commands
+# ENHANCED COMMAND REGISTRY - All Commands
 # ============================================================================
 
 import click
@@ -147,11 +158,14 @@ import frappe
 @click.option('--modules', help='Specific modules to migrate')
 @click.option('--site', help='Site name for operations')
 @click.option('--session-id', help='Session ID for tracking')
-def migrate_app_command(action=None, source_app=None, target_app=None, modules=None, site=None, session_id=None):
+@click.option('--bench-path', help='Specific bench path for analysis')
+@click.option('--output-format', default='text', help='Output format: text, json, csv')
+@click.option('--detailed', is_flag=True, help='Show detailed analysis')
+def migrate_app_command(action=None, source_app=None, target_app=None, modules=None, site=None, session_id=None, bench_path=None, output_format='text', detailed=False):
     """
     App Migrator v5.0.0 - Ultimate Edition
     
-    Complete Frappe app migration system with 23 commands
+    Complete Frappe app migration system with enhanced commands
     
     Usage:
         bench --site <site> migrate-app <command> [args]
@@ -160,6 +174,8 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
         bench --site mysite migrate-app interactive
         bench --site mysite migrate-app list-benches
         bench --site mysite migrate-app analyze myapp
+        bench --site mysite migrate-app security-analysis myapp
+        bench --site mysite migrate-app performance myapp
     """
     
     if not action:
@@ -172,9 +188,9 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
     if action == 'interactive':
         interactive_migration_wizard()
         
-    # ===== MULTI-BENCH COMMANDS (from V4) =====
+    # ===== MULTI-BENCH COMMANDS =====
     elif action == 'multi-bench-analysis':
-        multi_bench_analysis()
+        multi_bench_analysis(bench_path)
         
     elif action == 'list-benches':
         benches = detect_available_benches()
@@ -192,9 +208,9 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
             print(f"   {idx}. {app}")
         
     elif action == 'bench-health':
-        analyze_bench_health()
+        analyze_bench_health(bench_path)
         
-    # ===== DATABASE COMMANDS (from V2) =====
+    # ===== DATABASE COMMANDS =====
     elif action == 'fix-database-schema':
         fix_database_schema()
         
@@ -207,12 +223,42 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
     elif action == 'db-diagnostics':
         run_database_diagnostics()
         
-    # ===== ANALYSIS COMMANDS (from V2 + V4) =====
+    # ===== ENHANCED ANALYSIS COMMANDS =====
     elif action == 'analyze':
         if not source_app:
             print("❌ Please specify app name: bench --site <site> migrate-app analyze <app_name>")
             return
-        analyze_app_comprehensive(source_app)
+        analyze_app_comprehensive(source_app, detailed=detailed)
+        
+    elif action == 'security-analysis':
+        if not source_app:
+            print("❌ Please specify app name: bench --site <site> migrate-app security-analysis <app_name>")
+            return
+        analyze_app_security(source_app, output_format=output_format)
+        
+    elif action == 'performance':
+        if not source_app:
+            print("❌ Please specify app name: bench --site <site> migrate-app performance <app_name>")
+            return
+        analyze_performance_metrics(source_app, output_format=output_format)
+        
+    elif action == 'data-volume':
+        if not source_app:
+            print("❌ Please specify app name: bench --site <site> migrate-app data-volume <app_name>")
+            return
+        analyze_data_volume(source_app, output_format=output_format)
+        
+    elif action == 'compare-versions':
+        if not source_app:
+            print("❌ Please specify app name: bench --site <site> migrate-app compare-versions <app_name>")
+            return
+        compare_app_versions(source_app, target_app)
+        
+    elif action == 'generate-report':
+        if not source_app:
+            print("❌ Please specify app name: bench --site <site> migrate-app generate-report <app_name>")
+            return
+        generate_migration_report(source_app, output_format=output_format)
         
     elif action == 'analyze-orphans':
         orphans = get_orphan_doctypes()
@@ -232,9 +278,12 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
             return
         classifications = get_all_doctypes_by_app(source_app)
         display_classification_summary(classifications)
-        display_detailed_classifications(classifications, limit=20)
+        if detailed:
+            display_detailed_classifications(classifications)
+        else:
+            display_detailed_classifications(classifications, limit=20)
         
-    # ===== DATA QUALITY COMMANDS (from V2) =====
+    # ===== DATA QUALITY COMMANDS =====
     elif action == 'fix-orphans':
         if not source_app:
             print("❌ Please specify app name")
@@ -262,7 +311,7 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
     elif action == 'verify-integrity':
         verify_data_integrity()
         
-    # ===== MIGRATION COMMANDS (from V2 + V4) =====
+    # ===== MIGRATION COMMANDS =====
     elif action == 'migrate':
         if not source_app or not target_app:
             print("❌ Please specify source and target apps")
@@ -305,7 +354,7 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
         display_help()
 
 def display_help():
-    """Display comprehensive help for all 23 commands"""
+    """Display comprehensive help for all enhanced commands"""
     print("\n" + "=" * 80)
     print("📚 APP MIGRATOR v5.0.0 - ULTIMATE EDITION")
     print("=" * 80)
@@ -324,8 +373,13 @@ def display_help():
     print("   fix-tree-doctypes        - Fix tree structure doctypes")
     print("   db-diagnostics           - Run comprehensive diagnostics")
     
-    print("\n🔍 ANALYSIS COMMANDS:")
+    print("\n🔍 ENHANCED ANALYSIS COMMANDS:")
     print("   analyze <app>            - Comprehensive app analysis")
+    print("   security-analysis <app>  - Security vulnerability analysis")
+    print("   performance <app>        - Performance metrics analysis")
+    print("   data-volume <app>        - Data volume and growth analysis")
+    print("   compare-versions <app1> <app2> - Compare app versions")
+    print("   generate-report <app>    - Generate migration report")
     print("   analyze-orphans          - Detect orphan doctypes")
     print("   validate-migration <app> - Pre-migration validation")
     print("   classify-doctypes <app>  - Classify doctypes by status")
@@ -345,11 +399,18 @@ def display_help():
     print("   touched-tables           - Show migration history")
     print("   risk-assessment <doctype> - Generate risk assessment")
     
+    print("\n⚙️  OPTIONS:")
+    print("   --detailed               - Show detailed analysis")
+    print("   --output-format          - Output format: text, json, csv")
+    print("   --bench-path             - Specific bench path for analysis")
+    
     print("\n💡 EXAMPLES:")
     print("   bench --site mysite migrate-app interactive")
-    print("   bench --site mysite migrate-app analyze erpnext")
-    print("   bench --site mysite migrate-app classify-doctypes erpnext")
+    print("   bench --site mysite migrate-app analyze erpnext --detailed")
+    print("   bench --site mysite migrate-app security-analysis custom_app --output-format json")
+    print("   bench --site mysite migrate-app performance erpnext")
     print("   bench --site mysite migrate-app migrate custom_app new_app")
+    print("   bench --site mysite migrate-app generate-report erpnext --output-format csv")
     print("\n" + "=" * 80)
 
 # Register command for bench CLI
