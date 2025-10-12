@@ -1,12 +1,9 @@
 """
-App Migrator v5.0.3 - Ultimate Edition
-Frappe App Migration Toolkit
-
-This file makes this directory a proper Python package.
-The actual app code is in the app_migrator/ subpackage.
+App Migrator - Ultimate Frappe App Migration System
+Single source of truth for version management
 """
 
-__version__ = "5.0.4"
+__version__ = "5.5.0"
 app_name = "app_migrator"
 
 # This file should be minimal - actual imports happen in the subpackage

@@ -1,0 +1,27 @@
+--- __init__.py.old	2023-10-12 12:36:00.000000000 +0000
++++ __init__.py	2023-10-12 12:45:00.000000000 +0000
+@@ -407,6 +433,13 @@
+     print("   generate-intelligent-plan <source> <target> - Create intelligent migration plan")
+     print("   prevent-issues <app>        - Proactive issue prevention")
+     
++    print("\\n🩺 DIAGNOSTIC COMMANDS:")
++    print("   diagnose-app <path>       - Analyze app health without installation")
++    print("   scan-bench-health         - Scan health of all apps in bench")
++    print("   quick-health-check <app>  - Quick health check for single app")
++    print("   repair-bench-apps         - Batch repair all apps in bench")
++    print("   health-report <app>       - Generate health report for app")
++    
+     print("\\n🎨 INTERACTIVE COMMANDS:")
+     print("   interactive              - Enhanced guided migration wizard")
+     
+@@ -459,6 +492,10 @@
+     print("   --bench-path             - Specific bench path for analysis")
+     
+     print("\\n💡 EXAMPLES:")
++    print("   bench --site mysite migrate-app diagnose-app /path/to/app --detailed")
++    print("   bench --site mysite migrate-app scan-bench-health")
++    print("   bench --site mysite migrate-app quick-health-check myapp")
++    print("   bench --site mysite migrate-app repair-bench-apps --detailed")
+     print("   bench --site mysite migrate-app intelligence-dashboard")
+     print("   bench --site mysite migrate-app predict-success erpnext")
+     print("   bench --site mysite migrate-app intelligent-validate frappe erpnext")

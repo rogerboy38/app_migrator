@@ -1,15 +1,15 @@
 from setuptools import setup, find_packages
 
-with open("requirements.txt") as f:
-    install_requires = f.read().strip().split("\n")
-
 # get version from __version__ variable in app_migrator/__init__.py
 from app_migrator import __version__ as version
 
+with open("requirements.txt") as f:
+    install_requires = f.read().strip().split("\n")
+
 setup(
     name="app_migrator",
-    version="5.0.4",
-    description="Frappe App Migration Toolkit v5.0.2",
+    version=version,
+    description="Ultimate Frappe App Migration System",
     author="Frappe Community",
     author_email="fcrm@amb-wellness.com",
     packages=find_packages(),
