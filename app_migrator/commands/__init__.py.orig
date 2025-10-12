@@ -84,18 +84,6 @@ from .progress_tracker import (
 )
 
 # Import Intelligence Engine
-try:
-    from .intelligence_engine import (
-        MigrationIntelligence,
-        predict_migration_success,
-        generate_intelligent_migration_plan,
-        display_intelligence_dashboard
-    )
-    INTELLIGENCE_AVAILABLE = True
-except ImportError as e:
-    INTELLIGENCE_AVAILABLE = False
-    print(f"⚠️  Intelligence Engine not available: {e}")
-
 # Import Diagnostic Commands
 try:
     from .diagnostic_commands import (
@@ -121,6 +109,18 @@ except ImportError as e:
     
     def repair_bench_apps_callback(dry_run=False):
         print("❌ Diagnostic tools not available")
+
+try:
+    from .intelligence_engine import (
+        MigrationIntelligence,
+        predict_migration_success,
+        generate_intelligent_migration_plan,
+        display_intelligence_dashboard
+    )
+    INTELLIGENCE_AVAILABLE = True
+except ImportError as e:
+    INTELLIGENCE_AVAILABLE = False
+    print(f"⚠️  Intelligence Engine not available: {e}")
 
 # Re-export commonly used functions
 __all__ = [
@@ -170,14 +170,14 @@ __all__ = [
     'compare_app_versions',
     
     # Progress Tracking
-    'ProgressTracker',
-    'MultiStepProgressTracker',
-    
     # Diagnostic Commands
-    'diagnose_app_callback',
-    'scan_bench_health_callback',
-    'quick_health_check_callback',
-    'repair_bench_apps_callback'
+    "diagnose_app_callback",
+    "scan_bench_health_callback",
+    "quick_health_check_callback",
+    "repair_bench_apps_callback",
+
+    'ProgressTracker',
+    'MultiStepProgressTracker'
 ]
 
 print(f"✅ App Migrator V{__version__} Commands Module loaded successfully!")
@@ -199,9 +199,7 @@ import frappe
 @click.option('--bench-path', help='Specific bench path for analysis')
 @click.option('--output-format', default='text', help='Output format: text, json, csv')
 @click.option('--detailed', is_flag=True, help='Show detailed analysis')
-@click.option('--fix', is_flag=True, help='Attempt to fix issues automatically')
-@click.option('--dry-run', is_flag=True, help='Show what would be fixed without applying changes')
-def migrate_app_command(action=None, source_app=None, target_app=None, modules=None, site=None, session_id=None, bench_path=None, output_format='text', detailed=False, fix=False, dry_run=False):
+def migrate_app_command(action=None, source_app=None, target_app=None, modules=None, site=None, session_id=None, bench_path=None, output_format='text', detailed=False):
     """
     App Migrator {version} - Ultimate Edition with Enhanced Diagnostics
     
@@ -278,32 +276,6 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
         else:
             print("❌ Intelligence Engine not available")
         return
-    
-    # ===== DIAGNOSTIC COMMANDS =====
-    elif action == 'diagnose-app':
-        if not source_app:
-            print("❌ Please specify app path: bench --site <site> migrate-app diagnose-app <app_path>")
-            return
-        return diagnose_app_callback(source_app, fix=fix)
-
-    elif action == 'scan-bench-health':
-        return scan_bench_health_callback()
-
-    elif action == 'quick-health-check':
-        if not source_app:
-            print("❌ Please specify app name: bench --site <site> migrate-app quick-health-check <app_name>")
-            return
-        return quick_health_check_callback(source_app)
-
-    elif action == 'repair-bench-apps':
-        return repair_bench_apps_callback(dry_run=dry_run)
-
-    elif action == 'health-report':
-        if not source_app:
-            print("❌ Please specify app name: bench --site <site> migrate-app health-report <app_name>")
-            return
-        from .app_health_scanner import quick_health_check_function
-        return quick_health_check_function(source_app)
 
     # ===== INTERACTIVE COMMANDS =====
     elif action == 'interactive':
@@ -491,13 +463,6 @@ def display_help():
     print("   generate-intelligent-plan <source> <target> - Create intelligent migration plan")
     print("   prevent-issues <app>        - Proactive issue prevention")
     
-    print("\n🩺 DIAGNOSTIC COMMANDS:")
-    print("   diagnose-app <path>       - Analyze app health without installation")
-    print("   scan-bench-health         - Scan health of all apps in bench")
-    print("   quick-health-check <app>  - Quick health check for single app")
-    print("   repair-bench-apps         - Batch repair all apps in bench")
-    print("   health-report <app>       - Generate health report for app")
-    
     print("\n🎨 INTERACTIVE COMMANDS:")
     print("   interactive              - Enhanced guided migration wizard")
     
@@ -543,14 +508,8 @@ def display_help():
     print("   --detailed               - Show detailed analysis")
     print("   --output-format          - Output format: text, json, csv")
     print("   --bench-path             - Specific bench path for analysis")
-    print("   --fix                    - Attempt to fix issues automatically")
-    print("   --dry-run                - Show what would be fixed without applying changes")
     
     print("\n💡 EXAMPLES:")
-    print("   bench --site mysite migrate-app diagnose-app /path/to/app --fix")
-    print("   bench --site mysite migrate-app scan-bench-health")
-    print("   bench --site mysite migrate-app quick-health-check myapp")
-    print("   bench --site mysite migrate-app repair-bench-apps --dry-run")
     print("   bench --site mysite migrate-app intelligence-dashboard")
     print("   bench --site mysite migrate-app predict-success erpnext")
     print("   bench --site mysite migrate-app intelligent-validate frappe erpnext")
