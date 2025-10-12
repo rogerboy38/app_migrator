@@ -15,6 +15,6 @@ if parent_dir not in sys.path:
 try:
     from app_migrator import __version__
 except ImportError:
-    __version__ = "5.5.0"  # Fallback
+    __version__ = "5.5.1"  # Fallback
 
 app_name = "app_migrator"
