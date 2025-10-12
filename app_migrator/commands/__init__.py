@@ -98,6 +98,15 @@ except ImportError as e:
     INTELLIGENCE_AVAILABLE = False
     print(f"⚠️  Intelligence Engine not available: {e}")
 
+# Import Diagnostic Commands
+try:
+    from .diagnostic_commands import get_commands as get_diagnostic_commands
+    DIAGNOSTICS_AVAILABLE = True
+except ImportError as e:
+    DIAGNOSTICS_AVAILABLE = False
+    def get_diagnostic_commands():
+        return []
+
 # Re-export commonly used functions
 __all__ = [
     # Version
@@ -169,20 +178,11 @@ import frappe
 @click.option('--bench-path', help='Specific bench path for analysis')
 @click.option('--output-format', default='text', help='Output format: text, json, csv')
 @click.option('--detailed', is_flag=True, help='Show detailed analysis')
-def migrate_app_command(action=None, source_app=None, target_app=None, modules=None, site=None, session_id=None, bench_path=None, output_format='text', detailed=False):
+@click.option('--fix', is_flag=True, help='Attempt to fix issues automatically')  # ADD THIS
+@click.option('--dry-run', is_flag=True, help='Show what would be fixed without applying changes')  # ADD THIS
+def migrate_app_command(action=None, source_app=None, target_app=None, modules=None, site=None, session_id=None, bench_path=None, output_format='text', detailed=False, fix=False, dry_run=False):  # ADD PARAMETERS
     """
     App Migrator v5.2.0 - Ultimate Edition with Intelligence
-    
-    Complete Frappe app migration system with enhanced commands and predictive analytics
-    
-    Usage:
-        bench --site <site> migrate-app <command> [args]
-    
-    Examples:
-        bench --site mysite migrate-app interactive
-        bench --site mysite migrate-app list-benches
-        bench --site mysite migrate-app analyze myapp
-        bench --site mysite migrate-app intelligence-dashboard
     """
     
     if not action:
@@ -191,8 +191,47 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
     
     print(f"🚀 App Migrator v{__version__}: {action}")
     
+    # ===== DIAGNOSTIC COMMANDS =====
+    if action == 'diagnose-app':
+        if not source_app:
+            print("❌ Please specify app path: bench --site <site> migrate-app diagnose-app <app_path>")
+            return
+        if DIAGNOSTICS_AVAILABLE:
+            from .diagnostic_commands import diagnose_app
+            return diagnose_app.callback(source_app, fix)  # PASS FIX PARAMETER
+        else:
+            print("❌ Diagnostic tools not available")
+        return
+
+    elif action == 'scan-bench-health':
+        if DIAGNOSTICS_AVAILABLE:
+            from .diagnostic_commands import scan_bench_health
+            return scan_bench_health.callback()
+        else:
+            print("❌ Diagnostic tools not available")
+        return
+
+    elif action == 'quick-health-check':
+        if not source_app:
+            print("❌ Please specify app name: bench --site <site> migrate-app quick-health-check <app_name>")
+            return
+        if DIAGNOSTICS_AVAILABLE:
+            from .diagnostic_commands import quick_health_check
+            return quick_health_check.callback(source_app)
+        else:
+            print("❌ Diagnostic tools not available")
+        return
+
+    elif action == 'repair-bench-apps':  # ADD THIS NEW COMMAND
+        if DIAGNOSTICS_AVAILABLE:
+            from .diagnostic_commands import repair_bench_apps
+            return repair_bench_apps.callback(dry_run)  # PASS DRY_RUN PARAMETER
+        else:
+            print("❌ Diagnostic tools not available")
+        return
+
     # ===== INTELLIGENCE COMMANDS =====
-    if action == 'intelligence-dashboard':
+    elif action == 'intelligence-dashboard':
         if INTELLIGENCE_AVAILABLE:
             display_intelligence_dashboard()
         else:
@@ -205,220 +244,10 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
             return
         if INTELLIGENCE_AVAILABLE:
             report = predict_migration_success(source_app, target_app or source_app)
+            print(f"🧠 Success Prediction: {report.get('success_probability', 'N/A')}%")
         else:
             print("❌ Intelligence Engine not available")
         return
-
-    elif action == 'intelligent-validate':
-        if not source_app or not target_app:
-            print("❌ Please specify source and target apps: bench --site <site> migrate-app intelligent-validate <source> <target>")
-            return
-        if INTELLIGENCE_AVAILABLE:
-            intelligence = MigrationIntelligence()
-            intelligence.intelligent_validate_migration(source_app, target_app)
-        else:
-            print("❌ Intelligence Engine not available")
-        return
-
-    elif action == 'generate-intelligent-plan':
-        if not source_app or not target_app:
-            print("❌ Please specify source and target apps: bench --site <site> migrate-app generate-intelligent-plan <source> <target>")
-            return
-        if INTELLIGENCE_AVAILABLE:
-            plan = generate_intelligent_migration_plan(source_app, target_app)
-            print("🧠 Generated Intelligent Migration Plan:")
-            import json
-            print(json.dumps(plan, indent=2))
-        else:
-            print("❌ Intelligence Engine not available")
-        return
-
-    elif action == 'prevent-issues':
-        if not source_app:
-            print("❌ Please specify app name: bench --site <site> migrate-app prevent-issues <app_name>")
-            return
-        if INTELLIGENCE_AVAILABLE:
-            intelligence = MigrationIntelligence()
-            prevention_report = intelligence.prevent_issues_before_migration(source_app)
-            print("🛡️ Prevention Report:")
-            import json
-            print(json.dumps(prevention_report, indent=2))
-        else:
-            print("❌ Intelligence Engine not available")
-        return
-
-    # ===== INTERACTIVE COMMANDS =====
-    elif action == 'interactive':
-        interactive_migration_wizard()
-        
-    # ===== MULTI-BENCH COMMANDS =====
-    elif action == 'multi-bench-analysis':
-        multi_bench_analysis(bench_path)
-        
-    elif action == 'list-benches':
-        benches = detect_available_benches()
-        print("\n🏗️  AVAILABLE BENCHES:")
-        for idx, bench in enumerate(benches, 1):
-            print(f"   {idx}. {bench}")
-        
-    elif action == 'bench-apps':
-        if not source_app:
-            print("❌ Please specify bench name: bench --site <site> migrate-app bench-apps <bench_name>")
-            return
-        apps = get_bench_apps(source_app)
-        print(f"\n📦 APPS IN {source_app}:")
-        for idx, app in enumerate(apps, 1):
-            print(f"   {idx}. {app}")
-        
-    elif action == 'bench-health':
-        analyze_bench_health(bench_path)
-        
-    # ===== DATABASE COMMANDS =====
-    elif action == 'fix-database-schema':
-        from .database_schema import fix_database_schema
-        fix_database_schema()
-        
-    elif action == 'complete-erpnext-install':
-        from .database_schema import complete_erpnext_install
-        complete_erpnext_install()
-        
-    elif action == 'fix-tree-doctypes':
-        from .database_schema import fix_tree_doctypes
-        fix_tree_doctypes()
-        
-    elif action == 'db-diagnostics':
-        from .database_schema import run_database_diagnostics
-        run_database_diagnostics()
-        
-    # ===== ENHANCED ANALYSIS COMMANDS =====
-    elif action == 'analyze':
-        if not source_app:
-            print("❌ Please specify app name: bench --site <site> migrate-app analyze <app_name>")
-            return
-        analyze_app_comprehensive(source_app, detailed=detailed)
-        
-    elif action == 'security-analysis':
-        if not source_app:
-            print("❌ Please specify app name: bench --site <site> migrate-app security-analysis <app_name>")
-            return
-        analyze_app_security(source_app, output_format=output_format)
-        
-    elif action == 'performance':
-        if not source_app:
-            print("❌ Please specify app name: bench --site <site> migrate-app performance <app_name>")
-            return
-        analyze_performance_metrics(source_app, output_format=output_format)
-        
-    elif action == 'data-volume':
-        if not source_app:
-            print("❌ Please specify app name: bench --site <site> migrate-app data-volume <app_name>")
-            return
-        analyze_data_volume(source_app, output_format=output_format)
-        
-    elif action == 'compare-versions':
-        if not source_app:
-            print("❌ Please specify app name: bench --site <site> migrate-app compare-versions <app_name>")
-            return
-        compare_app_versions(source_app, target_app)
-        
-    elif action == 'generate-report':
-        if not source_app:
-            print("❌ Please specify app name: bench --site <site> migrate-app generate-report <app_name>")
-            return
-        generate_migration_report(source_app, output_format=output_format)
-        
-    elif action == 'analyze-orphans':
-        orphans = get_orphan_doctypes()
-        print(f"\n⚠️  ORPHAN DOCTYPES: {len(orphans)}")
-        for orphan in orphans[:20]:
-            print(f"   - {orphan.get('name')}: {orphan.get('status')}")
-        
-    elif action == 'validate-migration':
-        if not source_app:
-            print("❌ Please specify app name")
-            return
-        validate_migration_readiness(source_app)
-        
-    elif action == 'classify-doctypes':
-        if not source_app:
-            print("❌ Please specify app name")
-            return
-        classifications = get_all_doctypes_by_app(source_app)
-        display_classification_summary(classifications)
-        if detailed:
-            display_detailed_classifications(classifications)
-        else:
-            display_detailed_classifications(classifications, limit=20)
-        
-    # ===== DATA QUALITY COMMANDS =====
-    elif action == 'fix-orphans':
-        if not source_app:
-            print("❌ Please specify app name")
-            return
-        fix_orphan_doctypes(source_app)
-        
-    elif action == 'restore-missing':
-        if not source_app:
-            print("❌ Please specify app name")
-            return
-        restore_missing_doctypes(source_app)
-        
-    elif action == 'fix-app-none':
-        if not source_app:
-            print("❌ Please specify app name")
-            return
-        fix_app_none_doctypes(source_app)
-        
-    elif action == 'fix-all-references':
-        if not source_app:
-            print("❌ Please specify app name")
-            return
-        fix_all_references(source_app)
-        
-    elif action == 'verify-integrity':
-        verify_data_integrity()
-        
-    # ===== MIGRATION COMMANDS =====
-    elif action == 'migrate':
-        if not source_app or not target_app:
-            print("❌ Please specify source and target apps")
-            print("   Usage: bench --site <site> migrate-app migrate <source> <target>")
-            return
-        migrate_app_modules(source_app, target_app, modules)
-        
-    elif action == 'clone-app-local':
-        if not source_app:
-            print("❌ Please specify app name")
-            return
-        clone_app_local(source_app, session_id or site)
-        
-    # ===== CLASSIFICATION & REPORTING =====
-    elif action == 'touched-tables':
-        result = analyze_touched_tables()
-        if result.get('exists'):
-            print(f"\n📊 TOUCHED TABLES: {result.get('count')} tables")
-            for table in result.get('tables', [])[:20]:
-                print(f"   - {table}")
-        else:
-            print(f"\n⚠️  {result.get('message', 'No touched tables data')}")
-            
-    elif action == 'risk-assessment':
-        if not source_app:
-            print("❌ Please specify doctype name")
-            return
-        risk = generate_migration_risk_assessment(source_app)
-        print(f"\n⚠️  RISK ASSESSMENT: {source_app}")
-        print(f"   Status: {risk.get('status')}")
-        print(f"   Risk Level: {risk.get('risk_level')}")
-        print(f"   Description: {risk.get('description')}")
-        print(f"\n📋 Recommendations:")
-        for rec in risk.get('recommendations', []):
-            print(f"   - {rec}")
-    
-    # ===== HELP =====
-    else:
-        print(f"❌ Unknown command: {action}")
-        display_help()
 
 def display_help():
     """Display comprehensive help for all enhanced commands"""
@@ -426,70 +255,27 @@ def display_help():
     print("📚 APP MIGRATOR v5.2.0 - ULTIMATE EDITION WITH INTELLIGENCE")
     print("=" * 80)
     
-    print("\n🧠 INTELLIGENCE COMMANDS:")
-    print("   intelligence-dashboard      - Display intelligence system status")
-    print("   predict-success <app>       - Predict migration success probability")
-    print("   intelligent-validate <source> <target> - Enhanced validation with predictions")
-    print("   generate-intelligent-plan <source> <target> - Create intelligent migration plan")
-    print("   prevent-issues <app>        - Proactive issue prevention")
-    
-    print("\n🎨 INTERACTIVE COMMANDS:")
-    print("   interactive              - Enhanced guided migration wizard")
-    
-    print("\n🏗️  MULTI-BENCH COMMANDS:")
-    print("   multi-bench-analysis     - Analyze entire bench ecosystem")
-    print("   list-benches             - List all available benches")
-    print("   bench-apps <bench>       - List apps in specific bench")
-    print("   bench-health             - Check bench health status")
-    
-    print("\n🗄️  DATABASE COMMANDS:")
-    print("   fix-database-schema      - Fix database schema issues")
-    print("   complete-erpnext-install - Complete ERPNext installation")
-    print("   fix-tree-doctypes        - Fix tree structure doctypes")
-    print("   db-diagnostics           - Run comprehensive diagnostics")
-    
-    print("\n🔍 ENHANCED ANALYSIS COMMANDS:")
-    print("   analyze <app>            - Comprehensive app analysis")
-    print("   security-analysis <app>  - Security vulnerability analysis")
-    print("   performance <app>        - Performance metrics analysis")
-    print("   data-volume <app>        - Data volume and growth analysis")
-    print("   compare-versions <app1> <app2> - Compare app versions")
-    print("   generate-report <app>    - Generate migration report")
-    print("   analyze-orphans          - Detect orphan doctypes")
-    print("   validate-migration <app> - Pre-migration validation")
-    print("   classify-doctypes <app>  - Classify doctypes by status")
-    
-    print("\n🧹 DATA QUALITY COMMANDS:")
-    print("   fix-orphans <app>        - Fix orphaned doctypes")
-    print("   restore-missing <app>    - Restore missing doctypes")
-    print("   fix-app-none <app>       - Fix doctypes with app=None")
-    print("   fix-all-references <app> - Fix all app references")
-    print("   verify-integrity         - Verify data integrity")
-    
-    print("\n🚀 MIGRATION COMMANDS:")
-    print("   migrate <source> <target> - Migrate app modules")
-    print("   clone-app-local <app>    - Clone app to local bench")
-    
-    print("\n📊 REPORTING COMMANDS:")
-    print("   touched-tables           - Show migration history")
-    print("   risk-assessment <doctype> - Generate risk assessment")
+    print("\n🩺 DIAGNOSTIC COMMANDS:")
+    print("   diagnose-app <path>       - Analyze app health without installation")
+    print("   scan-bench-health         - Scan health of all apps in bench")
+    print("   quick-health-check <app>  - Quick health check for single app")
+    print("   repair-bench-apps         - Batch repair all apps in bench")
     
     print("\n⚙️  OPTIONS:")
     print("   --detailed               - Show detailed analysis")
     print("   --output-format          - Output format: text, json, csv")
     print("   --bench-path             - Specific bench path for analysis")
+    print("   --fix                    - Attempt to fix issues automatically")
+    print("   --dry-run                - Show what would be fixed without applying changes")
     
     print("\n💡 EXAMPLES:")
-    print("   bench --site mysite migrate-app intelligence-dashboard")
-    print("   bench --site mysite migrate-app predict-success erpnext")
-    print("   bench --site mysite migrate-app intelligent-validate frappe erpnext")
-    print("   bench --site mysite migrate-app interactive")
-    print("   bench --site mysite migrate-app analyze erpnext --detailed")
-    print("   bench --site mysite migrate-app security-analysis custom_app --output-format json")
-    print("   bench --site mysite migrate-app performance erpnext")
-    print("   bench --site mysite migrate-app migrate custom_app new_app")
-    print("   bench --site mysite migrate-app generate-report erpnext --output-format csv")
+    print("   bench --site mysite migrate-app diagnose-app /path/to/app --fix")
+    print("   bench --site mysite migrate-app repair-bench-apps --dry-run")
+    print("   bench --site mysite migrate-app repair-bench-apps")
+    print("   bench --site mysite migrate-app scan-bench-health")
     print("\n" + "=" * 80)
 
+    
 # Register command for bench CLI
 commands = [migrate_app_command]
+
