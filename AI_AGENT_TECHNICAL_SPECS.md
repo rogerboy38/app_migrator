@@ -1,9 +1,9 @@
-# 🤖 App Migrator v5.0.3 - AI Agent Technical Specification
+# 🤖 App Migrator v5.5.3 - AI Agent Technical Specification
 
 > **Complete technical reference for AI agents** - Architecture, APIs, patterns, and integration guidelines
 
-**Version**: 5.0.3  
-**Last Updated**: October 11, 2025  
+**Version**: 5.5.3  
+**Last Updated**: October 13, 2025  
 **Author**: MiniMax Agent  
 **Purpose**: Enable AI agents to understand, integrate, and work with App Migrator
 
@@ -28,7 +28,7 @@
 
 ### What is App Migrator?
 
-App Migrator v5.0.3 is a comprehensive Frappe/ERPNext application migration toolkit that provides:
+App Migrator v5.5.3 is a comprehensive Frappe/ERPNext application migration toolkit that provides:
 - **23 specialized commands** across **12 modules**
 - **Intelligent DocType classification** (Standard/Customized/Custom/Orphan)
 - **Interactive migration wizard** for guided workflows
@@ -37,6 +37,88 @@ App Migrator v5.0.3 is a comprehensive Frappe/ERPNext application migration tool
 - **Multi-bench support** for complex environments
 - **Session management** with persistence and auto-reconnect
 - **Progress tracking** for long-running operations
+- **Comprehensive REST API** with 19 endpoints for remote integration
+
+### What's New in v5.5.3?
+
+#### 🌐 Major Feature: Comprehensive REST API Integration
+
+1. **Merged REST API Architecture** - Unified `api.py` with 19 powerful endpoints
+   - **AI & Intelligence Endpoints** (9 functions):
+     - `execute_ai_command()` - Natural language AI command execution
+     - `scan_bench_health_api()` - Complete bench health analysis
+     - `analyze_app_api()` - Individual app health checks
+     - `predict_success_api()` - ML-powered migration success prediction
+     - `get_bench_apps_api()` - List all apps in bench
+     - `list_benches_api()` - Discover available benches
+     - `intelligence_dashboard_api()` - AI-powered insights dashboard
+     - `repair_apps_api()` - Batch app repair operations
+     - `get_api_status()` - API health and endpoint discovery
+   
+   - **CRUD & Session Management** (10 functions):
+     - `create_migration_session()` - Initialize migration sessions
+     - `get_migration_session()` - Retrieve session details
+     - `update_migration_session()` - Update session metadata
+     - `delete_migration_session()` - Remove sessions
+     - `list_migration_sessions()` - View all sessions
+     - `analyze_app()` - Deep app structure analysis
+     - `quick_health_check()` - Fast health diagnostics
+     - `diagnose_app()` - Comprehensive diagnostics with auto-fix
+     - `migrate_modules()` - Execute module migrations
+     - `get_migration_status()` - Track migration progress
+
+2. **Cloud-Friendly Design**
+   - RESTful endpoint architecture for remote access
+   - JSON-based request/response format
+   - Comprehensive error handling and logging
+   - Authentication via `@frappe.whitelist(allow_guest=False)`
+   - Full API documentation via `get_api_status()` endpoint
+
+3. **Version Consistency Update**
+   - All files updated to version 5.5.3
+   - `__init__.py` - ✅
+   - `package.json` - ✅
+   - `setup.py` - ✅
+   - `hooks.py` - ✅
+   - `api.py` - ✅
+
+#### 🔧 Technical Improvements
+
+1. **Eliminated API File Conflicts**
+   - Merged two separate API implementations into one cohesive file
+   - 776 lines of well-organized, production-ready code
+   - Backup preserved as `api_backup_old.py`
+
+2. **Enhanced Documentation**
+   - Each endpoint includes complete docstrings
+   - Example usage for all API methods
+   - Parameter specifications with type hints
+   - Return value documentation
+
+#### 📚 Usage Example
+
+```python
+# Execute AI command via REST API
+POST /api/method/app_migrator.api.execute_ai_command
+{
+    "user_query": "Analyze the ERPNext app and show me customized doctypes"
+}
+
+# Create migration session
+POST /api/method/app_migrator.api.create_migration_session
+{
+    "name": "migrate_v13_to_v14",
+    "source_app": "erpnext",
+    "target_app": "custom_erpnext",
+    "metadata": {"version": "14.0.0", "user": "admin"}
+}
+
+# Get API status and available endpoints
+GET /api/method/app_migrator.api.get_api_status
+# Returns: 19 endpoints with full documentation
+```
+
+---
 
 ### What's New in v5.0.3?
 
