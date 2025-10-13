@@ -1,12 +1,12 @@
 from . import __version__ as version
 
 app_name = "app_migrator"
-app_title = "App Migrator Ultimate v5.2.0 with Auto-Fix"
+app_title = "App Migrator Ultimate v5.5.2 with Auto-Fix & REST API"
 app_publisher = "Frappe Community"
-app_description = "Ultimate Frappe App Migration System v5.2.0 with Enhanced DocType Classification and Auto-Fix"
+app_description = "Ultimate Frappe App Migration System v5.5.2 with Enhanced DocType Classification, Auto-Fix, and REST API"
 app_email = "fcrm@amb-wellness.com"
 app_license = "mit"
-app_version = "5.2.0"
+app_version = version
 
 # Required apps
 required_apps = ["frappe"]

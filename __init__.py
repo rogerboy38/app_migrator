@@ -6,7 +6,7 @@ This file makes this directory a proper Python package.
 The actual app code is in the app_migrator/ subpackage.
 """
 
-__version__ = "5.2.0"
+__version__ = "5.5.2"
 app_name = "app_migrator"
 
 # This file should be minimal - actual imports happen in the subpackage
