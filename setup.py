@@ -8,8 +8,8 @@ from app_migrator import __version__ as version
 
 setup(
     name="app_migrator",
-    version="5.2.0",
-    description="Frappe App Migration Toolkit v5.0.2",
+    version="5.5.3",
+    description="Frappe App Migration Toolkit v5.5.3",
     author="Frappe Community",
     author_email="fcrm@amb-wellness.com",
     packages=find_packages(),

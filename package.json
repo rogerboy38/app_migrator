@@ -1,6 +1,6 @@
 {
   "name": "app_migrator",
-  "version": "5.0.2",
+  "version": "5.5.3",
   "description": "Frappe App Migration Toolkit - Ultimate Edition",
   "main": "app_migrator/public/js/app_migrator.js",
   "scripts": {
