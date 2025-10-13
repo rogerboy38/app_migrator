@@ -11,6 +11,16 @@ app_version = version
 # Required apps
 required_apps = ["frappe"]
 
+# Includes in <head>
+# ------------------
+app_include_css = []
+app_include_js = []
+
+# includes in <body>
+# ------------------
+web_include_css = []
+web_include_js = []
+
 # App Migrator Commands
 from . import commands as app_migrator_commands
 commands = app_migrator_commands.commands
