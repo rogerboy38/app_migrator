@@ -305,6 +305,27 @@ def migrate_app_command(action=None, source_app=None, target_app=None, modules=N
         from .app_health_scanner import quick_health_check_function
         return quick_health_check_function(source_app)
 
+    # ===== AI INTEGRATION COMMANDS =====
+    elif action == 'ai-migrate':
+        if not source_app:
+            print("❌ Please specify your query: bench --site <site> migrate-app ai-migrate \"your natural language query\"")
+            return
+        try:
+            from .ai_integration import AppMigratorAIAgent
+            agent = AppMigratorAIAgent()
+            result = agent.parse_and_execute(source_app)
+            
+            if result.get('success'):
+                print(f"✅ AI Command Result:\n{result['output']}")
+            else:
+                print(f"❌ AI Command Failed:\n{result.get('error', 'Unknown error')}")
+                
+        except ImportError:
+            print("❌ AI integration not available. Make sure ai_integration.py exists.")
+        except Exception as e:
+            print(f"❌ AI command error: {str(e)}")
+        return
+
     # ===== INTERACTIVE COMMANDS =====
     elif action == 'interactive':
         interactive_migration_wizard()
@@ -484,6 +505,9 @@ def display_help():
     print("📚 APP MIGRATOR v{version} - ULTIMATE EDITION WITH ENHANCED DIAGNOSTICS".format(version=__version__))
     print("=" * 80)
     
+    print("\n🤖 AI INTEGRATION COMMANDS:")
+    print("   ai-migrate \"query\"        - AI-powered natural language commands")
+    
     print("\n🧠 INTELLIGENCE COMMANDS:")
     print("   intelligence-dashboard      - Display intelligence system status")
     print("   predict-success <app>       - Predict migration success probability")
@@ -547,6 +571,9 @@ def display_help():
     print("   --dry-run                - Show what would be fixed without applying changes")
     
     print("\n💡 EXAMPLES:")
+    print("   bench --site mysite migrate-app ai-migrate \"analyze payments app health\"")
+    print("   bench --site mysite migrate-app ai-migrate \"scan bench health\"")
+    print("   bench --site mysite migrate-app ai-migrate \"fix broken apps\"")
     print("   bench --site mysite migrate-app diagnose-app /path/to/app --fix")
     print("   bench --site mysite migrate-app scan-bench-health")
     print("   bench --site mysite migrate-app quick-health-check myapp")
@@ -562,5 +589,28 @@ def display_help():
     print("   bench --site mysite migrate-app generate-report erpnext --output-format csv")
     print("\n" + "=" * 80)
 
-# Register command for bench CLI
-commands = [migrate_app_command]
+# ============================================================================
+# AI INTEGRATION COMMAND
+# ============================================================================
+
+@click.command('ai-migrate')
+@click.argument('user_query')
+def ai_migrate_command(user_query: str):
+    """AI-powered migration using natural language"""
+    try:
+        from .ai_integration import AppMigratorAIAgent
+        agent = AppMigratorAIAgent()
+        result = agent.parse_and_execute(user_query)
+        
+        if result.get('success'):
+            click.echo(f"✅ AI Command Result:\n{result['output']}")
+        else:
+            click.echo(f"❌ AI Command Failed:\n{result.get('error', 'Unknown error')}")
+            
+    except ImportError:
+        click.echo("❌ AI integration not available. Make sure ai_integration.py exists.")
+    except Exception as e:
+        click.echo(f"❌ AI command error: {str(e)}")
+
+# Register both commands for bench CLI
+commands = [migrate_app_command, ai_migrate_command]
