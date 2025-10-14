@@ -22,5 +22,5 @@ web_include_css = []
 web_include_js = []
 
 # App Migrator Commands
-from . import commands as app_migrator_commands
-commands = app_migrator_commands.commands
+#from . import commands as app_migrator_commands
+#commands = app_migrator_commands.commands
