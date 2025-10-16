@@ -348,3 +348,5 @@ def display_help():
 commands = [migrate_app_command]
 
 from app_migrator.commands.enhanced_schema_validator import validate_app_schema
+
+from app_migrator.commands.app_discovery import discover_apps
