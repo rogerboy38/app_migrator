@@ -1,32 +1,45 @@
 """
-App Migrator Commands - Enhanced Stable Version
-Frappe v15 compatible with safe imports
+App Migrator Commands - Enhanced with Schema Fixing
+Frappe v15 Compatible with Database Repair Features
 """
 
+import os
 import click
 from frappe.commands import pass_context
 
-__version__ = "5.5.5"
+# Import enhanced migration components
+try:
+    from app_migrator.commands.enhanced_migration_engine import enhanced_migrate_app, EnhancedMigrationEngine
+    from app_migrator.utils.python_safe_replacer import PythonSafeReplacer, ModuleRenamer
+    from app_migrator.utils.schema_fixer import fix_app_schema, repair_app_installation
+    ENHANCED_FEATURES_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️ Some enhanced features not available: {e}")
+    ENHANCED_FEATURES_AVAILABLE = False
+
+__version__ = "5.6.0"  # Bumped version for new features
+
 
 @click.command("migrate-app")
 @click.argument("action", required=False)
 @click.argument("source_app", required=False)
 @click.argument("target_app", required=False)
 @click.option("--site", help="Site name")
-@click.option("--dry-run", is_flag=True, help="Dry run mode")
 @click.option("--force", is_flag=True, help="Force operation")
+@click.option("--dry-run", is_flag=True, help="Dry run mode")
 @pass_context
-def migrate_app_command(context, action=None, source_app=None, target_app=None, site=None, dry_run=False, force=False):
+def migrate_app_command(context, action, source_app=None, target_app=None, site=None, force=False, dry_run=False):
     """
-    App Migration Tool - Enhanced Stable Version
+    App Migration Tool - Enhanced with Schema Repair
     """
-    print(f"✅ App Migrator v{__version__} - Enhanced Stable")
+    print(f"✅ App Migrator V{__version__} - Enhanced with Schema Fixing")
+    print(f"🔧 Enhanced Features: {ENHANCED_FEATURES_AVAILABLE}")
     
     if not action:
-        show_help()
+        display_help()
         return 0
     
-    print(f"🔄 Action: {action}")
+    print(f"🚀 Action: {action}")
     
     # Safe command routing with proper error handling
     try:
@@ -52,9 +65,15 @@ def migrate_app_command(context, action=None, source_app=None, target_app=None, 
         elif action == "analyze":
             return handle_analyze_action(source_app)
             
+        elif action == "fix-schema":
+            return handle_fix_schema_action(source_app)
+            
+        elif action == "repair-app":
+            return handle_repair_app_action(source_app)
+            
         else:
             print(f"❌ Unknown action: {action}")
-            show_help()
+            display_help()
             return 1
             
     except Exception as e:
@@ -69,6 +88,11 @@ def handle_test_action():
     print("✅ Command discovery working")
     print("✅ No crash detected")
     print("✅ Safe imports functioning")
+    print(f"✅ Enhanced features: {ENHANCED_FEATURES_AVAILABLE}")
+    if ENHANCED_FEATURES_AVAILABLE:
+        print("✅ PythonSafeReplacer available")
+        print("✅ Enhanced migration engine available")
+        print("✅ Schema fixer available")
     print("🎉 Enhanced system STABLE!")
     return 0
 
@@ -100,20 +124,26 @@ def handle_status_action():
     print("✅ Command System: STABLE")
     print("✅ Import Safety: WORKING")
     print("✅ Frappe v15: COMPATIBLE")
-    print("✅ Enhanced Features: AVAILABLE")
+    print(f"✅ Enhanced Features: {ENHANCED_FEATURES_AVAILABLE}")
     
     # Test enhanced features availability
     try:
         from app_migrator.commands.enhanced_migration_engine import enhanced_migrate_app
         print("✅ Enhanced Migration Engine: LOADED")
     except ImportError:
-        print("⚠️  Enhanced Migration Engine: NOT AVAILABLE")
+        print("⚠️ Enhanced Migration Engine: NOT AVAILABLE")
     
     try:
         from app_migrator.utils.python_safe_replacer import PythonSafeReplacer
         print("✅ PythonSafeReplacer: LOADED")
     except ImportError:
-        print("⚠️  PythonSafeReplacer: NOT AVAILABLE")
+        print("⚠️ PythonSafeReplacer: NOT AVAILABLE")
+        
+    try:
+        from app_migrator.utils.schema_fixer import fix_app_schema
+        print("✅ Schema Fixer: LOADED")
+    except ImportError:
+        print("⚠️ Schema Fixer: NOT AVAILABLE")
     
     return 0
 
@@ -122,6 +152,10 @@ def handle_enhanced_migrate(source_app, target_app, dry_run):
     """Handle enhanced migration safely"""
     if not source_app or not target_app:
         print("❌ Please specify source and target apps")
+        return 1
+        
+    if not ENHANCED_FEATURES_AVAILABLE:
+        print("❌ Enhanced features not available")
         return 1
         
     try:
@@ -186,15 +220,101 @@ def handle_analyze_action(source_app):
         return 1
         
     print(f"🔍 Analyzing {source_app}...")
-    print("✅ Basic analysis completed (safe mode)")
-    return 0
+    try:
+        from frappe.utils import get_bench_path
+        import os
+        
+        bench_path = get_bench_path()
+        app_path = os.path.join(bench_path, "apps", source_app)
+        
+        if os.path.exists(app_path):
+            python_files = []
+            for root, dirs, files in os.walk(app_path):
+                for file in files:
+                    if file.endswith('.py'):
+                        python_files.append(os.path.join(root, file))
+            
+            print(f"✅ Found {len(python_files)} Python files")
+            
+            # Check for common issues
+            hooks_file = os.path.join(app_path, source_app, "hooks.py")
+            if os.path.exists(hooks_file):
+                print("✅ hooks.py found")
+            else:
+                print("⚠️ hooks.py not found")
+                
+            print("✅ Basic analysis completed")
+        else:
+            print(f"❌ App {source_app} not found")
+            
+        return 0
+        
+    except Exception as e:
+        print(f"❌ Analysis error: {e}")
+        return 1
 
 
-def show_help():
-    """Show enhanced help"""
+def handle_fix_schema_action(app_name):
+    """Fix database schema for an app"""
+    if not app_name:
+        print("❌ Please specify app to fix schema for")
+        return 1
+        
+    if not ENHANCED_FEATURES_AVAILABLE:
+        print("❌ Schema fixer not available")
+        return 1
+        
+    try:
+        from app_migrator.utils.schema_fixer import fix_app_schema
+        
+        print(f"🔧 Fixing schema for {app_name}...")
+        success = fix_app_schema(app_name)
+        
+        if success:
+            print(f"✅ Schema fixed for {app_name}")
+            return 0
+        else:
+            print(f"❌ Schema fix failed for {app_name}")
+            return 1
+            
+    except Exception as e:
+        print(f"💥 Schema fix crashed: {e}")
+        return 1
+
+
+def handle_repair_app_action(app_name):
+    """Comprehensive app installation repair"""
+    if not app_name:
+        print("❌ Please specify app to repair")
+        return 1
+        
+    if not ENHANCED_FEATURES_AVAILABLE:
+        print("❌ App repair features not available")
+        return 1
+        
+    try:
+        from app_migrator.utils.schema_fixer import repair_app_installation
+        
+        print(f"🛠️ Repairing {app_name} installation...")
+        success = repair_app_installation(app_name)
+        
+        if success:
+            print(f"✅ {app_name} installation repaired successfully!")
+            return 0
+        else:
+            print(f"❌ {app_name} repair failed")
+            return 1
+            
+    except Exception as e:
+        print(f"💥 App repair crashed: {e}")
+        return 1
+
+
+def display_help():
+    """Show enhanced help with new features"""
     print(f"""
 ================================================================================
-📚 APP MIGRATOR v{__version__} - STABLE ENHANCED EDITION
+📚 APP MIGRATOR v{__version__} - ENHANCED WITH SCHEMA FIXING
 ================================================================================
 
 🚀 CORE COMMANDS:
@@ -203,16 +323,21 @@ def show_help():
    migrate-app status               - System status report
    migrate-app version              - Show version
 
-🛡️  ENHANCED MIGRATION:
+🛡️ ENHANCED MIGRATION:
    migrate-app enhanced-migrate <source> <target> [--dry-run]
    migrate-app test-replacer        - Test PythonSafeReplacer
+
+🔧 SCHEMA REPAIR:
+   migrate-app fix-schema <app>     - Fix database schema issues
+   migrate-app repair-app <app>     - Comprehensive app installation repair
 
 🔍 ANALYSIS:
    migrate-app analyze <app>        - Analyze app structure
 
 💡 EXAMPLES:
    bench --site origin_site migrate-app test
-   bench --site origin_site migrate-app status
+   bench --site origin_site migrate-app fix-schema rnd_nutrition
+   bench --site origin_site migrate-app repair-app rnd_nutrition
    bench --site origin_site migrate-app enhanced-migrate old_app new_app --dry-run
 
 ================================================================================
@@ -221,3 +346,5 @@ def show_help():
 
 # ===== MANDATORY FOR FRAPPE v15 =====
 commands = [migrate_app_command]
+
+from app_migrator.commands.enhanced_schema_validator import validate_app_schema
