@@ -36,18 +36,23 @@ def run_final_test():
             print(f"   ❌ {module}{'.' + class_name if class_name else ''}: {e}")
     
     print("\n2. Testing instance creation...")
+    # Import all classes first
+    from app_migrator.core.migration_manager import MigrationManager
+    from app_migrator.core.boot_fixer import BootFixer
+    from app_migrator.core.emergency_boot import EmergencyBoot
+    from app_migrator.commands.boot_fix import BootFixCommand
+    
     instance_tests = [
-        ("MigrationManager", "from app_migrator.core.migration_manager import MigrationManager"),
-        ("BootFixer", "from app_migrator.core.boot_fixer import BootFixer"),
-        ("EmergencyBoot", "from app_migrator.core.emergency_boot import EmergencyBoot"),
-        ("BootFixCommand", "from app_migrator.commands.boot_fix import BootFixCommand")
+        ("MigrationManager", MigrationManager),
+        ("BootFixer", BootFixer),
+        ("EmergencyBoot", EmergencyBoot),
+        ("BootFixCommand", BootFixCommand)
     ]
     
-    for name, import_stmt in instance_tests:
+    for name, cls in instance_tests:
         tests_total += 1
         try:
-            exec(import_stmt)
-            exec(f"instance = {name}()")
+            instance = cls()
             print(f"   ✅ {name} instance created")
             tests_passed += 1
         except Exception as e:
@@ -60,19 +65,14 @@ def run_final_test():
         ("MigrationManager.get_installed_apps()", "migrator.get_installed_apps()")
     ]
     
+    # Create instances
+    migrator = MigrationManager()
+    boot_fixer = BootFixer()
+    emergency = EmergencyBoot()
+    
     for name, method_call in method_tests:
         tests_total += 1
         try:
-            # Create instances first
-            from app_migrator.core.migration_manager import MigrationManager
-            from app_migrator.core.boot_fixer import BootFixer
-            from app_migrator.core.emergency_boot import EmergencyBoot
-            
-            migrator = MigrationManager()
-            boot_fixer = BootFixer()
-            emergency = EmergencyBoot()
-            
-            # Execute method
             result = eval(method_call)
             print(f"   ✅ {name} executed: {result}")
             tests_passed += 1
