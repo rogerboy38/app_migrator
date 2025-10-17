@@ -1,21 +1,17 @@
 # apps/app_migrator/app_migrator/utils/python_safe_replacer.py
 """
 Python Safe Replacer - Prevents syntax errors during string replacement
-Enhanced with directory traversal
 """
 
 import ast
 import os
 import shutil
-from pathlib import Path
 
 
 class PythonSafeReplacer:
     def __init__(self, source_app, target_app):
         self.source_app = source_app
         self.target_app = target_app
-        self.processed_files = 0
-        self.skipped_files = 0
     
     def _validate_python_syntax(self, content, filename):
         """Validate Python syntax without executing"""
@@ -69,12 +65,10 @@ class PythonSafeReplacer:
                 f.write(new_content)
             
             print(f"✅ Successfully replaced in: {filepath}")
-            self.processed_files += 1
             return True
             
         except UnicodeDecodeError:
             print(f"⚠️ Skipping binary file: {filepath}")
-            self.skipped_files += 1
             return False
         except Exception as e:
             print(f"❌ Error processing {filepath}: {e}")
@@ -82,30 +76,7 @@ class PythonSafeReplacer:
             if 'backup_path' in locals() and os.path.exists(backup_path):
                 shutil.copy2(backup_path, filepath)
                 os.remove(backup_path)
-            self.skipped_files += 1
             return False
-
-    def replace_in_directory(self, directory_path):
-        """Replace source_app with target_app in all files in directory"""
-        print(f"🔍 Processing directory: {directory_path}")
-        
-        if not os.path.exists(directory_path):
-            print(f"❌ Directory not found: {directory_path}")
-            return 0
-
-        # Skip certain directories
-        skip_dirs = {'.git', '__pycache__', 'node_modules', 'dist', 'build'}
-        
-        for root, dirs, files in os.walk(directory_path):
-            # Remove skipped directories from traversal
-            dirs[:] = [d for d in dirs if d not in skip_dirs and not d.startswith('.')]
-            
-            for file in files:
-                file_path = os.path.join(root, file)
-                self.replace_in_file(file_path)
-
-        print(f"✅ Processed {self.processed_files} files, skipped {self.skipped_files} files")
-        return self.processed_files
 
 
 class ModuleRenamer:
