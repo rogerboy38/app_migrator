@@ -1,0 +1,7 @@
+app_migrator
+app_migrator.api
+app_migrator.commands
+app_migrator.core
+app_migrator.models
+app_migrator.services
+app_migrator.utils
