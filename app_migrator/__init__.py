@@ -1,1 +1,6 @@
-__version__ = "5.5.3"
+"""
+App Migrator - Advanced Frappe App Migration Tool
+Version 6.1.0 with Boot Safety System
+"""
+
+__version__ = "6.1.0"

@@ -3,8 +3,6 @@ Hooks for App Migrator - V6.1.0
 Fixed version without scheduler_events crash
 """
 
-from . import __version__
-
 app_name = "app_migrator"
 app_title = "App Migrator"
 app_publisher = "Roger Boy"
@@ -12,7 +10,8 @@ app_description = "Advanced Frappe App Migration Tool"
 app_email = "your-email@example.com"
 app_license = "MIT"
 
-app_version = __version__
+# Use string version to avoid import issues
+app_version = "6.1.0"
 
 # Includes in <head>
 # web_include_css = "/assets/app_migrator/css/app_migrator.css"
