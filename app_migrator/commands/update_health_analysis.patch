@@ -1,0 +1,11 @@
+--- pre_installation_diagnostics.py.backup
++++ pre_installation_diagnostics.py
+@@ -80,7 +80,7 @@
+             "exists": os.path.exists(app_path),
+             "structure_validation": self.validate_app_structure(app_path),
+             "hook_analysis": self.analyze_hook_files(app_path),
+-            "module_registration": self.check_module_registration(app_path),
++            "module_registration": self.enhance_module_registration_check(app_path),
+             "dependency_check": self.check_dependencies(app_path),
+             "installation_blockers": self.diagnose_installation_blockers(app_path),
+             "health_score": 0,
