@@ -1,6 +1,6 @@
 ### App Migrator
 
-App Migrator Enterprise v7.0.0
+App Migrator Enterprise with API CRUD REST
 
 ### Installation
 

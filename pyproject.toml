@@ -1,9 +1,9 @@
 [project]
 name = "app_migrator"
 authors = [
-    { name = "AMB-Wellness", email = "info@psmhosting.com"}
+    { name = "psmhosting.com", email = "info@psmhosting.com"}
 ]
-description = "App Migrator Enterprise v7.0.0"
+description = "App Migrator Enterprise with API CRUD REST"
 requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]

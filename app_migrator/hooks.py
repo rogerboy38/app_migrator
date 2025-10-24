@@ -1,7 +1,7 @@
 app_name = "app_migrator"
 app_title = "App Migrator"
-app_publisher = "AMB-Wellness"
-app_description = "App Migrator Enterprise v7.0.0"
+app_publisher = "psmhosting.com"
+app_description = "App Migrator Enterprise with API CRUD REST"
 app_email = "info@psmhosting.com"
 app_license = "mit"
 
