@@ -1,8 +1,9 @@
+from . import __version__ as version
 app_name = "app_migrator"
 app_title = "App Migrator Enterprise"
-app_publisher = "Roger Boy"
+app_publisher = "psmhosting.com"
 app_description = "AI-Powered Enterprise Application Migration System for Frappe/ERPNext"
-app_email = "rogerboy38@gmail.com"
+app_email = "info@psmhosting.com"
 app_license = "MIT"
 app_version = "7.0.1"
 
