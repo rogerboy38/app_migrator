@@ -1,0 +1,38 @@
+{
+ "doctype": "DocType",
+ "name": "Migration Tenant",
+ "module": "App Migrator",
+ "fields": [
+  {
+   "fieldname": "tenant_name",
+   "label": "Tenant Name",
+   "fieldtype": "Data",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "tenant_domain",
+   "label": "Tenant Domain",
+   "fieldtype": "Data",
+   "reqd": 1
+  },
+  {
+   "fieldname": "database_name",
+   "label": "Database Name",
+   "fieldtype": "Data"
+  },
+  {
+   "fieldname": "is_active",
+   "label": "Is Active",
+   "fieldtype": "Check",
+   "default": "1"
+  },
+  {
+   "fieldname": "tenant_config",
+   "label": "Tenant Configuration",
+   "fieldtype": "Code",
+   "options": "JSON"
+  }
+ ]
+}
+

@@ -1,0 +1,48 @@
+{
+ "doctype": "DocType",
+ "name": "Migration Project",
+ "module": "App Migrator",
+ "is_submittable": 1,
+ "fields": [
+  {
+   "fieldname": "project_name",
+   "label": "Project Name",
+   "fieldtype": "Data",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "source_app",
+   "label": "Source Application",
+   "fieldtype": "Data",
+   "reqd": 1
+  },
+  {
+   "fieldname": "target_app", 
+   "label": "Target Application",
+   "fieldtype": "Data",
+   "reqd": 1
+  },
+  {
+   "fieldname": "migration_type",
+   "label": "Migration Type",
+   "fieldtype": "Select",
+   "options": "Standard\nEnterprise\nMulti-Tenant\nCompliance",
+   "default": "Standard"
+  },
+  {
+   "fieldname": "status",
+   "label": "Status",
+   "fieldtype": "Select",
+   "options": "Draft\nIn Progress\nCompleted\nFailed\nRolled Back",
+   "default": "Draft"
+  },
+  {
+   "fieldname": "conflict_resolution_strategy",
+   "label": "Conflict Resolution Strategy",
+   "fieldtype": "Select",
+   "options": "Auto\nManual\nAI-Assisted",
+   "default": "AI-Assisted"
+  }
+ ]
+}
