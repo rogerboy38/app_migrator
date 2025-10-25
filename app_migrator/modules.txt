@@ -1,1 +1,7 @@
-App Migrator
+core_engine
+ai_agents
+compliance
+enterprise_features
+integration_layer
+monitoring
+rest_api

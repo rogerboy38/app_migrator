@@ -1,0 +1,5 @@
+{
+	"label": _("App Migrator"),
+	"icon": "octicon octicon-rocket", 
+	"color": "#3498db"
+}
