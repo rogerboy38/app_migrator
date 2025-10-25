@@ -1,11 +1,12 @@
-from . import __version__ as version
+__version__ = "7.0.1"
 app_name = "app_migrator"
 app_title = "App Migrator Enterprise"
 app_publisher = "psmhosting.com"
 app_description = "AI-Powered Enterprise Application Migration System for Frappe/ERPNext"
 app_email = "info@psmhosting.com"
 app_license = "MIT"
-app_version = "7.0.1"
+app_version = __version__
+
 
 # Include JS/CSS in assets builder
 app_include_js = "/assets/app_migrator/js/app_migrator.js"
