@@ -55,6 +55,16 @@ except ImportError:
     FRAPPE_AVAILABLE = False
     pass_context = lambda f: f
 
+def get_current_site():
+    """Get current site from currentsite.txt or return None"""
+    import os
+    sites_path = os.path.join(os.getcwd(), 'sites')
+    currentsite_file = os.path.join(sites_path, 'currentsite.txt')
+    if os.path.exists(currentsite_file):
+        with open(currentsite_file, 'r') as f:
+            return f.read().strip()
+    return None
+
 # ==================== ENTERPRISE UTILITIES ====================
 
 class ProgressTracker:
@@ -791,7 +801,7 @@ def app_migrator_create_host(context, host_app_name):
 # ==================== PING-PONG STAGING: STAGE DOCTYPES ====================
 
 @click.command('app-migrator-stage')
-@click.option('--site', required=True, help='Site name')
+@click.option('--site', default=None, help='Site name (uses current site if not specified)')
 @click.option('--source', required=True, help='Source app name')
 @click.option('--host', required=True, help='Host/staging app name')
 @click.option('--doctypes', default=None, help='Comma-separated doctype names (or all)')
@@ -800,6 +810,11 @@ def app_migrator_create_host(context, host_app_name):
 @pass_context
 def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
     """Stage doctypes from source app to host app with prefix"""
+    if not site:
+        site = get_current_site()
+        if not site:
+            print("❌ No site specified and no current site set. Use --site or 'bench use <site>'")
+            return
     mode = "DRY-RUN" if dry_run else "APPLY"
     source_module_title = source.replace("_", " ").title()
     print(f"📤 STAGING DOCTYPES [{mode}]")
@@ -885,13 +900,18 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
 # ==================== PING-PONG STAGING: UNSTAGE DOCTYPES ====================
 
 @click.command('app-migrator-unstage')
-@click.option('--site', required=True, help='Site name')
+@click.option('--site', default=None, help='Site name (uses current site if not specified)')
 @click.option('--host', required=True, help='Host/staging module name')
 @click.option('--target', required=True, help='Target module name')
 @click.option('--dry-run/--apply', default=True, help='Dry run or apply')
 @pass_context
 def app_migrator_unstage(context, site, host, target, dry_run):
     """Unstage doctypes from host module to target module (reassign module)"""
+    if not site:
+        site = get_current_site()
+        if not site:
+            print("❌ No site specified and no current site set. Use --site or 'bench use <site>'")
+            return
     mode = "DRY-RUN" if dry_run else "APPLY"
     host_module_title = host.replace("_", " ").title()
     target_module_title = target.replace("_", " ").title()
