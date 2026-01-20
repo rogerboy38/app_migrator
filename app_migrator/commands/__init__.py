@@ -56,10 +56,10 @@ except ImportError:
     pass_context = lambda f: f
 
 def get_current_site():
-    """Get current site from currentsite.txt or return None"""
+    """Get current site from common_site_config.json or currentsite.txt"""
     import os
+    import json
     from pathlib import Path
-    # Try multiple possible locations for sites folder
     home = str(Path.home())
     possible_paths = [
         os.path.join(os.getcwd(), 'sites'),
@@ -67,6 +67,14 @@ def get_current_site():
         os.path.abspath(os.path.join(os.getcwd(), '..', '..', 'sites')),
     ]
     for sites_path in possible_paths:
+        # Try common_site_config.json first (has default_site)
+        config_file = os.path.join(sites_path, 'common_site_config.json')
+        if os.path.exists(config_file):
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+                if config.get('default_site'):
+                    return config['default_site']
+        # Fallback to currentsite.txt
         currentsite_file = os.path.join(sites_path, 'currentsite.txt')
         if os.path.exists(currentsite_file):
             with open(currentsite_file, 'r') as f:
