@@ -1206,63 +1206,62 @@ def ensure_controller_files(app_name, module_name=None, dry_run=True):
     """
     import re
     
-    if module_name is None:
-        module_name = app_name
-    
     apps_dir = os.path.expanduser("~/frappe-bench/apps")
+    app_path = os.path.join(apps_dir, app_name, app_name)
     
-    # Try different possible structures
-    possible_paths = [
-        os.path.join(apps_dir, app_name, app_name, module_name, "doctype"),  # Triple nested
-        os.path.join(apps_dir, app_name, app_name, "doctype"),  # Double nested
-    ]
+    if not os.path.isdir(app_path):
+        print(f"❌ No app folder found: {app_path}")
+        return []
     
-    doctype_path = None
-    for path in possible_paths:
-        if os.path.isdir(path):
-            doctype_path = path
-            break
+    # Find ALL doctype directories in the app (search all module folders)
+    doctype_paths = []
+    for entry in os.listdir(app_path):
+        entry_path = os.path.join(app_path, entry)
+        doctype_dir = os.path.join(entry_path, "doctype")
+        if os.path.isdir(entry_path) and os.path.exists(doctype_dir):
+            doctype_paths.append(doctype_dir)
     
-    if not doctype_path:
+    if not doctype_paths:
         print(f"❌ No doctype folder found for app: {app_name}")
         return []
     
-    print(f"📁 DocType folder: {doctype_path}")
+    print(f"📁 Found {len(doctype_paths)} doctype folder(s) in {app_name}")
     
     created_files = []
     
-    for item in os.listdir(doctype_path):
-        item_path = os.path.join(doctype_path, item)
-        
-        # Skip non-directories and __pycache__
-        if not os.path.isdir(item_path) or item.startswith('__'):
-            continue
-        
-        doctype_name = item
-        py_file = os.path.join(item_path, f"{doctype_name}.py")
-        json_file = os.path.join(item_path, f"{doctype_name}.json")
-        
-        # Only create .py if .json exists but .py doesn't
-        if os.path.exists(json_file) and not os.path.exists(py_file):
-            # Convert doctype_name to PascalCase class name
-            # e.g., 'third_party_api' -> 'ThirdPartyApi'
-            class_name = ''.join(word.capitalize() for word in doctype_name.split('_'))
+    for doctype_path in doctype_paths:
+        for item in os.listdir(doctype_path):
+            item_path = os.path.join(doctype_path, item)
             
-            controller_content = f'''import frappe
+            # Skip non-directories and __pycache__
+            if not os.path.isdir(item_path) or item.startswith('__'):
+                continue
+            
+            doctype_name = item
+            py_file = os.path.join(item_path, f"{doctype_name}.py")
+            json_file = os.path.join(item_path, f"{doctype_name}.json")
+            
+            # Only create .py if .json exists but .py doesn't
+            if os.path.exists(json_file) and not os.path.exists(py_file):
+                # Convert doctype_name to PascalCase class name
+                # e.g., 'third_party_api' -> 'ThirdPartyApi'
+                class_name = ''.join(word.capitalize() for word in doctype_name.split('_'))
+                
+                controller_content = f'''import frappe
 from frappe.model.document import Document
 
 class {class_name}(Document):
     pass
 '''
-            
-            if dry_run:
-                print(f"   Would create: {py_file}")
-            else:
-                with open(py_file, 'w') as f:
-                    f.write(controller_content)
-                print(f"   ✅ Created: {py_file}")
-            
-            created_files.append(py_file)
+                
+                if dry_run:
+                    print(f"   Would create: {py_file}")
+                else:
+                    with open(py_file, 'w') as f:
+                        f.write(controller_content)
+                    print(f"   ✅ Created: {py_file}")
+                
+                created_files.append(py_file)
     
     return created_files
 
