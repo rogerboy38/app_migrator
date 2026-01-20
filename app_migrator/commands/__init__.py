@@ -149,8 +149,12 @@ def app_migrator_health(context):
     print("    app-migrator-execute --site <name>       Execute migration")
     print("  Enterprise:")
     print("    app-migrator-benches                     List all benches")
+    print("    app-migrator-apps --site <name>          Downloaded vs installed apps")
     print("    app-migrator-session-start <name>        Start session")
     print("    app-migrator-session-status <id>         Check session")
+    print("  Diagnostics:")
+    print("    app-migrator-analyze <app>               Analyze app structure")
+    print("    app-migrator-fix-orphans --site <name>   Fix orphan doctypes")
     print("=" * 60)
 
 # ==================== SCAN SITE COMMAND ====================
@@ -443,6 +447,285 @@ def app_migrator_session_status(context, session_id):
     print(f"   Completed Apps: {len(data['progress']['completed_apps'])}")
     print(f"   Failed Apps: {len(data['progress']['failed_apps'])}")
 
+# ==================== LIST APPS (DOWNLOADED VS INSTALLED) ====================
+
+@click.command('app-migrator-apps')
+@click.option('--site', help='Site name (optional)')
+@pass_context
+def app_migrator_apps(context, site):
+    """List downloaded apps vs installed apps"""
+    print("📦 APP INVENTORY")
+    print("=" * 60)
+    
+    # Get downloaded apps from apps directory
+    apps_dir = os.path.expanduser("~/frappe-bench/apps")
+    downloaded = []
+    if os.path.exists(apps_dir):
+        for item in os.listdir(apps_dir):
+            item_path = os.path.join(apps_dir, item)
+            if os.path.isdir(item_path) and not item.startswith('.'):
+                # Check if it's a valid Frappe app
+                has_hooks = os.path.exists(os.path.join(item_path, item, "hooks.py")) or \
+                           os.path.exists(os.path.join(item_path, "hooks.py"))
+                has_pyproject = os.path.exists(os.path.join(item_path, "pyproject.toml"))
+                if has_hooks or has_pyproject:
+                    downloaded.append(item)
+    
+    downloaded = sorted(downloaded)
+    
+    # Get installed apps if site provided
+    installed = []
+    if site:
+        try:
+            frappe.init(site=site)
+            frappe.connect()
+            installed = frappe.get_installed_apps()
+            frappe.db.close()
+        except:
+            pass
+    
+    print(f"\n📥 DOWNLOADED APPS ({len(downloaded)}):")
+    for app in downloaded:
+        status = "✅ installed" if app in installed else "⬜ not installed"
+        print(f"   {app:30} {status}")
+    
+    if site and installed:
+        not_downloaded = [a for a in installed if a not in downloaded]
+        if not_downloaded:
+            print(f"\n⚠️ INSTALLED BUT NOT IN APPS DIR:")
+            for app in not_downloaded:
+                print(f"   {app}")
+    
+    print(f"\n📊 SUMMARY:")
+    print(f"   Downloaded: {len(downloaded)}")
+    print(f"   Installed:  {len(installed)}")
+    print(f"   Available:  {len(downloaded) - len(installed)}")
+
+# ==================== FIX ORPHAN DOCTYPES ====================
+
+@click.command('app-migrator-fix-orphans')
+@click.option('--site', required=True, help='Site name')
+@click.option('--target-module', default=None, help='Target module for orphans')
+@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+@pass_context
+def app_migrator_fix_orphans(context, site, target_module, dry_run):
+    """Fix orphan doctypes (doctypes with no module or invalid module)"""
+    mode = "DRY-RUN" if dry_run else "APPLY"
+    print(f"🔧 FIXING ORPHAN DOCTYPES [{mode}]")
+    print(f"   Site: {site}")
+    print("=" * 60)
+    
+    frappe.init(site=site)
+    frappe.connect()
+    
+    # Find orphan doctypes - those with empty/null module or module not matching any app
+    installed_apps = frappe.get_installed_apps()
+    
+    # Get all modules from installed apps
+    valid_modules = set()
+    for app in installed_apps:
+        try:
+            modules = frappe.get_all("Module Def", filters={"app_name": app}, pluck="name")
+            valid_modules.update(modules)
+        except:
+            pass
+    
+    # Also add app names as valid modules (some doctypes use app name as module)
+    valid_modules.update(installed_apps)
+    
+    # Find orphans
+    orphans = []
+    
+    # 1. DocTypes with empty/null module
+    empty_module = frappe.get_all("DocType", 
+        filters=[["module", "in", ["", None]]],
+        fields=["name", "module", "custom"])
+    orphans.extend([{"name": d.name, "module": d.module or "(empty)", "type": "empty_module", "custom": d.custom} for d in empty_module])
+    
+    # 2. DocTypes with module not in valid_modules (excluding custom doctypes)
+    all_doctypes = frappe.get_all("DocType", 
+        filters={"custom": 0},
+        fields=["name", "module"])
+    
+    for dt in all_doctypes:
+        if dt.module and dt.module not in valid_modules:
+            orphans.append({"name": dt.name, "module": dt.module, "type": "invalid_module", "custom": 0})
+    
+    # 3. Custom Fields with orphan dt
+    orphan_custom_fields = frappe.db.sql("""
+        SELECT cf.name, cf.dt, cf.fieldname
+        FROM `tabCustom Field` cf
+        LEFT JOIN `tabDocType` dt ON cf.dt = dt.name
+        WHERE dt.name IS NULL
+    """, as_dict=True)
+    
+    print(f"\n📊 ORPHAN ANALYSIS:")
+    print(f"   DocTypes with empty module: {len([o for o in orphans if o['type'] == 'empty_module'])}")
+    print(f"   DocTypes with invalid module: {len([o for o in orphans if o['type'] == 'invalid_module'])}")
+    print(f"   Orphan Custom Fields: {len(orphan_custom_fields)}")
+    
+    if orphans:
+        print(f"\n⚠️ ORPHAN DOCTYPES ({len(orphans)}):")
+        for o in orphans[:20]:  # Show first 20
+            print(f"   • {o['name']:40} module='{o['module']}' ({o['type']})")
+        if len(orphans) > 20:
+            print(f"   ... and {len(orphans) - 20} more")
+    
+    if orphan_custom_fields:
+        print(f"\n⚠️ ORPHAN CUSTOM FIELDS ({len(orphan_custom_fields)}):")
+        for cf in orphan_custom_fields[:10]:
+            print(f"   • {cf['name']} → dt='{cf['dt']}'")
+        if len(orphan_custom_fields) > 10:
+            print(f"   ... and {len(orphan_custom_fields) - 10} more")
+    
+    if not dry_run and target_module:
+        print(f"\n🔧 APPLYING FIXES (target module: {target_module})...")
+        fixed = 0
+        
+        for o in orphans:
+            if o['type'] == 'empty_module':
+                frappe.db.sql("""
+                    UPDATE `tabDocType` SET module = %s WHERE name = %s
+                """, (target_module, o['name']))
+                fixed += 1
+        
+        # Delete orphan custom fields
+        for cf in orphan_custom_fields:
+            frappe.db.sql("DELETE FROM `tabCustom Field` WHERE name = %s", cf['name'])
+        
+        frappe.db.commit()
+        print(f"   ✅ Fixed {fixed} doctypes")
+        print(f"   ✅ Deleted {len(orphan_custom_fields)} orphan custom fields")
+    elif not dry_run and not target_module:
+        print(f"\n❌ --target-module required when using --apply")
+    else:
+        print(f"\n📋 Run with --apply --target-module <module> to fix")
+    
+    frappe.db.close()
+
+# ==================== ANALYZE APP STRUCTURE (MODERN VS TRADITIONAL) ====================
+
+@click.command('app-migrator-analyze')
+@click.argument('app_name')
+@pass_context
+def app_migrator_analyze(context, app_name):
+    """Analyze app structure (modern pyproject.toml vs traditional)"""
+    print(f"🔍 ANALYZING APP: {app_name}")
+    print("=" * 60)
+    
+    app_path = os.path.expanduser(f"~/frappe-bench/apps/{app_name}")
+    
+    if not os.path.exists(app_path):
+        print(f"❌ App not found: {app_path}")
+        return
+    
+    result = {
+        "app_name": app_name,
+        "path": app_path,
+        "structure": "unknown",
+        "has_pyproject": False,
+        "has_hooks": False,
+        "has_modules_txt": False,
+        "nested_package": False,
+        "modules": [],
+        "dependencies": [],
+        "issues": []
+    }
+    
+    # Check for modern structure (pyproject.toml)
+    pyproject_path = os.path.join(app_path, "pyproject.toml")
+    result["has_pyproject"] = os.path.exists(pyproject_path)
+    
+    # Check for nested package structure
+    nested_path = os.path.join(app_path, app_name)
+    if os.path.isdir(nested_path):
+        result["nested_package"] = True
+        hooks_path = os.path.join(nested_path, "hooks.py")
+        modules_txt_path = os.path.join(nested_path, "modules.txt")
+    else:
+        hooks_path = os.path.join(app_path, "hooks.py")
+        modules_txt_path = os.path.join(app_path, "modules.txt")
+    
+    result["has_hooks"] = os.path.exists(hooks_path)
+    result["has_modules_txt"] = os.path.exists(modules_txt_path)
+    
+    # Determine structure type
+    if result["has_pyproject"] and result["nested_package"]:
+        result["structure"] = "modern"
+    elif result["has_hooks"]:
+        result["structure"] = "traditional"
+    else:
+        result["structure"] = "incomplete"
+        result["issues"].append("Missing hooks.py")
+    
+    # Read modules.txt if exists
+    if result["has_modules_txt"]:
+        with open(modules_txt_path, 'r') as f:
+            result["modules"] = [line.strip() for line in f if line.strip()]
+    
+    # Detect Python modules in nested package
+    if result["nested_package"]:
+        for item in os.listdir(nested_path):
+            item_path = os.path.join(nested_path, item)
+            if os.path.isdir(item_path) and os.path.exists(os.path.join(item_path, "__init__.py")):
+                if item not in ['templates', 'public', 'patches', 'config', '__pycache__']:
+                    if item not in result["modules"]:
+                        result["modules"].append(item)
+    
+    # Read dependencies from pyproject.toml
+    if result["has_pyproject"]:
+        try:
+            with open(pyproject_path, 'r') as f:
+                content = f.read()
+                # Simple extraction of dependencies
+                if 'dependencies' in content:
+                    import re
+                    deps = re.findall(r'"([a-zA-Z0-9_-]+)"', content)
+                    result["dependencies"] = [d for d in deps if d not in ['python', 'frappe', app_name]][:10]
+        except:
+            pass
+    
+    # Check for issues
+    if not result["has_hooks"]:
+        result["issues"].append("Missing hooks.py")
+    if not result["has_modules_txt"] and result["modules"]:
+        result["issues"].append("Missing modules.txt (has modules)")
+    
+    # Display results
+    print(f"\n📋 STRUCTURE ANALYSIS:")
+    print(f"   Type: {result['structure'].upper()}")
+    print(f"   Nested Package: {'Yes' if result['nested_package'] else 'No'}")
+    print(f"   pyproject.toml: {'✅' if result['has_pyproject'] else '❌'}")
+    print(f"   hooks.py: {'✅' if result['has_hooks'] else '❌'}")
+    print(f"   modules.txt: {'✅' if result['has_modules_txt'] else '❌'}")
+    
+    if result["modules"]:
+        print(f"\n📦 MODULES ({len(result['modules'])}):")
+        for mod in result["modules"][:15]:
+            print(f"   • {mod}")
+        if len(result["modules"]) > 15:
+            print(f"   ... and {len(result['modules']) - 15} more")
+    
+    if result["dependencies"]:
+        print(f"\n📚 DEPENDENCIES ({len(result['dependencies'])}):")
+        for dep in result["dependencies"]:
+            print(f"   • {dep}")
+    
+    if result["issues"]:
+        print(f"\n⚠️ ISSUES:")
+        for issue in result["issues"]:
+            print(f"   • {issue}")
+    
+    # Health score
+    score = 0
+    if result["has_hooks"]: score += 30
+    if result["has_modules_txt"]: score += 20
+    if result["has_pyproject"]: score += 20
+    if result["modules"]: score += 20
+    if not result["issues"]: score += 10
+    
+    print(f"\n💯 HEALTH SCORE: {score}%")
+
 # ==================== EXPORT ALL COMMANDS ====================
 
 commands = [
@@ -453,7 +736,10 @@ commands = [
     app_migrator_execute,
     app_migrator_benches,
     app_migrator_session_start,
-    app_migrator_session_status
+    app_migrator_session_status,
+    app_migrator_apps,
+    app_migrator_fix_orphans,
+    app_migrator_analyze
 ]
 
 print("✅ App Migrator Enterprise v9.0.0 ready!")
