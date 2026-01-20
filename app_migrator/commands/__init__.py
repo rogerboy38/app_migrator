@@ -856,14 +856,17 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
         else:
             print(f"   ℹ️ No modules.txt found (host app not required for staging)")
         
-        # Step 3: Reassign doctypes to host module (no rename, just module change)
+        # Step 3: Reassign doctypes to host module AND mark as custom (prevents orphan deletion)
         success_count = 0
         for item in staged:
             dt_name = item["old_name"]
             try:
-                # Update module field via db.set_value (works without developer mode)
-                frappe.db.set_value("DocType", dt_name, "module", host_module_title, update_modified=False)
-                print(f"   ✅ {dt_name} → module: {host_module_title}")
+                # Update module field AND set custom=1 to prevent orphan deletion during migrate
+                frappe.db.set_value("DocType", dt_name, {
+                    "module": host_module_title,
+                    "custom": 1  # CRITICAL: prevents bench migrate from deleting as orphan
+                }, update_modified=False)
+                print(f"   ✅ {dt_name} → module: {host_module_title} (custom=1)")
                 success_count += 1
             except Exception as e:
                 print(f"   ❌ {dt_name}: {e}")
@@ -914,8 +917,12 @@ def app_migrator_unstage(context, site, host, target, dry_run):
         success_count = 0
         for dt in host_doctypes:
             try:
-                frappe.db.set_value("DocType", dt.name, "module", target_module_title, update_modified=False)
-                print(f"   ✅ {dt.name} → module: {target_module_title}")
+                # Restore module and set custom=0 (back to normal doctype)
+                frappe.db.set_value("DocType", dt.name, {
+                    "module": target_module_title,
+                    "custom": 0  # Restore to normal doctype
+                }, update_modified=False)
+                print(f"   ✅ {dt.name} → module: {target_module_title} (custom=0)")
                 success_count += 1
             except Exception as e:
                 print(f"   ❌ {dt.name}: {e}")
