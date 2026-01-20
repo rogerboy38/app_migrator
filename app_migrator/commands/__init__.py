@@ -735,49 +735,34 @@ def app_migrator_analyze(context, app_name):
 
 @click.command('app-migrator-create-host')
 @click.argument('host_app_name')
-@click.option('--title', default=None, help='App title')
 @pass_context
-def app_migrator_create_host(context, host_app_name, title):
+def app_migrator_create_host(context, host_app_name):
     """Create a staging/host app for ping-pong migration"""
-    print(f"🏗️ CREATING HOST APP: {host_app_name}")
+    print(f"🏗️ CREATE HOST APP: {host_app_name}")
     print("=" * 60)
     
     apps_dir = os.path.expanduser("~/frappe-bench/apps")
     host_path = os.path.join(apps_dir, host_app_name)
     
     if os.path.exists(host_path):
-        print(f"❌ App already exists: {host_path}")
+        print(f"✅ App already exists: {host_path}")
+        print(f"\n📋 NEXT STEPS:")
+        print(f"   1. Install: bench --site <site> install-app {host_app_name}")
+        print(f"   2. Stage: bench app-migrator-stage --site <site> --source <app> --host {host_app_name}")
         return
     
-    app_title = title or host_app_name.replace("_", " ").title()
-    
-    # Create app using bench new-app with expect-style input
-    print(f"   Creating app structure...")
-    
-    # Use subprocess with input to answer prompts
-    try:
-        result = subprocess.run(
-            f"cd ~/frappe-bench && bench new-app {host_app_name}",
-            shell=True,
-            input=f"{app_title}\nMigration Host\ninfo@example.com\nmit\n",
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-        
-        if os.path.exists(host_path):
-            print(f"   ✅ App created: {host_path}")
-            print(f"\n📋 NEXT STEPS:")
-            print(f"   1. Install: bench --site <site> install-app {host_app_name}")
-            print(f"   2. Stage doctypes: bench app-migrator-stage --site <site> --source <app> --host {host_app_name}")
-        else:
-            print(f"   ❌ Failed to create app")
-            if result.stderr:
-                print(f"   Error: {result.stderr[:200]}")
-    except subprocess.TimeoutExpired:
-        print(f"   ❌ Timeout creating app")
-    except Exception as e:
-        print(f"   ❌ Error: {e}")
+    # bench new-app is interactive, provide instructions
+    print(f"\n📋 RUN THIS COMMAND MANUALLY (interactive):")
+    print(f"   cd ~/frappe-bench && bench new-app {host_app_name}")
+    print(f"\n   Answer prompts:")
+    print(f"     App Title: Migration Staging")
+    print(f"     App Description: Staging app for migration")
+    print(f"     App Publisher: Your Name")
+    print(f"     App Email: your@email.com")
+    print(f"     App License: mit")
+    print(f"\n📋 THEN:")
+    print(f"   1. Install: bench --site <site> install-app {host_app_name}")
+    print(f"   2. Stage: bench app-migrator-stage --site <site> --source <app> --host {host_app_name}")
 
 # ==================== PING-PONG STAGING: STAGE DOCTYPES ====================
 
