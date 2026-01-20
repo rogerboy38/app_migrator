@@ -843,7 +843,7 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
             except Exception as e:
                 print(f"   ⚠️ Module Def creation: {e}")
         
-        # Step 2: Update modules.txt in host app
+        # Step 2: Update modules.txt in host app (if it exists)
         host_apps_path = os.path.expanduser(f"~/frappe-bench/apps/{host}/{host}/modules.txt")
         if os.path.exists(host_apps_path):
             with open(host_apps_path, 'r') as f:
@@ -853,6 +853,8 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
                 with open(host_apps_path, 'w') as f:
                     f.write('\n'.join(modules) + '\n')
                 print(f"   ✅ Updated modules.txt with: {host_module_title}")
+        else:
+            print(f"   ℹ️ No modules.txt found (host app not required for staging)")
         
         # Step 3: Reassign doctypes to host module (no rename, just module change)
         success_count = 0
