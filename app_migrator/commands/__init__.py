@@ -881,58 +881,50 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
 
 @click.command('app-migrator-unstage')
 @click.option('--site', required=True, help='Site name')
-@click.option('--host', required=True, help='Host/staging app name')
-@click.option('--target', required=True, help='Target app name')
-@click.option('--prefix', default='STAGE_', help='Prefix to remove')
+@click.option('--host', required=True, help='Host/staging module name')
+@click.option('--target', required=True, help='Target module name')
 @click.option('--dry-run/--apply', default=True, help='Dry run or apply')
 @pass_context
-def app_migrator_unstage(context, site, host, target, prefix, dry_run):
-    """Unstage doctypes from host app to target app, removing prefix"""
+def app_migrator_unstage(context, site, host, target, dry_run):
+    """Unstage doctypes from host module to target module (reassign module)"""
     mode = "DRY-RUN" if dry_run else "APPLY"
+    host_module_title = host.replace("_", " ").title()
+    target_module_title = target.replace("_", " ").title()
+    
     print(f"📥 UNSTAGING DOCTYPES [{mode}]")
-    print(f"   Host: {host}")
-    print(f"   Target: {target}")
-    print(f"   Prefix to remove: {prefix}")
+    print(f"   From module: {host_module_title}")
+    print(f"   To module: {target_module_title}")
     print("=" * 60)
     
     frappe.init(site=site)
     frappe.connect()
     
-    # Get staged doctypes from host app
+    # Get doctypes in the host module
     host_doctypes = frappe.get_all("DocType", 
-        filters={"module": host},
+        filters={"module": host_module_title},
         fields=["name", "module"])
     
-    # Filter to only prefixed ones
-    staged_doctypes = [dt for dt in host_doctypes if dt.name.startswith(prefix)]
+    print(f"\n📦 DOCTYPES TO REASSIGN ({len(host_doctypes)}):")
     
-    print(f"\n📦 DOCTYPES TO UNSTAGE ({len(staged_doctypes)}):")
-    unstaged = []
-    
-    for dt in staged_doctypes:
-        original_name = dt.name[len(prefix):]  # Remove prefix
-        print(f"   • {dt.name} → {original_name}")
-        unstaged.append({"staged_name": dt.name, "original_name": original_name})
+    for dt in host_doctypes:
+        print(f"   • {dt.name}")
     
     if not dry_run:
-        print(f"\n🔧 UNSTAGING...")
-        for item in unstaged:
+        print(f"\n🔧 REASSIGNING TO MODULE '{target_module_title}'...")
+        success_count = 0
+        for dt in host_doctypes:
             try:
-                # Rename doctype back
-                frappe.rename_doc("DocType", item["staged_name"], item["original_name"], force=True)
-                # Update module to target
-                frappe.db.sql("""
-                    UPDATE `tabDocType` SET module = %s WHERE name = %s
-                """, (target, item["original_name"]))
-                print(f"   ✅ {item['staged_name']} → {item['original_name']}")
+                frappe.db.set_value("DocType", dt.name, "module", target_module_title, update_modified=False)
+                print(f"   ✅ {dt.name} → module: {target_module_title}")
+                success_count += 1
             except Exception as e:
-                print(f"   ❌ {item['staged_name']}: {e}")
+                print(f"   ❌ {dt.name}: {e}")
         
         frappe.db.commit()
-        print(f"\n✅ Unstaged {len(unstaged)} doctypes to {target}")
+        print(f"\n✅ Reassigned {success_count}/{len(host_doctypes)} doctypes to '{target_module_title}'")
         print(f"\n📋 Now run: bench --site {site} migrate")
     else:
-        print(f"\n📋 Run with --apply to unstage")
+        print(f"\n📋 Run with --apply to reassign")
     
     frappe.db.close()
 
