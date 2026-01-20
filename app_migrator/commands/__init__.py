@@ -583,18 +583,19 @@ def app_migrator_fix_orphans(context, site, target_module, dry_run):
         fixed = 0
         
         for o in orphans:
-            if o['type'] == 'empty_module':
-                frappe.db.sql("""
-                    UPDATE `tabDocType` SET module = %s WHERE name = %s
-                """, (target_module, o['name']))
-                fixed += 1
+            # Fix both empty_module and invalid_module types
+            frappe.db.sql("""
+                UPDATE `tabDocType` SET module = %s WHERE name = %s
+            """, (target_module, o['name']))
+            print(f"   📝 Fixed: {o['name']} → {target_module}")
+            fixed += 1
         
         # Delete orphan custom fields
         for cf in orphan_custom_fields:
             frappe.db.sql("DELETE FROM `tabCustom Field` WHERE name = %s", cf['name'])
         
         frappe.db.commit()
-        print(f"   ✅ Fixed {fixed} doctypes")
+        print(f"\n   ✅ Fixed {fixed} doctypes")
         print(f"   ✅ Deleted {len(orphan_custom_fields)} orphan custom fields")
     elif not dry_run and not target_module:
         print(f"\n❌ --target-module required when using --apply")
