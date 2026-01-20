@@ -929,6 +929,17 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
         host_doctype_path = os.path.join(host_app_path, host_module_folder, "doctype")
         os.makedirs(host_doctype_path, exist_ok=True)
         
+        # Build a map of all doctype folders in source app (search all module dirs)
+        doctype_folder_map = {}
+        for entry in os.listdir(source_app_path):
+            entry_path = os.path.join(source_app_path, entry)
+            doctype_dir = os.path.join(entry_path, "doctype")
+            if os.path.isdir(entry_path) and os.path.exists(doctype_dir):
+                for dt_folder in os.listdir(doctype_dir):
+                    dt_path = os.path.join(doctype_dir, dt_folder)
+                    if os.path.isdir(dt_path) and not dt_folder.startswith("_"):
+                        doctype_folder_map[dt_folder] = dt_path
+        
         print(f"\n📁 COPYING DOCTYPE FILES TO HOST APP...")
         
         # Step 4: Reassign doctypes to host module AND mark as custom (prevents orphan deletion)
@@ -936,8 +947,8 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
         for item in staged:
             dt_name = item["old_name"]
             dt_folder_name = dt_name.lower().replace(" ", "_")
-            source_module_folder = item["old_module"].lower().replace(" ", "_")
-            source_dt_path = os.path.join(source_app_path, source_module_folder, "doctype", dt_folder_name)
+            # Use the map to find actual path (handles module name mismatches)
+            source_dt_path = doctype_folder_map.get(dt_folder_name)
             target_dt_path = os.path.join(host_doctype_path, dt_folder_name)
             
             try:
