@@ -937,26 +937,28 @@ def app_migrator_unstage(context, site, host, target, dry_run):
     
     frappe.db.close()
 
-# ==================== FIX NESTED APP STRUCTURE ====================
+# ==================== ANALYZE APP STRUCTURE (DETAILED) ====================
 
 @click.command('app-migrator-fix-structure')
 @click.argument('app_name')
-@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
 @pass_context
-def app_migrator_fix_structure(context, app_name, dry_run):
+def app_migrator_fix_structure(context, app_name):
     """
-    Fix nested folder structures in Frappe apps.
+    Analyze Frappe app folder structure and report findings.
     
-    Detects and fixes triple-nested structures like:
-        apps/amb_w_tds/amb_w_tds/amb_w_tds/doctype/
+    Frappe apps can have different valid structures:
     
-    Moves to correct structure:
-        apps/amb_w_tds/amb_w_tds/doctype/
+    1. Single-module app (module name = app name):
+       apps/{app}/{app}/{app}/doctype/  <- VALID (triple-nested)
+       
+    2. Multi-module app:
+       apps/{app}/{app}/{module1}/doctype/
+       apps/{app}/{app}/{module2}/doctype/
+    
+    This command analyzes the structure and reports what it finds.
+    It does NOT automatically move files (that was causing issues).
     """
-    import shutil
-    
-    mode = "DRY-RUN" if dry_run else "APPLY"
-    print(f"🔧 FIX APP STRUCTURE [{mode}]")
+    print(f"🔍 ANALYZE APP STRUCTURE")
     print(f"   App: {app_name}")
     print("=" * 60)
     
@@ -967,149 +969,99 @@ def app_migrator_fix_structure(context, app_name, dry_run):
         print(f"❌ App not found: {app_path}")
         return
     
-    # Standard Frappe structure: apps/{app}/{app}/doctype/
-    # Level 1: apps/{app}/           <- app root
-    # Level 2: apps/{app}/{app}/     <- module folder (contains hooks.py, modules.txt)
-    # Level 3: apps/{app}/{app}/doctype/  <- doctypes should be here
+    # Level structure
+    level1 = app_path  # apps/{app}/
+    level2 = os.path.join(level1, app_name)  # apps/{app}/{app}/
     
-    level1 = app_path
-    level2 = os.path.join(level1, app_name)
-    level3_nested = os.path.join(level2, app_name)  # Extra nesting (BAD)
-    correct_doctype_path = os.path.join(level2, "doctype")
+    print(f"\n📁 DIRECTORY STRUCTURE:")
+    print(f"   Level 1 (repo root): {level1}")
     
-    # Detect structure type
-    print(f"\n📁 STRUCTURE ANALYSIS:")
-    print(f"   App root: {level1}")
-    
-    # Check if hooks.py is at level2 (correct)
-    hooks_at_level2 = os.path.exists(os.path.join(level2, "hooks.py"))
-    print(f"   hooks.py at level2: {'✅ Yes' if hooks_at_level2 else '❌ No'}")
-    
-    # Check for extra nesting
-    has_extra_nesting = os.path.isdir(level3_nested)
-    print(f"   Extra nested folder: {'⚠️ YES - needs fix' if has_extra_nesting else '✅ None'}")
-    
-    if not has_extra_nesting:
-        print(f"\n✅ App structure is correct. No fixes needed.")
+    # Check level2
+    if not os.path.isdir(level2):
+        print(f"   ❌ Level 2 missing: {level2}")
+        print(f"\n⚠️ Invalid app structure - missing Python package folder")
         return
     
-    # Find what's in the extra nested folder
-    nested_doctype_path = os.path.join(level3_nested, "doctype")
-    nested_page_path = os.path.join(level3_nested, "page")
-    nested_report_path = os.path.join(level3_nested, "report")
+    print(f"   Level 2 (package):   {level2}")
     
-    items_to_move = []
+    # Check for hooks.py at level2
+    hooks_path = os.path.join(level2, "hooks.py")
+    modules_txt_path = os.path.join(level2, "modules.txt")
     
-    # Check for doctype folder in wrong location
-    if os.path.isdir(nested_doctype_path):
-        doctypes = [d for d in os.listdir(nested_doctype_path) 
-                   if os.path.isdir(os.path.join(nested_doctype_path, d)) and d != '__pycache__']
-        print(f"\n📦 DOCTYPES IN WRONG LOCATION ({len(doctypes)}):")
-        for dt in doctypes[:10]:
-            print(f"   • {dt}")
-        if len(doctypes) > 10:
-            print(f"   ... and {len(doctypes) - 10} more")
-        items_to_move.append(("doctype", nested_doctype_path, doctypes))
+    print(f"\n📋 PACKAGE FILES:")
+    print(f"   hooks.py:    {'✅ Found' if os.path.exists(hooks_path) else '❌ Missing'}")
+    print(f"   modules.txt: {'✅ Found' if os.path.exists(modules_txt_path) else '❌ Missing'}")
     
-    # Check for page folder
-    if os.path.isdir(nested_page_path):
-        pages = [p for p in os.listdir(nested_page_path) 
-                if os.path.isdir(os.path.join(nested_page_path, p)) and p != '__pycache__']
-        print(f"\n📄 PAGES IN WRONG LOCATION ({len(pages)}):")
-        for p in pages:
-            print(f"   • {p}")
-        items_to_move.append(("page", nested_page_path, pages))
+    # Read modules.txt
+    modules = []
+    if os.path.exists(modules_txt_path):
+        with open(modules_txt_path, 'r') as f:
+            modules = [m.strip() for m in f.readlines() if m.strip()]
+        print(f"\n📦 MODULES DEFINED ({len(modules)}):")
+        for m in modules:
+            print(f"   • {m}")
     
-    # Check for report folder
-    if os.path.isdir(nested_report_path):
-        reports = [r for r in os.listdir(nested_report_path) 
-                  if os.path.isdir(os.path.join(nested_report_path, r)) and r != '__pycache__']
-        print(f"\n📊 REPORTS IN WRONG LOCATION ({len(reports)}):")
-        for r in reports:
-            print(f"   • {r}")
-        items_to_move.append(("report", nested_report_path, reports))
+    # Check module folders at level2
+    print(f"\n📂 MODULE FOLDERS AT LEVEL 2:")
     
-    # Check for other folders (like repositories)
-    other_folders = []
-    for item in os.listdir(level3_nested):
-        item_path = os.path.join(level3_nested, item)
-        if os.path.isdir(item_path) and item not in ['doctype', 'page', 'report', '__pycache__', '__init__.py']:
-            if os.path.exists(os.path.join(item_path, "__init__.py")):
-                other_folders.append(item)
+    level2_dirs = [d for d in os.listdir(level2) 
+                   if os.path.isdir(os.path.join(level2, d)) 
+                   and not d.startswith('.') 
+                   and d not in ['__pycache__', 'templates', 'public', 'patches', 'config', 'www']]
     
-    if other_folders:
-        print(f"\n📁 OTHER FOLDERS IN WRONG LOCATION ({len(other_folders)}):")
-        for f in other_folders:
-            print(f"   • {f}")
-        items_to_move.append(("other", level3_nested, other_folders))
-    
-    if not dry_run:
-        print(f"\n🔧 APPLYING FIXES...")
+    for dir_name in sorted(level2_dirs):
+        dir_path = os.path.join(level2, dir_name)
+        has_doctype = os.path.isdir(os.path.join(dir_path, "doctype"))
+        has_page = os.path.isdir(os.path.join(dir_path, "page"))
+        has_report = os.path.isdir(os.path.join(dir_path, "report"))
         
-        # Move doctypes
-        for item_type, source_parent, items in items_to_move:
-            if item_type == "doctype":
-                target_parent = os.path.join(level2, "doctype")
-            elif item_type == "page":
-                target_parent = os.path.join(level2, "page")
-            elif item_type == "report":
-                target_parent = os.path.join(level2, "report")
-            else:
-                target_parent = level2
+        if has_doctype or has_page or has_report:
+            # This is a module folder
+            module_title = dir_name.replace("_", " ").title()
+            in_modules_txt = module_title in modules or dir_name in [m.lower().replace(" ", "_") for m in modules]
             
-            os.makedirs(target_parent, exist_ok=True)
+            doctype_count = 0
+            if has_doctype:
+                doctype_path = os.path.join(dir_path, "doctype")
+                doctype_count = len([d for d in os.listdir(doctype_path) 
+                                    if os.path.isdir(os.path.join(doctype_path, d)) and d != '__pycache__'])
             
-            # Ensure __init__.py exists
-            init_path = os.path.join(target_parent, "__init__.py")
-            if not os.path.exists(init_path):
-                with open(init_path, 'w') as f:
-                    f.write("")
+            status = "✅" if in_modules_txt else "⚠️ NOT IN modules.txt"
+            print(f"   • {dir_name}/ - {doctype_count} doctypes {status}")
             
-            for item in items:
-                source = os.path.join(source_parent, item)
-                target = os.path.join(target_parent, item)
-                
-                if os.path.exists(target):
-                    # Merge if both exist
-                    print(f"   ⚠️ {item}: target exists, merging...")
-                    for sub_item in os.listdir(source):
-                        sub_source = os.path.join(source, sub_item)
-                        sub_target = os.path.join(target, sub_item)
-                        if not os.path.exists(sub_target):
-                            shutil.move(sub_source, sub_target)
-                    shutil.rmtree(source)
-                else:
-                    shutil.move(source, target)
-                print(f"   ✅ Moved: {item_type}/{item}")
-        
-        # Clean up empty nested folder
-        try:
-            # Remove empty doctype/page/report folders first
-            for subdir in ['doctype', 'page', 'report']:
-                subdir_path = os.path.join(level3_nested, subdir)
-                if os.path.exists(subdir_path) and not os.listdir(subdir_path):
-                    os.rmdir(subdir_path)
-            
-            # Check if level3 is now empty (except __pycache__ and __init__.py)
-            remaining = [f for f in os.listdir(level3_nested) 
-                        if f not in ['__pycache__', '__init__.py']]
-            
-            if not remaining:
-                shutil.rmtree(level3_nested)
-                print(f"   🗑️ Removed empty nested folder: {app_name}/{app_name}/{app_name}/")
-            else:
-                print(f"   ⚠️ Nested folder not empty, keeping: {remaining}")
-        except Exception as e:
-            print(f"   ⚠️ Cleanup warning: {e}")
-        
-        print(f"\n✅ Structure fixed!")
-        print(f"\n📋 NEXT STEPS:")
-        print(f"   1. Verify: ls ~/frappe-bench/apps/{app_name}/{app_name}/doctype/")
-        print(f"   2. Test: bench --site <site> migrate")
+            if has_doctype:
+                print(f"      └── doctype/")
+            if has_page:
+                print(f"      └── page/")
+            if has_report:
+                print(f"      └── report/")
+    
+    # Check for doctypes directly at level2
+    direct_doctype = os.path.join(level2, "doctype")
+    if os.path.isdir(direct_doctype):
+        doctype_count = len([d for d in os.listdir(direct_doctype) 
+                            if os.path.isdir(os.path.join(direct_doctype, d)) and d != '__pycache__'])
+        print(f"\n⚠️ DOCTYPES DIRECTLY AT LEVEL 2 ({doctype_count}):")
+        print(f"   Path: {direct_doctype}")
+        print(f"   This is unusual - doctypes should be inside a module folder.")
+        print(f"   Expected: apps/{app_name}/{app_name}/{app_name}/doctype/")
+        print(f"   Found:    apps/{app_name}/{app_name}/doctype/")
+    
+    # Summary
+    print(f"\n📊 SUMMARY:")
+    
+    # Check if app_name is also a module
+    app_module_path = os.path.join(level2, app_name, "doctype")
+    if os.path.isdir(app_module_path):
+        print(f"   ✅ App uses module '{app_name}' (triple-nested structure is CORRECT)")
+    elif os.path.isdir(direct_doctype):
+        print(f"   ⚠️ App has doctypes at level2 without module folder")
+        print(f"      This may cause import issues. Consider:")
+        print(f"      1. Create module folder: {app_name}/{app_name}/{app_name}/")
+        print(f"      2. Move doctype/ into it")
+        print(f"      3. Update modules.txt with module name")
     else:
-        print(f"\n📋 Run with --apply to fix structure")
-        print(f"\n⚠️ WARNING: This will move folders. Make a backup first!")
-        print(f"   git -C ~/frappe-bench/apps/{app_name} status")
+        print(f"   ℹ️ App structure looks standard")
 
 
 # ==================== EXPORT ALL COMMANDS ====================
