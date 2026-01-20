@@ -820,64 +820,58 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
             filters={"module": source},
             fields=["name", "module"])
     
-    print(f"\n📦 DOCTYPES TO STAGE ({len(source_doctypes)}):")
+    host_module_title = host.replace("_", " ").title()
+    print(f"\n📦 DOCTYPES TO REASSIGN TO MODULE '{host_module_title}' ({len(source_doctypes)}):")
     staged = []
     
     for dt in source_doctypes:
-        new_name = f"{prefix}{dt.name}"
-        print(f"   • {dt.name} → {new_name}")
-        staged.append({"old_name": dt.name, "new_name": new_name})
+        print(f"   • {dt.name} (current: {dt.module})")
+        staged.append({"old_name": dt.name, "old_module": dt.module})
     
     if not dry_run:
-        print(f"\n🔧 STAGING (using direct SQL to bypass developer mode)...")
+        print(f"\n🔧 STAGING (reassigning module via Frappe API)...")
+        
+        # Step 1: Ensure host module exists in Module Def
+        host_module_title = host.replace("_", " ").title()
+        if not frappe.db.exists("Module Def", host_module_title):
+            try:
+                module_doc = frappe.new_doc("Module Def")
+                module_doc.module_name = host_module_title
+                module_doc.app_name = host
+                module_doc.insert(ignore_permissions=True)
+                print(f"   ✅ Created Module Def: {host_module_title}")
+            except Exception as e:
+                print(f"   ⚠️ Module Def creation: {e}")
+        
+        # Step 2: Update modules.txt in host app
+        host_apps_path = os.path.expanduser(f"~/frappe-bench/apps/{host}/{host}/modules.txt")
+        if os.path.exists(host_apps_path):
+            with open(host_apps_path, 'r') as f:
+                modules = [m.strip() for m in f.readlines() if m.strip()]
+            if host_module_title not in modules:
+                modules.append(host_module_title)
+                with open(host_apps_path, 'w') as f:
+                    f.write('\n'.join(modules) + '\n')
+                print(f"   ✅ Updated modules.txt with: {host_module_title}")
+        
+        # Step 3: Reassign doctypes to host module (no rename, just module change)
         success_count = 0
         for item in staged:
+            dt_name = item["old_name"]
             try:
-                old_name = item["old_name"]
-                new_name = item["new_name"]
-                
-                # Use direct SQL to bypass developer mode restrictions
-                # 1. Rename in tabDocType
-                frappe.db.sql("""
-                    UPDATE `tabDocType` SET name = %s, module = %s WHERE name = %s
-                """, (new_name, host, old_name))
-                
-                # 2. Update Singles table
-                frappe.db.sql("""
-                    UPDATE `tabSingles` SET doctype = %s WHERE doctype = %s
-                """, (new_name, old_name))
-                
-                # 3. Update DocField parent references
-                frappe.db.sql("""
-                    UPDATE `tabDocField` SET parent = %s WHERE parent = %s
-                """, (new_name, old_name))
-                
-                # 4. Update DocPerm parent references
-                frappe.db.sql("""
-                    UPDATE `tabDocPerm` SET parent = %s WHERE parent = %s
-                """, (new_name, old_name))
-                
-                # 5. Update Custom Field references
-                frappe.db.sql("""
-                    UPDATE `tabCustom Field` SET dt = %s WHERE dt = %s
-                """, (new_name, old_name))
-                
-                # 6. Update Property Setter references
-                frappe.db.sql("""
-                    UPDATE `tabProperty Setter` SET doc_type = %s WHERE doc_type = %s
-                """, (new_name, old_name))
-                
-                print(f"   ✅ {old_name} → {new_name}")
+                # Update module field via db.set_value (works without developer mode)
+                frappe.db.set_value("DocType", dt_name, "module", host_module_title, update_modified=False)
+                print(f"   ✅ {dt_name} → module: {host_module_title}")
                 success_count += 1
             except Exception as e:
-                print(f"   ❌ {item['old_name']}: {e}")
+                print(f"   ❌ {dt_name}: {e}")
         
         frappe.db.commit()
-        print(f"\n✅ Staged {success_count}/{len(staged)} doctypes to {host}")
-        print(f"\n📋 After modifications, run:")
-        print(f"   bench app-migrator-unstage --site {site} --host {host} --target <target_app> --prefix {prefix}")
+        print(f"\n✅ Reassigned {success_count}/{len(staged)} doctypes to module '{host_module_title}'")
+        print(f"\n📋 To move back to original or new app, run:")
+        print(f"   bench app-migrator-unstage --site {site} --host {host} --target <target_app>")
     else:
-        print(f"\n📋 Run with --apply to stage")
+        print(f"\n📋 Run with --apply to reassign doctypes to host module")
     
     frappe.db.close()
 
