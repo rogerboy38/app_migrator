@@ -919,10 +919,11 @@ def app_migrator_unstage(context, site, host, target, dry_run):
         success_count = 0
         for dt in host_doctypes:
             try:
-                # Restore module and set custom=0 (back to normal doctype)
+                # Restore module, set custom=0, and set app field (CRITICAL for orphan prevention)
                 frappe.db.set_value("DocType", dt.name, {
                     "module": target_module_title,
-                    "custom": 0  # Restore to normal doctype
+                    "custom": 0,  # Restore to normal doctype
+                    "app": target  # CRITICAL: prevents orphan deletion
                 }, update_modified=False)
                 print(f"   ✅ {dt.name} → module: {target_module_title} (custom=0)")
                 success_count += 1
@@ -1185,6 +1186,73 @@ def app_migrator_ensure_controllers(context, app_name, module, dry_run):
         print(f"\n✅ All DocTypes already have controller files")
 
 
+# ==================== FIX APP FIELD (PREVENTS ORPHAN DELETION) ====================
+
+@click.command('app-migrator-fix-app-field')
+@click.option('--site', required=True, help='Site name')
+@click.option('--module', required=True, help='Module name (e.g., "Amb W Tds")')
+@click.option('--app', required=True, help='App name (e.g., "amb_w_tds")')
+@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+@pass_context
+def app_migrator_fix_app_field(context, site, module, app, dry_run):
+    """
+    Fix DocTypes with NULL app field to prevent orphan deletion.
+    
+    CRITICAL: When a DocType's 'app' field is NULL, bench migrate marks it
+    as an orphan and DELETES it, even if the JSON file exists!
+    
+    This command finds all DocTypes in a module where app=NULL and sets
+    the correct app name.
+    
+    Example:
+        bench app-migrator-fix-app-field --site mysite --module "Amb W Tds" --app amb_w_tds --apply
+    """
+    mode = "DRY-RUN" if dry_run else "APPLY"
+    print(f"🔧 FIX APP FIELD [{mode}]")
+    print(f"   Site: {site}")
+    print(f"   Module: {module}")
+    print(f"   Target App: {app}")
+    print("=" * 60)
+    
+    frappe.init(site=site)
+    frappe.connect()
+    
+    # Find DocTypes with NULL app field in this module
+    doctypes_with_null_app = frappe.db.sql("""
+        SELECT name, module, custom, app 
+        FROM `tabDocType` 
+        WHERE module = %s AND (app IS NULL OR app = '')
+    """, (module,), as_dict=True)
+    
+    if not doctypes_with_null_app:
+        print(f"\n✅ No DocTypes found with NULL app field in module '{module}'")
+        frappe.db.close()
+        return
+    
+    print(f"\n⚠️ DOCTYPES WITH NULL APP FIELD ({len(doctypes_with_null_app)}):")
+    for dt in doctypes_with_null_app:
+        print(f"   • {dt['name']} (custom={dt['custom']}, app={dt['app']})")
+    
+    if not dry_run:
+        print(f"\n🔧 FIXING APP FIELD...")
+        fixed_count = 0
+        for dt in doctypes_with_null_app:
+            try:
+                frappe.db.set_value("DocType", dt['name'], "app", app, update_modified=False)
+                print(f"   ✅ {dt['name']} → app: {app}")
+                fixed_count += 1
+            except Exception as e:
+                print(f"   ❌ {dt['name']}: {e}")
+        
+        frappe.db.commit()
+        print(f"\n✅ Fixed {fixed_count}/{len(doctypes_with_null_app)} DocTypes")
+        print(f"\n📋 Now run: bench --site {site} migrate")
+    else:
+        print(f"\n📋 Run with --apply to fix the app field")
+    
+    frappe.db.close()
+
+
 # ==================== EXPORT ALL COMMANDS ====================
 
 commands = [
@@ -1203,7 +1271,8 @@ commands = [
     app_migrator_stage,
     app_migrator_unstage,
     app_migrator_fix_structure,
-    app_migrator_ensure_controllers
+    app_migrator_ensure_controllers,
+    app_migrator_fix_app_field
 ]
 
 print("✅ App Migrator Enterprise v9.0.0 ready!")
