@@ -1260,20 +1260,18 @@ def app_migrator_fix_app_field(context, site, module, app, dry_run):
 @click.option('--dry-run/--apply', default=True, help='Dry run or apply')
 def app_migrator_fix_json_app(app_name, dry_run):
     """
-    Fix 'app': null in JSON files to prevent orphan deletion on fresh installs.
+    Fix JSON app field issues to prevent orphan deletion on fresh installs.
     
-    When DocTypes are exported from custom to standard, the JSON file often has
-    "app": null. During bench migrate on a fresh site, this causes the DocType
-    to be created with app=NULL, which then gets deleted as an orphan.
+    This command fixes TWO common issues:
+    1. 'app': null - Replaces with correct app name
+    2. Duplicate 'app' fields - Removes the first occurrence (keeps the one near 'module')
     
-    This command scans all DocType JSON files and replaces "app": null with
-    the correct app name.
+    Both issues cause DocTypes to be deleted as orphans during bench migrate.
     
     Example:
         bench app-migrator-fix-json-app amb_w_tds --apply
     """
     import os
-    import json
     import re
     
     mode = "DRY-RUN" if dry_run else "APPLY"
@@ -1291,7 +1289,8 @@ def app_migrator_fix_json_app(app_name, dry_run):
         return
     
     # Find all DocType JSON files
-    fixed_files = []
+    null_app_files = []
+    duplicate_app_files = []
     already_correct = []
     errors = []
     
@@ -1308,44 +1307,78 @@ def app_migrator_fix_json_app(app_name, dry_run):
                         if '"doctype": "DocType"' not in content:
                             continue
                         
-                        # Check for "app": null
+                        needs_fix = False
+                        
+                        # Issue 1: Check for "app": null
                         if '"app": null' in content or '"app":null' in content:
+                            null_app_files.append(json_path)
+                            needs_fix = True
                             if not dry_run:
-                                new_content = re.sub(
+                                content = re.sub(
                                     r'"app":\s*null',
                                     f'"app": "{app_name}"',
                                     content
                                 )
-                                with open(json_path, 'w') as fp:
-                                    fp.write(new_content)
-                            fixed_files.append(json_path)
-                        elif f'"app": "{app_name}"' in content:
+                        
+                        # Issue 2: Check for duplicate "app" fields
+                        app_count = len(re.findall(r'"app":', content))
+                        if app_count > 1:
+                            duplicate_app_files.append(json_path)
+                            needs_fix = True
+                            if not dry_run:
+                                # Remove the first occurrence (in first 30 lines)
+                                lines = content.split('\n')
+                                new_lines = []
+                                removed = False
+                                for i, line in enumerate(lines):
+                                    if not removed and i < 30 and '"app":' in line:
+                                        removed = True
+                                        continue
+                                    new_lines.append(line)
+                                content = '\n'.join(new_lines)
+                        
+                        if needs_fix and not dry_run:
+                            with open(json_path, 'w') as fp:
+                                fp.write(content)
+                        elif not needs_fix:
                             already_correct.append(json_path)
-                        # else: might have a different app or no app field
+                            
                     except Exception as e:
                         errors.append((json_path, str(e)))
     
     print(f"\n📊 SCAN RESULTS:")
-    print(f"   Files with 'app': null: {len(fixed_files)}")
+    print(f"   Files with 'app': null: {len(null_app_files)}")
+    print(f"   Files with duplicate 'app': {len(duplicate_app_files)}")
     print(f"   Already correct: {len(already_correct)}")
     if errors:
         print(f"   Errors: {len(errors)}")
     
-    if fixed_files:
-        print(f"\n📝 {'Would fix' if dry_run else 'Fixed'} 'app': null → 'app': '{app_name}':")
-        for f in fixed_files[:10]:  # Show first 10
-            print(f"   • {os.path.basename(os.path.dirname(f))}")
-        if len(fixed_files) > 10:
-            print(f"   ... and {len(fixed_files) - 10} more")
+    total_issues = len(set(null_app_files + duplicate_app_files))
     
-    if dry_run and fixed_files:
-        print(f"\n📋 Run with --apply to fix {len(fixed_files)} file(s)")
+    if null_app_files:
+        print(f"\n📝 {'Would fix' if dry_run else 'Fixed'} 'app': null → 'app': '{app_name}':")
+        for f in null_app_files[:5]:
+            print(f"   • {os.path.basename(os.path.dirname(f))}")
+        if len(null_app_files) > 5:
+            print(f"   ... and {len(null_app_files) - 5} more")
+    
+    if duplicate_app_files:
+        print(f"\n📝 {'Would remove' if dry_run else 'Removed'} duplicate 'app' field:")
+        for f in duplicate_app_files[:5]:
+            print(f"   • {os.path.basename(os.path.dirname(f))}")
+        if len(duplicate_app_files) > 5:
+            print(f"   ... and {len(duplicate_app_files) - 5} more")
+    
+    if dry_run and total_issues > 0:
+        print(f"\n📋 Run with --apply to fix {total_issues} file(s)")
         print(f"   Then commit: cd {app_path} && git add -A && git commit -m 'Fix app field in JSON' && git push")
-    elif not dry_run and fixed_files:
-        print(f"\n✅ Fixed {len(fixed_files)} file(s)")
+    elif not dry_run and total_issues > 0:
+        print(f"\n✅ Fixed {total_issues} file(s)")
         print(f"\n📋 Now commit the changes:")
         print(f"   cd {app_path}")
         print(f"   git add -A && git commit -m 'Fix app field in JSON' && git push")
+    elif total_issues == 0:
+        print(f"\n✅ All JSON files are correct - no issues found")
 
 
 # ==================== EXPORT ALL COMMANDS ====================
