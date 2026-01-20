@@ -58,11 +58,13 @@ except ImportError:
 def get_current_site():
     """Get current site from currentsite.txt or return None"""
     import os
+    from pathlib import Path
     # Try multiple possible locations for sites folder
+    home = str(Path.home())
     possible_paths = [
         os.path.join(os.getcwd(), 'sites'),
-        os.path.expanduser('~/frappe-bench/sites'),
-        os.path.join(os.getcwd(), '..', '..', 'sites'),  # from apps/app_name
+        os.path.join(home, 'frappe-bench', 'sites'),
+        os.path.abspath(os.path.join(os.getcwd(), '..', '..', 'sites')),
     ]
     for sites_path in possible_paths:
         currentsite_file = os.path.join(sites_path, 'currentsite.txt')
