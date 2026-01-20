@@ -1,10 +1,10 @@
 """
 App Migrator Commands
-Version: 6.3.0
+Version: 8.1.0
 Safe import structure to avoid circular dependencies
 """
 
-__version__ = "6.3.0"
+__version__ = "8.1.0"
 
 # ONLY import the main class - no function imports!
 from .analysis_tools import AppAnalysis
@@ -31,20 +31,10 @@ __all__.extend([
 
 print("✅ Payment Security Migrator added to commands")
 
-# Import Payment Gateway Migrator
-from .payment_gateway_migrator import (
-    PaymentGatewayMigrator,
-    analyze_payment_gateways,
-    migrate_payment_gateways,
-    generate_gateway_report
-)
-
-# Update __all__ exports with gateway migrator
-__all__.extend([
-    "PaymentGatewayMigrator",
-    "analyze_payment_gateways", 
-    "migrate_payment_gateways",
-    "generate_gateway_report"
-])
-
-print("✅ Payment Gateway Migrator added to commands")
+# Import Payment Gateway Migrator (class only - no standalone functions exist)
+try:
+    from .payment_gateway_migrator import PaymentGatewayMigrator
+    __all__.append("PaymentGatewayMigrator")
+    print("✅ Payment Gateway Migrator added to commands")
+except ImportError as e:
+    print(f"⚠️ Payment Gateway Migrator not available: {e}")
