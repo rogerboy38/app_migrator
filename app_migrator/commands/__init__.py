@@ -900,7 +900,7 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
             except Exception as e:
                 print(f"   ⚠️ Module Def creation: {e}")
         
-        # Step 2: Update modules.txt in host app (if it exists)
+        # Step 2: Update modules.txt in host app
         host_apps_path = os.path.expanduser(f"~/frappe-bench/apps/{host}/{host}/modules.txt")
         if os.path.exists(host_apps_path):
             with open(host_apps_path, 'r') as f:
@@ -911,18 +911,59 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
                     f.write('\n'.join(modules) + '\n')
                 print(f"   ✅ Updated modules.txt with: {host_module_title}")
         else:
-            print(f"   ℹ️ No modules.txt found (host app not required for staging)")
+            # Create modules.txt if host app exists but file doesn't
+            host_app_dir = os.path.expanduser(f"~/frappe-bench/apps/{host}/{host}")
+            if os.path.exists(host_app_dir):
+                with open(host_apps_path, 'w') as f:
+                    f.write(f"{host_module_title}\n")
+                print(f"   ✅ Created modules.txt with: {host_module_title}")
+            else:
+                print(f"   ⚠️ Host app not found at: {host_app_dir}")
         
-        # Step 3: Reassign doctypes to host module AND mark as custom (prevents orphan deletion)
+        # Step 3: Copy doctype files from source to host app
+        import shutil
+        import json
+        source_app_path = os.path.expanduser(f"~/frappe-bench/apps/{source}/{source}")
+        host_app_path = os.path.expanduser(f"~/frappe-bench/apps/{host}/{host}")
+        host_module_folder = host_module_title.lower().replace(" ", "_")
+        host_doctype_path = os.path.join(host_app_path, host_module_folder, "doctype")
+        os.makedirs(host_doctype_path, exist_ok=True)
+        
+        print(f"\n📁 COPYING DOCTYPE FILES TO HOST APP...")
+        
+        # Step 4: Reassign doctypes to host module AND mark as custom (prevents orphan deletion)
         success_count = 0
         for item in staged:
             dt_name = item["old_name"]
+            dt_folder_name = dt_name.lower().replace(" ", "_")
+            source_module_folder = item["old_module"].lower().replace(" ", "_")
+            source_dt_path = os.path.join(source_app_path, source_module_folder, "doctype", dt_folder_name)
+            target_dt_path = os.path.join(host_doctype_path, dt_folder_name)
+            
             try:
-                # Update module field AND set custom=1 to prevent orphan deletion during migrate
-                frappe.db.set_value("DocType", dt_name, {
-                    "module": host_module_title,
-                    "custom": 1  # CRITICAL: prevents bench migrate from deleting as orphan
-                }, update_modified=False)
+                # Copy doctype folder to host app
+                if os.path.exists(source_dt_path):
+                    if os.path.exists(target_dt_path):
+                        shutil.rmtree(target_dt_path)
+                    shutil.copytree(source_dt_path, target_dt_path)
+                    
+                    # Update module in JSON file
+                    json_file = os.path.join(target_dt_path, f"{dt_folder_name}.json")
+                    if os.path.exists(json_file):
+                        with open(json_file, 'r') as f:
+                            dt_json = json.load(f)
+                        dt_json["module"] = host_module_title
+                        dt_json["custom"] = 1
+                        with open(json_file, 'w') as f:
+                            json.dump(dt_json, f, indent=1)
+                    print(f"   📄 Copied: {dt_name} → {host}/{host_module_folder}/doctype/{dt_folder_name}/")
+                
+                # Update DB record
+                if frappe.db.exists("DocType", dt_name):
+                    frappe.db.set_value("DocType", dt_name, {
+                        "module": host_module_title,
+                        "custom": 1
+                    }, update_modified=False)
                 print(f"   ✅ {dt_name} → module: {host_module_title} (custom=1)")
                 success_count += 1
             except Exception as e:
