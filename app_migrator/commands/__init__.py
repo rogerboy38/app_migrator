@@ -931,6 +931,15 @@ def app_migrator_unstage(context, site, host, target, dry_run):
         
         frappe.db.commit()
         print(f"\n✅ Reassigned {success_count}/{len(host_doctypes)} doctypes to '{target_module_title}'")
+        
+        # Auto-create missing controller files for the target app
+        print(f"\n🔧 Ensuring controller files exist for target app...")
+        created = ensure_controller_files(target, target, dry_run=False)
+        if created:
+            print(f"   Created {len(created)} controller file(s)")
+        else:
+            print(f"   All controller files already exist")
+        
         print(f"\n📋 Now run: bench --site {site} migrate")
     else:
         print(f"\n📋 Run with --apply to reassign")
@@ -1064,6 +1073,118 @@ def app_migrator_fix_structure(context, app_name):
         print(f"   ℹ️ App structure looks standard")
 
 
+# ==================== ENSURE CONTROLLER FILES ====================
+
+def ensure_controller_files(app_name, module_name=None, dry_run=True):
+    """
+    Create missing .py controller files for DocTypes in an app.
+    
+    When DocTypes are marked as custom=0 (standard), Frappe requires
+    a .py controller file. This function creates basic controller files
+    for any DocTypes that are missing them.
+    
+    Args:
+        app_name: The app name (e.g., 'amb_w_tds')
+        module_name: Optional module name (defaults to app_name)
+        dry_run: If True, only report what would be created
+    
+    Returns:
+        List of created/would-create file paths
+    """
+    import re
+    
+    if module_name is None:
+        module_name = app_name
+    
+    apps_dir = os.path.expanduser("~/frappe-bench/apps")
+    
+    # Try different possible structures
+    possible_paths = [
+        os.path.join(apps_dir, app_name, app_name, module_name, "doctype"),  # Triple nested
+        os.path.join(apps_dir, app_name, app_name, "doctype"),  # Double nested
+    ]
+    
+    doctype_path = None
+    for path in possible_paths:
+        if os.path.isdir(path):
+            doctype_path = path
+            break
+    
+    if not doctype_path:
+        print(f"❌ No doctype folder found for app: {app_name}")
+        return []
+    
+    print(f"📁 DocType folder: {doctype_path}")
+    
+    created_files = []
+    
+    for item in os.listdir(doctype_path):
+        item_path = os.path.join(doctype_path, item)
+        
+        # Skip non-directories and __pycache__
+        if not os.path.isdir(item_path) or item.startswith('__'):
+            continue
+        
+        doctype_name = item
+        py_file = os.path.join(item_path, f"{doctype_name}.py")
+        json_file = os.path.join(item_path, f"{doctype_name}.json")
+        
+        # Only create .py if .json exists but .py doesn't
+        if os.path.exists(json_file) and not os.path.exists(py_file):
+            # Convert doctype_name to PascalCase class name
+            # e.g., 'third_party_api' -> 'ThirdPartyApi'
+            class_name = ''.join(word.capitalize() for word in doctype_name.split('_'))
+            
+            controller_content = f'''import frappe
+from frappe.model.document import Document
+
+class {class_name}(Document):
+    pass
+'''
+            
+            if dry_run:
+                print(f"   Would create: {py_file}")
+            else:
+                with open(py_file, 'w') as f:
+                    f.write(controller_content)
+                print(f"   ✅ Created: {py_file}")
+            
+            created_files.append(py_file)
+    
+    return created_files
+
+
+@click.command('app-migrator-ensure-controllers')
+@click.argument('app_name')
+@click.option('--module', default=None, help='Module name (defaults to app name)')
+@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+@pass_context
+def app_migrator_ensure_controllers(context, app_name, module, dry_run):
+    """
+    Create missing .py controller files for DocTypes in an app.
+    
+    This is needed when converting custom DocTypes (custom=1) to standard
+    DocTypes (custom=0). Standard DocTypes require a .py controller file.
+    
+    Example:
+        bench app-migrator-ensure-controllers amb_w_tds --apply
+    """
+    mode = "DRY-RUN" if dry_run else "APPLY"
+    print(f"🔧 ENSURE CONTROLLER FILES [{mode}]")
+    print(f"   App: {app_name}")
+    print(f"   Module: {module or app_name}")
+    print("=" * 60)
+    
+    created = ensure_controller_files(app_name, module, dry_run)
+    
+    if created:
+        print(f"\n📊 {'Would create' if dry_run else 'Created'} {len(created)} controller file(s)")
+        if dry_run:
+            print(f"\n📋 Run with --apply to create the files")
+    else:
+        print(f"\n✅ All DocTypes already have controller files")
+
+
 # ==================== EXPORT ALL COMMANDS ====================
 
 commands = [
@@ -1081,7 +1202,8 @@ commands = [
     app_migrator_create_host,
     app_migrator_stage,
     app_migrator_unstage,
-    app_migrator_fix_structure
+    app_migrator_fix_structure,
+    app_migrator_ensure_controllers
 ]
 
 print("✅ App Migrator Enterprise v9.0.0 ready!")
