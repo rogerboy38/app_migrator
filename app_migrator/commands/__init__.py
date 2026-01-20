@@ -880,8 +880,10 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
     staged = []
     
     for dt in source_doctypes:
-        print(f"   • {dt.name} (current: {dt.module})")
-        staged.append({"old_name": dt.name, "old_module": dt.module})
+        dt_name = dt.get('name') if isinstance(dt, dict) else dt.name
+        dt_module = dt.get('module') if isinstance(dt, dict) else dt.module
+        print(f"   • {dt_name} (current: {dt_module})")
+        staged.append({"old_name": dt_name, "old_module": dt_module})
     
     if not dry_run:
         print(f"\n🔧 STAGING (reassigning module via Frappe API)...")
