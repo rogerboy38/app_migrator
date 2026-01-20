@@ -751,18 +751,41 @@ def app_migrator_create_host(context, host_app_name):
         print(f"   2. Stage: bench app-migrator-stage --site <site> --source <app> --host {host_app_name}")
         return
     
-    # bench new-app is interactive, provide instructions
-    print(f"\n📋 RUN THIS COMMAND MANUALLY (interactive):")
-    print(f"   cd ~/frappe-bench && bench new-app {host_app_name}")
-    print(f"\n   Answer prompts:")
-    print(f"     App Title: Migration Staging")
-    print(f"     App Description: Staging app for migration")
-    print(f"     App Publisher: Your Name")
-    print(f"     App Email: your@email.com")
-    print(f"     App License: mit")
-    print(f"\n📋 THEN:")
-    print(f"   1. Install: bench --site <site> install-app {host_app_name}")
-    print(f"   2. Stage: bench app-migrator-stage --site <site> --source <app> --host {host_app_name}")
+    # Use frappe API directly to create app non-interactively
+    print(f"\n🔄 Creating app: {host_app_name}...")
+    
+    try:
+        from frappe.utils.boilerplate import _create_app_boilerplate
+        import frappe
+        
+        hooks = frappe._dict(
+            app_name=host_app_name,
+            app_title=host_app_name.replace("_", " ").title(),
+            app_description="Staging app for ping-pong migration",
+            app_publisher="App Migrator",
+            app_email="migrator@localhost",
+            app_license="mit",
+            create_github_workflow=False,
+            branch_name="develop"
+        )
+        
+        _create_app_boilerplate(apps_dir, hooks, no_git=True)
+        
+        print(f"✅ App created: {host_path}")
+        print(f"\n📋 NEXT STEPS:")
+        print(f"   1. Install: bench --site <site> install-app {host_app_name}")
+        print(f"   2. Stage: bench app-migrator-stage --site <site> --source <app> --host {host_app_name}")
+        
+    except ImportError:
+        # Fallback if direct import fails
+        print(f"\n⚠️ Direct creation failed. Run manually:")
+        print(f"   cd ~/frappe-bench && bench new-app {host_app_name}")
+        print(f"\n   Answer prompts:")
+        print(f"     App Title: {host_app_name.replace('_', ' ').title()}")
+        print(f"     App Description: Staging app for migration")
+        print(f"     App Publisher: Your Name")
+        print(f"     App Email: your@email.com")
+        print(f"     App License: mit")
 
 # ==================== PING-PONG STAGING: STAGE DOCTYPES ====================
 
