@@ -826,16 +826,38 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
     frappe.init(site=site)
     frappe.connect()
     
-    # Get doctypes from source app (use title case for module matching)
+    # Get doctypes from source app - try DB first, then filesystem
+    source_doctypes = []
     if doctypes:
         dt_list = [d.strip() for d in doctypes.split(',')]
         source_doctypes = frappe.get_all("DocType", 
             filters={"name": ["in", dt_list]},
             fields=["name", "module"])
     else:
+        # Try database first
         source_doctypes = frappe.get_all("DocType", 
             filters={"module": source_module_title},
             fields=["name", "module"])
+        
+        # If no DB results, scan filesystem for all modules in the app
+        if not source_doctypes:
+            print(f"   ℹ️ No doctypes in DB for module '{source_module_title}', scanning filesystem...")
+            app_path = os.path.expanduser(f"~/frappe-bench/apps/{source}/{source}")
+            modules_file = os.path.join(app_path, "modules.txt")
+            if os.path.exists(modules_file):
+                with open(modules_file, 'r') as f:
+                    modules = [m.strip() for m in f.readlines() if m.strip()]
+                print(f"   📂 Found modules: {modules}")
+                for module in modules:
+                    module_folder = module.lower().replace(" ", "_")
+                    doctype_path = os.path.join(app_path, module_folder, "doctype")
+                    if os.path.exists(doctype_path):
+                        for dt_folder in os.listdir(doctype_path):
+                            dt_full_path = os.path.join(doctype_path, dt_folder)
+                            if os.path.isdir(dt_full_path) and not dt_folder.startswith("_"):
+                                # Convert folder name to DocType name (snake_case to Title Case)
+                                dt_name = dt_folder.replace("_", " ").title()
+                                source_doctypes.append({"name": dt_name, "module": module})
     
     host_module_title = host.replace("_", " ").title()
     print(f"\n📦 DOCTYPES TO REASSIGN TO MODULE '{host_module_title}' ({len(source_doctypes)}):")
