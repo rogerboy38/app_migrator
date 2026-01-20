@@ -1253,6 +1253,101 @@ def app_migrator_fix_app_field(context, site, module, app, dry_run):
     frappe.db.close()
 
 
+# ==================== FIX APP FIELD IN JSON FILES ====================
+
+@click.command('app-migrator-fix-json-app')
+@click.argument('app_name')
+@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+def app_migrator_fix_json_app(app_name, dry_run):
+    """
+    Fix 'app': null in JSON files to prevent orphan deletion on fresh installs.
+    
+    When DocTypes are exported from custom to standard, the JSON file often has
+    "app": null. During bench migrate on a fresh site, this causes the DocType
+    to be created with app=NULL, which then gets deleted as an orphan.
+    
+    This command scans all DocType JSON files and replaces "app": null with
+    the correct app name.
+    
+    Example:
+        bench app-migrator-fix-json-app amb_w_tds --apply
+    """
+    import os
+    import json
+    import re
+    
+    mode = "DRY-RUN" if dry_run else "APPLY"
+    print(f"🔧 FIX JSON APP FIELD [{mode}]")
+    print(f"   App: {app_name}")
+    print("=" * 60)
+    
+    # Find app directory
+    bench_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
+    apps_path = os.path.join(bench_path, "apps")
+    app_path = os.path.join(apps_path, app_name)
+    
+    if not os.path.exists(app_path):
+        print(f"❌ App not found: {app_path}")
+        return
+    
+    # Find all DocType JSON files
+    fixed_files = []
+    already_correct = []
+    errors = []
+    
+    for root, dirs, files in os.walk(app_path):
+        if "/doctype/" in root:
+            for f in files:
+                if f.endswith(".json") and not f.startswith("_"):
+                    json_path = os.path.join(root, f)
+                    try:
+                        with open(json_path, 'r') as fp:
+                            content = fp.read()
+                        
+                        # Check if this is a DocType JSON
+                        if '"doctype": "DocType"' not in content:
+                            continue
+                        
+                        # Check for "app": null
+                        if '"app": null' in content or '"app":null' in content:
+                            if not dry_run:
+                                new_content = re.sub(
+                                    r'"app":\s*null',
+                                    f'"app": "{app_name}"',
+                                    content
+                                )
+                                with open(json_path, 'w') as fp:
+                                    fp.write(new_content)
+                            fixed_files.append(json_path)
+                        elif f'"app": "{app_name}"' in content:
+                            already_correct.append(json_path)
+                        # else: might have a different app or no app field
+                    except Exception as e:
+                        errors.append((json_path, str(e)))
+    
+    print(f"\n📊 SCAN RESULTS:")
+    print(f"   Files with 'app': null: {len(fixed_files)}")
+    print(f"   Already correct: {len(already_correct)}")
+    if errors:
+        print(f"   Errors: {len(errors)}")
+    
+    if fixed_files:
+        print(f"\n📝 {'Would fix' if dry_run else 'Fixed'} 'app': null → 'app': '{app_name}':")
+        for f in fixed_files[:10]:  # Show first 10
+            print(f"   • {os.path.basename(os.path.dirname(f))}")
+        if len(fixed_files) > 10:
+            print(f"   ... and {len(fixed_files) - 10} more")
+    
+    if dry_run and fixed_files:
+        print(f"\n📋 Run with --apply to fix {len(fixed_files)} file(s)")
+        print(f"   Then commit: cd {app_path} && git add -A && git commit -m 'Fix app field in JSON' && git push")
+    elif not dry_run and fixed_files:
+        print(f"\n✅ Fixed {len(fixed_files)} file(s)")
+        print(f"\n📋 Now commit the changes:")
+        print(f"   cd {app_path}")
+        print(f"   git add -A && git commit -m 'Fix app field in JSON' && git push")
+
+
 # ==================== EXPORT ALL COMMANDS ====================
 
 commands = [
@@ -1272,7 +1367,8 @@ commands = [
     app_migrator_unstage,
     app_migrator_fix_structure,
     app_migrator_ensure_controllers,
-    app_migrator_fix_app_field
+    app_migrator_fix_app_field,
+    app_migrator_fix_json_app
 ]
 
 print("✅ App Migrator Enterprise v9.0.0 ready!")
