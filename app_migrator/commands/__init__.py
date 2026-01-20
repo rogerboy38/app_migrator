@@ -800,8 +800,9 @@ def app_migrator_create_host(context, host_app_name):
 def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
     """Stage doctypes from source app to host app with prefix"""
     mode = "DRY-RUN" if dry_run else "APPLY"
+    source_module_title = source.replace("_", " ").title()
     print(f"📤 STAGING DOCTYPES [{mode}]")
-    print(f"   Source: {source}")
+    print(f"   Source: {source} (module: {source_module_title})")
     print(f"   Host: {host}")
     print(f"   Prefix: {prefix}")
     print("=" * 60)
@@ -809,7 +810,7 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
     frappe.init(site=site)
     frappe.connect()
     
-    # Get doctypes from source app
+    # Get doctypes from source app (use title case for module matching)
     if doctypes:
         dt_list = [d.strip() for d in doctypes.split(',')]
         source_doctypes = frappe.get_all("DocType", 
@@ -817,7 +818,7 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
             fields=["name", "module"])
     else:
         source_doctypes = frappe.get_all("DocType", 
-            filters={"module": source},
+            filters={"module": source_module_title},
             fields=["name", "module"])
     
     host_module_title = host.replace("_", " ").title()
