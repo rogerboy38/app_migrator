@@ -155,6 +155,10 @@ def app_migrator_health(context):
     print("  Diagnostics:")
     print("    app-migrator-analyze <app>               Analyze app structure")
     print("    app-migrator-fix-orphans --site <name>   Fix orphan doctypes")
+    print("  Ping-Pong Staging:")
+    print("    app-migrator-create-host <name>          Create staging app")
+    print("    app-migrator-stage --site X --source A --host B    Stage doctypes")
+    print("    app-migrator-unstage --site X --host B --target C  Unstage doctypes")
     print("=" * 60)
 
 # ==================== SCAN SITE COMMAND ====================
@@ -727,6 +731,177 @@ def app_migrator_analyze(context, app_name):
     
     print(f"\n💯 HEALTH SCORE: {score}%")
 
+# ==================== PING-PONG STAGING: CREATE HOST APP ====================
+
+@click.command('app-migrator-create-host')
+@click.argument('host_app_name')
+@click.option('--title', default=None, help='App title')
+@pass_context
+def app_migrator_create_host(context, host_app_name, title):
+    """Create a staging/host app for ping-pong migration"""
+    print(f"🏗️ CREATING HOST APP: {host_app_name}")
+    print("=" * 60)
+    
+    apps_dir = os.path.expanduser("~/frappe-bench/apps")
+    host_path = os.path.join(apps_dir, host_app_name)
+    
+    if os.path.exists(host_path):
+        print(f"❌ App already exists: {host_path}")
+        return
+    
+    app_title = title or host_app_name.replace("_", " ").title()
+    
+    # Create app using bench new-app with expect-style input
+    print(f"   Creating app structure...")
+    
+    # Use subprocess with input to answer prompts
+    try:
+        result = subprocess.run(
+            f"cd ~/frappe-bench && bench new-app {host_app_name}",
+            shell=True,
+            input=f"{app_title}\nMigration Host\ninfo@example.com\nmit\n",
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+        
+        if os.path.exists(host_path):
+            print(f"   ✅ App created: {host_path}")
+            print(f"\n📋 NEXT STEPS:")
+            print(f"   1. Install: bench --site <site> install-app {host_app_name}")
+            print(f"   2. Stage doctypes: bench app-migrator-stage --site <site> --source <app> --host {host_app_name}")
+        else:
+            print(f"   ❌ Failed to create app")
+            if result.stderr:
+                print(f"   Error: {result.stderr[:200]}")
+    except subprocess.TimeoutExpired:
+        print(f"   ❌ Timeout creating app")
+    except Exception as e:
+        print(f"   ❌ Error: {e}")
+
+# ==================== PING-PONG STAGING: STAGE DOCTYPES ====================
+
+@click.command('app-migrator-stage')
+@click.option('--site', required=True, help='Site name')
+@click.option('--source', required=True, help='Source app name')
+@click.option('--host', required=True, help='Host/staging app name')
+@click.option('--doctypes', default=None, help='Comma-separated doctype names (or all)')
+@click.option('--prefix', default='STAGE_', help='Prefix for staged doctypes')
+@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+@pass_context
+def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
+    """Stage doctypes from source app to host app with prefix"""
+    mode = "DRY-RUN" if dry_run else "APPLY"
+    print(f"📤 STAGING DOCTYPES [{mode}]")
+    print(f"   Source: {source}")
+    print(f"   Host: {host}")
+    print(f"   Prefix: {prefix}")
+    print("=" * 60)
+    
+    frappe.init(site=site)
+    frappe.connect()
+    
+    # Get doctypes from source app
+    if doctypes:
+        dt_list = [d.strip() for d in doctypes.split(',')]
+        source_doctypes = frappe.get_all("DocType", 
+            filters={"name": ["in", dt_list]},
+            fields=["name", "module"])
+    else:
+        source_doctypes = frappe.get_all("DocType", 
+            filters={"module": source},
+            fields=["name", "module"])
+    
+    print(f"\n📦 DOCTYPES TO STAGE ({len(source_doctypes)}):")
+    staged = []
+    
+    for dt in source_doctypes:
+        new_name = f"{prefix}{dt.name}"
+        print(f"   • {dt.name} → {new_name}")
+        staged.append({"old_name": dt.name, "new_name": new_name})
+    
+    if not dry_run:
+        print(f"\n🔧 STAGING...")
+        for item in staged:
+            try:
+                # Rename doctype
+                frappe.rename_doc("DocType", item["old_name"], item["new_name"], force=True)
+                # Update module
+                frappe.db.sql("""
+                    UPDATE `tabDocType` SET module = %s WHERE name = %s
+                """, (host, item["new_name"]))
+                print(f"   ✅ {item['old_name']} → {item['new_name']}")
+            except Exception as e:
+                print(f"   ❌ {item['old_name']}: {e}")
+        
+        frappe.db.commit()
+        print(f"\n✅ Staged {len(staged)} doctypes to {host}")
+        print(f"\n📋 After modifications, run:")
+        print(f"   bench app-migrator-unstage --site {site} --host {host} --target <target_app> --prefix {prefix}")
+    else:
+        print(f"\n📋 Run with --apply to stage")
+    
+    frappe.db.close()
+
+# ==================== PING-PONG STAGING: UNSTAGE DOCTYPES ====================
+
+@click.command('app-migrator-unstage')
+@click.option('--site', required=True, help='Site name')
+@click.option('--host', required=True, help='Host/staging app name')
+@click.option('--target', required=True, help='Target app name')
+@click.option('--prefix', default='STAGE_', help='Prefix to remove')
+@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+@pass_context
+def app_migrator_unstage(context, site, host, target, prefix, dry_run):
+    """Unstage doctypes from host app to target app, removing prefix"""
+    mode = "DRY-RUN" if dry_run else "APPLY"
+    print(f"📥 UNSTAGING DOCTYPES [{mode}]")
+    print(f"   Host: {host}")
+    print(f"   Target: {target}")
+    print(f"   Prefix to remove: {prefix}")
+    print("=" * 60)
+    
+    frappe.init(site=site)
+    frappe.connect()
+    
+    # Get staged doctypes from host app
+    host_doctypes = frappe.get_all("DocType", 
+        filters={"module": host},
+        fields=["name", "module"])
+    
+    # Filter to only prefixed ones
+    staged_doctypes = [dt for dt in host_doctypes if dt.name.startswith(prefix)]
+    
+    print(f"\n📦 DOCTYPES TO UNSTAGE ({len(staged_doctypes)}):")
+    unstaged = []
+    
+    for dt in staged_doctypes:
+        original_name = dt.name[len(prefix):]  # Remove prefix
+        print(f"   • {dt.name} → {original_name}")
+        unstaged.append({"staged_name": dt.name, "original_name": original_name})
+    
+    if not dry_run:
+        print(f"\n🔧 UNSTAGING...")
+        for item in unstaged:
+            try:
+                # Rename doctype back
+                frappe.rename_doc("DocType", item["staged_name"], item["original_name"], force=True)
+                # Update module to target
+                frappe.db.sql("""
+                    UPDATE `tabDocType` SET module = %s WHERE name = %s
+                """, (target, item["original_name"]))
+                print(f"   ✅ {item['staged_name']} → {item['original_name']}")
+            except Exception as e:
+                print(f"   ❌ {item['staged_name']}: {e}")
+        
+        frappe.db.commit()
+        print(f"\n✅ Unstaged {len(unstaged)} doctypes to {target}")
+        print(f"\n📋 Now run: bench --site {site} migrate")
+    else:
+        print(f"\n📋 Run with --apply to unstage")
+    
+    frappe.db.close()
+
 # ==================== EXPORT ALL COMMANDS ====================
 
 commands = [
@@ -740,7 +915,10 @@ commands = [
     app_migrator_session_status,
     app_migrator_apps,
     app_migrator_fix_orphans,
-    app_migrator_analyze
+    app_migrator_analyze,
+    app_migrator_create_host,
+    app_migrator_stage,
+    app_migrator_unstage
 ]
 
 print("✅ App Migrator Enterprise v9.0.0 ready!")
