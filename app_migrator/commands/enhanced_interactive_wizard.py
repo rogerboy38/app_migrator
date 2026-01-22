@@ -1,6 +1,6 @@
 """
-Enhanced Interactive Wizard - V5.0.0
-Comprehensive migration wizard with site listing, app listing, module classification, and status filtering
+Enhanced Interactive Wizard - V6.0.0
+Comprehensive migration wizard with MULTI-BENCH and MULTI-SITE support
 
 Features:
 - Site selection with validation
@@ -9,6 +9,8 @@ Features:
 - Status-based filtering
 - Risk assessment
 - Step-by-step guided workflow
+- ✨ NEW: Site-to-site migration (same bench)
+- ✨ NEW: Cross-bench migration (different benches)
 """
 
 import click
@@ -74,21 +76,113 @@ def get_all_bench_apps():
         return []
 
 
-def select_site():
+def get_bench_sites(bench_path=None):
+    """
+    Get all sites from a specific bench or current bench
+    """
+    if bench_path is None:
+        return get_sites()
+    
+    try:
+        sites_dir = Path(bench_path) / 'sites'
+        if not sites_dir.exists():
+            return []
+        
+        sites = []
+        for item in sites_dir.iterdir():
+            if item.is_dir() and not item.name.startswith('.') and item.name != 'assets':
+                if (item / 'site_config.json').exists():
+                    sites.append(item.name)
+        return sorted(sites)
+    except Exception as e:
+        print(f"⚠️ Could not scan sites in {bench_path}: {e}")
+        return []
+
+
+def get_bench_apps_from_path(bench_path):
+    """
+    Get all apps from a specific bench path
+    """
+    try:
+        apps_dir = Path(bench_path) / 'apps'
+        if not apps_dir.exists():
+            return []
+        
+        bench_apps = []
+        for item in apps_dir.iterdir():
+            if item.is_dir() and not item.name.startswith('.'):
+                has_hooks = (item / item.name / 'hooks.py').exists()
+                has_setup = (item / 'setup.py').exists()
+                has_pyproject = (item / 'pyproject.toml').exists()
+                if has_hooks or has_setup or has_pyproject:
+                    bench_apps.append(item.name)
+        return sorted(bench_apps)
+    except Exception as e:
+        print(f"⚠️ Could not scan apps in {bench_path}: {e}")
+        return []
+
+
+def select_bench():
+    """
+    Interactive bench selection for cross-bench migration
+    """
+    print("\n" + "=" * 70)
+    print("🏢 BENCH SELECTION")
+    print("=" * 70)
+    
+    print("\n  1. 📍 Current bench (default)")
+    print("  2. 📂 Specify different bench path")
+    print("  0. ❌ CANCEL")
+    
+    while True:
+        try:
+            choice = int(input("\n🔹 Select option (0-2): ").strip())
+            if choice == 0:
+                return None
+            elif choice == 1:
+                return None
+            elif choice == 2:
+                bench_path = input("\n🔹 Enter bench path (e.g., /home/user/other-bench): ").strip()
+                if not bench_path:
+                    print("❌ Path cannot be empty")
+                    continue
+                
+                bench_path = Path(bench_path).expanduser().resolve()
+                if not bench_path.exists():
+                    print(f"❌ Path does not exist: {bench_path}")
+                    continue
+                
+                if not (bench_path / 'apps').exists() or not (bench_path / 'sites').exists():
+                    print(f"❌ Invalid bench structure. Expected apps/ and sites/ directories.")
+                    continue
+                
+                print(f"✅ Valid bench found: {bench_path}")
+                return str(bench_path)
+            else:
+                print("❌ Please enter 0, 1, or 2")
+        except ValueError:
+            print("❌ Please enter a valid number")
+        except KeyboardInterrupt:
+            print("\n🚫 Selection cancelled")
+            return None
+
+
+def select_site(prompt="STEP 1: SITE SELECTION", bench_path=None):
     """
     Interactive site selection with validation
     Returns: selected site name or None if cancelled
     """
     print("\n" + "=" * 70)
-    print("📋 STEP 1: SITE SELECTION")
+    print(f"📋 {prompt}")
     print("=" * 70)
     
-    sites = get_sites()
+    sites = get_bench_sites(bench_path)
     if not sites:
         print("❌ No sites available")
         return None
     
-    print("\n📍 Available Sites:")
+    bench_label = f" (from {bench_path})" if bench_path else ""
+    print(f"\n📍 Available Sites{bench_label}:")
     print("  0. ❌ EXIT")
     for i, site in enumerate(sites, 1):
         print(f"  {i}. {site}")
@@ -449,11 +543,13 @@ def interactive_migration_wizard():
     """
     Main interactive migration wizard with enhanced features
     Supports site selection, app listing, module classification, and status filtering
+    ✨ NEW: Multi-bench and multi-site migration support
     """
     print("\n" + "=" * 70)
-    print("🧙 ENHANCED INTERACTIVE MIGRATION WIZARD V5.0.0")
+    print("🧙 ENHANCED INTERACTIVE MIGRATION WIZARD V6.0.0")
     print("=" * 70)
-    print("\n🚀 Complete migration workflow with advanced classification")
+    print("\n🚀 Complete migration workflow with MULTI-BENCH support")
+    print("💡 Supports: same-site, site-to-site, and cross-bench migrations")
     
     try:
         # Step 1: Select site
@@ -550,46 +646,134 @@ def interactive_migration_wizard():
                             print(f"  • {rec}")
                 
                 elif choice == 4:
-                    # Start migration - select target app
-                    # ✅ FIX: Include ALL bench apps, not just installed ones
+                    # Start migration - ENHANCED with multi-bench/multi-site support
                     print("\n" + "=" * 70)
-                    print("📋 STEP 6: TARGET APP SELECTION")
+                    print("📋 STEP 6: MIGRATION TARGET CONFIGURATION")
                     print("=" * 70)
                     
-                    # Get all apps in bench (including newly created ones)
-                    bench_apps = get_all_bench_apps()
-                    
-                    # Merge with installed apps (remove duplicates)
-                    all_available_apps = list(set(app_names + bench_apps))
-                    all_available_apps.sort()
-                    
-                    # Show which apps are not yet installed
-                    print("\n📦 Available target apps:")
+                    print("\n🎯 Select migration target type:")
+                    print("  1. 📦 Same site (migrate to different app on current site)")
+                    print("  2. 🔄 Different site (same bench, different site)")
+                    print("  3. 🏢 Different bench (cross-bench migration)")
                     print("  0. ❌ CANCEL")
-                    for i, app in enumerate(all_available_apps, 1):
-                        if app in app_names:
-                            print(f"  {i}. {app} [installed]")
-                        else:
-                            print(f"  {i}. {app} [✨ NEW - not installed]")
                     
                     try:
-                        choice_input = input(f"\n🔹 Select target (0-{len(all_available_apps)}): ").strip()
-                        target_choice = int(choice_input)
+                        target_type = int(input("\n🔹 Select target type (0-3): ").strip())
                         
-                        if target_choice == 0:
+                        if target_type == 0:
                             print("🚫 Selection cancelled")
-                        elif 1 <= target_choice <= len(all_available_apps):
-                            target_app = all_available_apps[target_choice - 1]
-                            print(f"\n✅ Migration planned: {app_name} → {target_app}")
+                            continue
+                        
+                        target_bench_path = None
+                        target_site = selected_site
+                        target_apps = []
+                        
+                        if target_type == 1:
+                            # Same site - use current apps
+                            print(f"\n✅ Target: Same site ({selected_site})")
+                            target_apps = list(set(app_names + get_all_bench_apps()))
                             
-                            if target_app not in app_names:
-                                print(f"\n💡 Note: '{target_app}' is not installed on this site.")
-                                print(f"   The migration will create module files in the app directory.")
+                        elif target_type == 2:
+                            # Different site, same bench
+                            all_sites = get_bench_sites()
+                            other_sites = [s for s in all_sites if s != selected_site]
                             
-                            print("\n⚠️ Migration execution not yet implemented in this wizard")
-                            print("💡 Use migration_engine.py for actual migration")
+                            if not other_sites:
+                                print("❌ No other sites available in this bench")
+                                continue
+                            
+                            print("\n📍 Available target sites:")
+                            print("  0. ❌ CANCEL")
+                            for i, site in enumerate(other_sites, 1):
+                                print(f"  {i}. {site}")
+                            
+                            site_choice = int(input(f"\n🔹 Select target site (0-{len(other_sites)}): ").strip())
+                            if site_choice == 0:
+                                continue
+                            if 1 <= site_choice <= len(other_sites):
+                                target_site = other_sites[site_choice - 1]
+                                print(f"\n✅ Target site: {target_site}")
+                                target_apps = get_all_bench_apps()
+                            else:
+                                print("❌ Invalid selection")
+                                continue
+                                
+                        elif target_type == 3:
+                            # Different bench
+                            target_bench_path = select_bench()
+                            if not target_bench_path:
+                                continue
+                            
+                            other_bench_sites = get_bench_sites(target_bench_path)
+                            if not other_bench_sites:
+                                print(f"❌ No sites found in {target_bench_path}")
+                                continue
+                            
+                            print(f"\n📍 Sites in {target_bench_path}:")
+                            print("  0. ❌ CANCEL")
+                            for i, site in enumerate(other_bench_sites, 1):
+                                print(f"  {i}. {site}")
+                            
+                            site_choice = int(input(f"\n🔹 Select target site (0-{len(other_bench_sites)}): ").strip())
+                            if site_choice == 0:
+                                continue
+                            if 1 <= site_choice <= len(other_bench_sites):
+                                target_site = other_bench_sites[site_choice - 1]
+                                print(f"\n✅ Target site: {target_site}")
+                                target_apps = get_bench_apps_from_path(target_bench_path)
+                            else:
+                                print("❌ Invalid selection")
+                                continue
                         else:
-                            print(f"❌ Please enter a number between 0 and {len(all_available_apps)}")
+                            print("❌ Invalid option")
+                            continue
+                        
+                        # Now select target app
+                        if not target_apps:
+                            target_apps = get_all_bench_apps()
+                        target_apps.sort()
+                        
+                        print("\n📦 Available target apps:")
+                        print("  0. ❌ CANCEL")
+                        for i, app in enumerate(target_apps, 1):
+                            if app in app_names:
+                                print(f"  {i}. {app} [installed on source]")
+                            else:
+                                print(f"  {i}. {app} [✨ NEW]")
+                        
+                        app_choice = int(input(f"\n🔹 Select target app (0-{len(target_apps)}): ").strip())
+                        
+                        if app_choice == 0:
+                            print("🚫 Selection cancelled")
+                            continue
+                        elif 1 <= app_choice <= len(target_apps):
+                            target_app = target_apps[app_choice - 1]
+                            
+                            # Display migration summary
+                            print("\n" + "=" * 70)
+                            print("🚀 MIGRATION SUMMARY")
+                            print("=" * 70)
+                            print(f"\n  📤 SOURCE:")
+                            print(f"     Site: {selected_site}")
+                            print(f"     App:  {app_name}")
+                            print(f"\n  📥 TARGET:")
+                            if target_bench_path:
+                                print(f"     Bench: {target_bench_path}")
+                            print(f"     Site: {target_site}")
+                            print(f"     App:  {target_app}")
+                            
+                            if target_type == 1:
+                                print(f"\n  📋 Type: Same-site migration")
+                            elif target_type == 2:
+                                print(f"\n  📋 Type: Site-to-site migration (same bench)")
+                            else:
+                                print(f"\n  📋 Type: Cross-bench migration")
+                            
+                            print("\n" + "─" * 70)
+                            print("\n⚠️ Migration execution not yet implemented in this wizard")
+                            print("💡 Use migration_engine.py for actual migration with these parameters")
+                        else:
+                            print(f"❌ Please enter a number between 0 and {len(target_apps)}")
                     except ValueError:
                         print("❌ Please enter a valid number")
                 
