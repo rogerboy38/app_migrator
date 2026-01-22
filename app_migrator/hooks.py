@@ -6,6 +6,12 @@ app_version = "9.0.0"
 app_email = "fcrm@amb-wellness.com"
 app_license = "mit"
 
+# CLI Commands
+# ------------
+# Register bench commands from this app
+# This tells Frappe where to find the `commands` list
+# The module must export a list named `commands` containing click commands
+
 # Apps
 # ------------------
 
