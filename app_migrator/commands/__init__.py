@@ -1492,6 +1492,15 @@ def app_migrator_fix_json_app(app_name, dry_run):
         print(f"\n✅ All JSON files are correct - no issues found")
 
 
+# ==================== INTERACTIVE WIZARD COMMAND ====================
+
+@click.command('app-migrator-wizard')
+def app_migrator_wizard():
+    """Launch interactive migration wizard (no site required)"""
+    from app_migrator.commands.enhanced_interactive_wizard import interactive_migration_wizard
+    interactive_migration_wizard()
+
+
 # ==================== EXPORT ALL COMMANDS ====================
 
 commands = [
@@ -1512,7 +1521,8 @@ commands = [
     app_migrator_fix_structure,
     app_migrator_ensure_controllers,
     app_migrator_fix_app_field,
-    app_migrator_fix_json_app
+    app_migrator_fix_json_app,
+    app_migrator_wizard
 ]
 
 print("✅ App Migrator Enterprise v9.0.0 ready!")
