@@ -41,8 +41,10 @@ def get_all_bench_apps():
     
     try:
         # Method 1: Use frappe.get_app_path (most reliable in bench context)
+        # frappe.get_app_path('frappe') returns: /bench/apps/frappe/frappe (module dir)
+        # So we need .parent.parent to get /bench/apps
         frappe_path = frappe.get_app_path('frappe')
-        apps_dir = Path(frappe_path).parent  # apps/ directory
+        apps_dir = Path(frappe_path).parent.parent  # apps/ directory
     except Exception:
         pass
     
