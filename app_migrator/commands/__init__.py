@@ -1503,47 +1503,52 @@ def app_migrator_wizard():
 
 # ==================== MAIN GROUP COMMAND ====================
 
-@click.group('app-migrator')
-def app_migrator():
-    """
-    ╔══════════════════════════════════════════════════════════════╗
-    ║         🚀 APP MIGRATOR ENTERPRISE v9.0.0 🚀                 ║
-    ╠══════════════════════════════════════════════════════════════╣
-    ║  Multi-bench, multi-site app migration toolkit for Frappe    ║
-    ╚══════════════════════════════════════════════════════════════╝
-    
-    QUICK START:
-      bench app-migrator wizard         Launch interactive wizard
-      bench app-migrator health         Check system health
-    
-    SITE ANALYSIS:
-      bench app-migrator scan           Scan site inventory
-      bench app-migrator conflicts      Detect app conflicts
-      bench app-migrator apps           Downloaded vs installed apps
-    
-    MIGRATION:
-      bench app-migrator plan           Generate migration plan
-      bench app-migrator execute        Execute migration plan
-    
-    PING-PONG STAGING:
-      bench app-migrator create-host    Create staging app
-      bench app-migrator stage          Stage doctypes to host
-      bench app-migrator unstage        Unstage doctypes to target
-    
-    FIXES & DIAGNOSTICS:
-      bench app-migrator analyze        Analyze app structure
-      bench app-migrator fix-orphans    Fix orphan doctypes
-      bench app-migrator fix-structure  Analyze folder structure
-      bench app-migrator fix-app-field  Fix NULL app field in DB
-      bench app-migrator fix-json-app   Fix app field in JSON files
-      bench app-migrator ensure-controllers  Create missing .py files
-    
-    ENTERPRISE:
-      bench app-migrator benches        List all available benches
-      bench app-migrator session-start  Start migration session
-      bench app-migrator session-status Check session status
-    """
-    pass
+@click.group('app-migrator', invoke_without_command=True)
+@click.pass_context
+def app_migrator(ctx):
+    """App Migrator Enterprise - Multi-bench migration toolkit"""
+    if ctx.invoked_subcommand is None:
+        # Show custom help when no subcommand
+        click.echo("""
+╔═══════════════════════════════════════════════════════╗
+║       🚀 APP MIGRATOR ENTERPRISE v9.0.0 🚀            ║
+║   Multi-bench, multi-site migration toolkit           ║
+╚═══════════════════════════════════════════════════════╝
+
+QUICK START:
+  wizard              Launch interactive wizard
+  health              Check system health
+
+SITE ANALYSIS:
+  scan                Scan site inventory
+  conflicts           Detect app conflicts
+  apps                Downloaded vs installed apps
+
+MIGRATION:
+  plan                Generate migration plan
+  execute             Execute migration plan
+
+PING-PONG STAGING:
+  create-host         Create staging app
+  stage               Stage doctypes to host
+  unstage             Unstage to target
+
+FIXES & DIAGNOSTICS:
+  analyze             Analyze app structure
+  fix-orphans         Fix orphan doctypes
+  fix-structure       Analyze folder structure
+  fix-app-field       Fix NULL app field in DB
+  fix-json-app        Fix app field in JSON
+  ensure-controllers  Create missing .py files
+
+ENTERPRISE:
+  benches             List all available benches
+  session-start       Start migration session
+  session-status      Check session status
+
+Usage: bench app-migrator <command> [options]
+Help:  bench app-migrator <command> --help
+""")
 
 # Add subcommands to the group
 app_migrator.add_command(app_migrator_health, 'health')
