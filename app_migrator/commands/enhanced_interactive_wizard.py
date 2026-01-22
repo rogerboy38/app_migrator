@@ -37,43 +37,67 @@ def get_all_bench_apps():
     
     Returns: list of app names available in the bench
     """
+    apps_dir = None
+    
     try:
-        # Method 1: Use frappe.get_app_path to find apps directory
+        # Method 1: Use frappe.get_app_path (most reliable in bench context)
+        frappe_path = frappe.get_app_path('frappe')
+        apps_dir = Path(frappe_path).parent  # apps/ directory
+    except Exception:
+        pass
+    
+    # Method 2: Check environment variable
+    if not apps_dir or not apps_dir.exists():
+        bench_root = os.environ.get('FRAPPE_BENCH_ROOT')
+        if bench_root:
+            apps_dir = Path(bench_root) / 'apps'
+    
+    # Method 3: Navigate from sites directory (frappe stores sites path)
+    if not apps_dir or not apps_dir.exists():
         try:
-            frappe_path = frappe.get_app_path('frappe')
-            apps_dir = Path(frappe_path).parent  # apps/ directory
-        except:
-            # Fallback: Try common bench structure
-            bench_path = os.environ.get('FRAPPE_BENCH_ROOT', os.getcwd())
-            if 'apps' in os.listdir(bench_path):
-                apps_dir = Path(bench_path) / 'apps'
-            else:
-                # Navigate up from current directory
-                current = Path.cwd()
-                while current.name != 'frappe-bench' and current != current.parent:
-                    current = current.parent
+            sites_path = frappe.get_site_path().replace('/sites/', '')
+            apps_dir = Path(sites_path) / 'apps'
+        except Exception:
+            pass
+    
+    # Method 4: Search upward from cwd for frappe-bench structure
+    if not apps_dir or not apps_dir.exists():
+        current = Path.cwd()
+        for _ in range(10):  # Limit search depth
+            if (current / 'apps').exists() and (current / 'sites').exists():
                 apps_dir = current / 'apps'
-        
-        if not apps_dir.exists():
-            return []
-        
-        # Find all valid Frappe apps (directories with hooks.py or setup.py)
-        bench_apps = []
+                break
+            if current == current.parent:
+                break
+            current = current.parent
+    
+    # Method 5: Common paths
+    if not apps_dir or not apps_dir.exists():
+        for common_path in ['/home/frappe/frappe-bench/apps', Path.home() / 'frappe-bench' / 'apps']:
+            if Path(common_path).exists():
+                apps_dir = Path(common_path)
+                break
+    
+    if not apps_dir or not apps_dir.exists():
+        print(f"⚠️ Could not find apps directory")
+        return []
+    
+    # Find all valid Frappe apps
+    bench_apps = []
+    try:
         for item in apps_dir.iterdir():
             if item.is_dir() and not item.name.startswith('.'):
-                # Check if it's a valid Frappe app
+                # Check for valid Frappe app markers
                 has_hooks = (item / item.name / 'hooks.py').exists()
                 has_setup = (item / 'setup.py').exists()
                 has_pyproject = (item / 'pyproject.toml').exists()
                 
                 if has_hooks or has_setup or has_pyproject:
                     bench_apps.append(item.name)
-        
-        return sorted(bench_apps)
-        
     except Exception as e:
-        print(f"⚠️ Could not scan bench apps directory: {e}")
-        return []
+        print(f"⚠️ Error scanning apps: {e}")
+    
+    return sorted(bench_apps)
 
 
 def get_bench_sites(bench_path=None):
