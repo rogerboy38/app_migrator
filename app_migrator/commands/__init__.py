@@ -1501,9 +1501,75 @@ def app_migrator_wizard():
     interactive_migration_wizard()
 
 
+# ==================== MAIN GROUP COMMAND ====================
+
+@click.group('app-migrator')
+def app_migrator():
+    """
+    ╔══════════════════════════════════════════════════════════════╗
+    ║         🚀 APP MIGRATOR ENTERPRISE v9.0.0 🚀                 ║
+    ╠══════════════════════════════════════════════════════════════╣
+    ║  Multi-bench, multi-site app migration toolkit for Frappe    ║
+    ╚══════════════════════════════════════════════════════════════╝
+    
+    QUICK START:
+      bench app-migrator wizard         Launch interactive wizard
+      bench app-migrator health         Check system health
+    
+    SITE ANALYSIS:
+      bench app-migrator scan           Scan site inventory
+      bench app-migrator conflicts      Detect app conflicts
+      bench app-migrator apps           Downloaded vs installed apps
+    
+    MIGRATION:
+      bench app-migrator plan           Generate migration plan
+      bench app-migrator execute        Execute migration plan
+    
+    PING-PONG STAGING:
+      bench app-migrator create-host    Create staging app
+      bench app-migrator stage          Stage doctypes to host
+      bench app-migrator unstage        Unstage doctypes to target
+    
+    FIXES & DIAGNOSTICS:
+      bench app-migrator analyze        Analyze app structure
+      bench app-migrator fix-orphans    Fix orphan doctypes
+      bench app-migrator fix-structure  Analyze folder structure
+      bench app-migrator fix-app-field  Fix NULL app field in DB
+      bench app-migrator fix-json-app   Fix app field in JSON files
+      bench app-migrator ensure-controllers  Create missing .py files
+    
+    ENTERPRISE:
+      bench app-migrator benches        List all available benches
+      bench app-migrator session-start  Start migration session
+      bench app-migrator session-status Check session status
+    """
+    pass
+
+# Add subcommands to the group
+app_migrator.add_command(app_migrator_health, 'health')
+app_migrator.add_command(app_migrator_scan, 'scan')
+app_migrator.add_command(app_migrator_conflicts, 'conflicts')
+app_migrator.add_command(app_migrator_plan, 'plan')
+app_migrator.add_command(app_migrator_execute, 'execute')
+app_migrator.add_command(app_migrator_benches, 'benches')
+app_migrator.add_command(app_migrator_session_start, 'session-start')
+app_migrator.add_command(app_migrator_session_status, 'session-status')
+app_migrator.add_command(app_migrator_apps, 'apps')
+app_migrator.add_command(app_migrator_fix_orphans, 'fix-orphans')
+app_migrator.add_command(app_migrator_analyze, 'analyze')
+app_migrator.add_command(app_migrator_create_host, 'create-host')
+app_migrator.add_command(app_migrator_stage, 'stage')
+app_migrator.add_command(app_migrator_unstage, 'unstage')
+app_migrator.add_command(app_migrator_fix_structure, 'fix-structure')
+app_migrator.add_command(app_migrator_ensure_controllers, 'ensure-controllers')
+app_migrator.add_command(app_migrator_fix_app_field, 'fix-app-field')
+app_migrator.add_command(app_migrator_fix_json_app, 'fix-json-app')
+app_migrator.add_command(app_migrator_wizard, 'wizard')
+
 # ==================== EXPORT ALL COMMANDS ====================
 
 commands = [
+    app_migrator,  # Main group command
     app_migrator_health,
     app_migrator_scan,
     app_migrator_conflicts,
