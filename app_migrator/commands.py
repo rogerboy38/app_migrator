@@ -377,6 +377,38 @@ def app_migrator_fix(context, app_name, bench_path):
         sys.exit(1)
 
 
+# ==================== MIGRATE-APP COMMAND GROUP ====================
+
+@click.group('migrate-app')
+def migrate_app():
+    """App Migrator - Multi-bench migration tool"""
+    pass
+
+@migrate_app.command('interactive')
+def migrate_app_interactive():
+    """Launch interactive migration wizard (no site required)"""
+    from app_migrator.commands.enhanced_interactive_wizard import interactive_migration_wizard
+    interactive_migration_wizard()
+
+@migrate_app.command('wizard')
+def migrate_app_wizard():
+    """Alias for interactive wizard"""
+    from app_migrator.commands.enhanced_interactive_wizard import interactive_migration_wizard
+    interactive_migration_wizard()
+
+@migrate_app.command('health')
+def migrate_app_health():
+    """Check migrator health"""
+    print("\n" + "=" * 60)
+    print("🔧 App Migrator V9.0.0 - OPERATIONAL")
+    print("=" * 60)
+    print("\n📋 Commands:")
+    print("   bench migrate-app interactive  - Launch wizard")
+    print("   bench migrate-app wizard       - Alias for interactive")
+    print("   bench migrate-app health       - Show this help")
+    print("=" * 60)
+
+
 # Export all commands for Frappe to discover
 commands = [
     app_migrator_health,
@@ -384,5 +416,6 @@ commands = [
     app_migrator_conflicts,
     app_migrator_plan,
     app_migrator_execute,
-    app_migrator_fix
+    app_migrator_fix,
+    migrate_app  # Command group
 ]
