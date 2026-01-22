@@ -975,12 +975,16 @@ def interactive_migration_wizard():
                                 continue
                             
                             # Execute migration based on type
+                            # Extract module names from module_data
+                            # module_data[i]['module'] is a dict with 'name', 'module_name', 'app_name'
+                            module_names = [m['module']['name'] for m in module_data] if module_data else []
+                            
                             if target_type == 1:
                                 # Same-site migration - use direct DB update
                                 execute_same_site_migration(
                                     source_app=app_name,
                                     target_app=target_app,
-                                    modules=[m['module'] for m in module_data] if module_data else []
+                                    modules=module_names
                                 )
                             else:
                                 # Cross-site migration (type 2 or 3)
@@ -989,7 +993,7 @@ def interactive_migration_wizard():
                                     target_site=target_site,
                                     source_app=app_name,
                                     target_app=target_app,
-                                    modules=[m['module'] for m in module_data] if module_data else [],
+                                    modules=module_names,
                                     target_bench_path=target_bench_path
                                 )
                         else:
