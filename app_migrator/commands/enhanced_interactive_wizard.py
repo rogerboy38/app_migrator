@@ -102,6 +102,177 @@ def get_all_bench_apps():
     return sorted(bench_apps)
 
 
+def execute_same_site_migration(source_app, target_app, modules):
+    """
+    Execute migration within the same site.
+    Updates Module Def and DocType app references.
+    """
+    print("\n" + "=" * 70)
+    print("🚀 EXECUTING SAME-SITE MIGRATION")
+    print("=" * 70)
+    
+    try:
+        migrated_modules = 0
+        migrated_doctypes = 0
+        
+        for module_name in modules:
+            try:
+                # Update Module Def
+                module_doc = frappe.get_doc('Module Def', module_name)
+                old_app = module_doc.app_name
+                module_doc.app_name = target_app
+                module_doc.save(ignore_permissions=True)
+                migrated_modules += 1
+                
+                # Update all DocTypes in this module
+                doctypes = frappe.get_all('DocType', 
+                    filters={'module': module_name},
+                    fields=['name']
+                )
+                
+                for dt in doctypes:
+                    frappe.db.set_value('DocType', dt['name'], 'app', target_app)
+                    migrated_doctypes += 1
+                
+                print(f"  ✅ {module_name}: {len(doctypes)} doctypes migrated")
+                
+            except Exception as e:
+                print(f"  ❌ {module_name}: {e}")
+        
+        frappe.db.commit()
+        
+        print("\n" + "─" * 70)
+        print(f"📊 MIGRATION COMPLETE:")
+        print(f"   Modules: {migrated_modules}")
+        print(f"   DocTypes: {migrated_doctypes}")
+        print("\n💡 Note: Physical files remain in source app.")
+        print("   Run 'bench migrate' to apply changes.")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ Migration failed: {e}")
+        frappe.db.rollback()
+        return False
+
+
+def execute_cross_site_migration(source_site, target_site, source_app, target_app, modules, target_bench_path=None):
+    """
+    Execute migration between different sites.
+    Exports from source site, imports to target site.
+    """
+    print("\n" + "=" * 70)
+    print("🚀 EXECUTING CROSS-SITE MIGRATION")
+    print("=" * 70)
+    print(f"\n📤 Source: {source_site} / {source_app}")
+    print(f"📥 Target: {target_site} / {target_app}")
+    
+    try:
+        # Step 1: Export module data from source site
+        print("\n📦 Step 1: Exporting module definitions...")
+        
+        export_data = {
+            'modules': [],
+            'doctypes': []
+        }
+        
+        for module_name in modules:
+            try:
+                module_doc = frappe.get_doc('Module Def', module_name)
+                export_data['modules'].append({
+                    'name': module_doc.name,
+                    'module_name': module_doc.module_name,
+                    'app_name': target_app  # Will be set to target app
+                })
+                
+                # Get doctypes in this module
+                doctypes = frappe.get_all('DocType',
+                    filters={'module': module_name},
+                    fields=['name', 'module']
+                )
+                
+                for dt in doctypes:
+                    export_data['doctypes'].append({
+                        'name': dt['name'],
+                        'module': dt['module'],
+                        'app': target_app  # Will be set to target app
+                    })
+                
+                print(f"  ✅ Exported: {module_name} ({len(doctypes)} doctypes)")
+                
+            except Exception as e:
+                print(f"  ❌ Failed to export {module_name}: {e}")
+        
+        # Step 2: Switch to target site and import
+        print(f"\n🔄 Step 2: Switching to target site: {target_site}...")
+        
+        # Close current connection
+        frappe.db.close()
+        
+        # Connect to target site
+        frappe.init(target_site)
+        frappe.connect(site=target_site)
+        
+        print(f"  ✅ Connected to {target_site}")
+        
+        # Step 3: Import/Update on target site
+        print("\n📥 Step 3: Importing to target site...")
+        
+        imported_modules = 0
+        imported_doctypes = 0
+        
+        for module_info in export_data['modules']:
+            try:
+                # Check if module exists on target
+                if frappe.db.exists('Module Def', module_info['name']):
+                    # Update existing
+                    frappe.db.set_value('Module Def', module_info['name'], 'app_name', target_app)
+                else:
+                    # Create new module
+                    new_module = frappe.new_doc('Module Def')
+                    new_module.name = module_info['name']
+                    new_module.module_name = module_info['module_name']
+                    new_module.app_name = target_app
+                    new_module.insert(ignore_permissions=True)
+                
+                imported_modules += 1
+                print(f"  ✅ Module: {module_info['name']}")
+                
+            except Exception as e:
+                print(f"  ❌ Module {module_info['name']}: {e}")
+        
+        for doctype_info in export_data['doctypes']:
+            try:
+                if frappe.db.exists('DocType', doctype_info['name']):
+                    frappe.db.set_value('DocType', doctype_info['name'], 'app', target_app)
+                    imported_doctypes += 1
+            except Exception as e:
+                print(f"  ⚠️ DocType {doctype_info['name']}: {e}")
+        
+        frappe.db.commit()
+        
+        print("\n" + "─" * 70)
+        print(f"📊 CROSS-SITE MIGRATION COMPLETE:")
+        print(f"   Modules: {imported_modules}")
+        print(f"   DocTypes: {imported_doctypes}")
+        print(f"\n💡 Target site updated: {target_site}")
+        print("   Run 'bench --site {target_site} migrate' to apply changes.")
+        
+        # Switch back to source site
+        frappe.db.close()
+        frappe.init(source_site)
+        frappe.connect(site=source_site)
+        print(f"\n🔄 Returned to source site: {source_site}")
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n❌ Cross-site migration failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
 def get_bench_sites(bench_path=None):
     """
     Get all sites from a specific bench or current bench
@@ -796,8 +967,31 @@ def interactive_migration_wizard():
                                 print(f"\n  📋 Type: Cross-bench migration")
                             
                             print("\n" + "─" * 70)
-                            print("\n⚠️ Migration execution not yet implemented in this wizard")
-                            print("💡 Use migration_engine.py for actual migration with these parameters")
+                            
+                            # Ask for confirmation to proceed
+                            proceed = input("\n⚠️ Proceed with migration? (y/N): ").strip().lower()
+                            if proceed != 'y':
+                                print("🚫 Migration cancelled")
+                                continue
+                            
+                            # Execute migration based on type
+                            if target_type == 1:
+                                # Same-site migration - use direct DB update
+                                execute_same_site_migration(
+                                    source_app=app_name,
+                                    target_app=target_app,
+                                    modules=[m['module'] for m in module_data] if module_data else []
+                                )
+                            else:
+                                # Cross-site migration (type 2 or 3)
+                                execute_cross_site_migration(
+                                    source_site=selected_site,
+                                    target_site=target_site,
+                                    source_app=app_name,
+                                    target_app=target_app,
+                                    modules=[m['module'] for m in module_data] if module_data else [],
+                                    target_bench_path=target_bench_path
+                                )
                         else:
                             print(f"❌ Please enter a number between 0 and {len(target_apps)}")
                     except ValueError:
