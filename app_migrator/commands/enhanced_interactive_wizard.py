@@ -160,6 +160,9 @@ def execute_cross_site_migration(source_site, target_site, source_app, target_ap
     """
     Execute migration between different sites.
     Exports from source site, imports to target site.
+    
+    IMPORTANT: Uses frappe.destroy() for proper site isolation to prevent
+    accidental writes to wrong site.
     """
     print("\n" + "=" * 70)
     print("🚀 EXECUTING CROSS-SITE MIGRATION")
@@ -168,8 +171,8 @@ def execute_cross_site_migration(source_site, target_site, source_app, target_ap
     print(f"📥 Target: {target_site} / {target_app}")
     
     try:
-        # Step 1: Export module data from source site
-        print("\n📦 Step 1: Exporting module definitions...")
+        # Step 1: Export module data from source site (READ-ONLY)
+        print("\n📦 Step 1: Exporting module definitions (read-only)...")
         
         export_data = {
             'modules': [],
@@ -178,14 +181,20 @@ def execute_cross_site_migration(source_site, target_site, source_app, target_ap
         
         for module_name in modules:
             try:
-                module_doc = frappe.get_doc('Module Def', module_name)
-                export_data['modules'].append({
-                    'name': module_doc.name,
-                    'module_name': module_doc.module_name,
-                    'app_name': target_app  # Will be set to target app
-                })
+                # Use get_all for read-only access to avoid any caching issues
+                module_info = frappe.get_all('Module Def',
+                    filters={'name': module_name},
+                    fields=['name', 'module_name', 'app_name']
+                )
                 
-                # Get doctypes in this module
+                if module_info:
+                    export_data['modules'].append({
+                        'name': module_info[0]['name'],
+                        'module_name': module_info[0]['module_name'],
+                        'target_app': target_app  # Store target app separately
+                    })
+                
+                # Get doctypes in this module (read-only)
                 doctypes = frappe.get_all('DocType',
                     filters={'module': module_name},
                     fields=['name', 'module']
@@ -195,7 +204,7 @@ def execute_cross_site_migration(source_site, target_site, source_app, target_ap
                     export_data['doctypes'].append({
                         'name': dt['name'],
                         'module': dt['module'],
-                        'app': target_app  # Will be set to target app
+                        'target_app': target_app
                     })
                 
                 print(f"  ✅ Exported: {module_name} ({len(doctypes)} doctypes)")
@@ -203,17 +212,22 @@ def execute_cross_site_migration(source_site, target_site, source_app, target_ap
             except Exception as e:
                 print(f"  ❌ Failed to export {module_name}: {e}")
         
-        # Step 2: Switch to target site and import
+        # Step 2: FULLY destroy current site context before switching
         print(f"\n🔄 Step 2: Switching to target site: {target_site}...")
         
-        # Close current connection
-        frappe.db.close()
+        # CRITICAL: Use frappe.destroy() to fully clear all connections and caches
+        frappe.destroy()
         
-        # Connect to target site
-        frappe.init(target_site)
-        frappe.connect(site=target_site)
+        # Connect to target site with fresh context
+        frappe.init(site=target_site)
+        frappe.connect()
         
-        print(f"  ✅ Connected to {target_site}")
+        # Verify we're on the correct site
+        current_site = frappe.local.site
+        if current_site != target_site:
+            raise Exception(f"Site mismatch! Expected {target_site}, got {current_site}")
+        
+        print(f"  ✅ Connected to {target_site} (verified)")
         
         # Step 3: Import/Update on target site
         print("\n📥 Step 3: Importing to target site...")
@@ -223,16 +237,18 @@ def execute_cross_site_migration(source_site, target_site, source_app, target_ap
         
         for module_info in export_data['modules']:
             try:
+                target_app_name = module_info['target_app']
+                
                 # Check if module exists on target
                 if frappe.db.exists('Module Def', module_info['name']):
                     # Update existing
-                    frappe.db.set_value('Module Def', module_info['name'], 'app_name', target_app)
+                    frappe.db.set_value('Module Def', module_info['name'], 'app_name', target_app_name)
                 else:
                     # Create new module
                     new_module = frappe.new_doc('Module Def')
                     new_module.name = module_info['name']
                     new_module.module_name = module_info['module_name']
-                    new_module.app_name = target_app
+                    new_module.app_name = target_app_name
                     new_module.insert(ignore_permissions=True)
                 
                 imported_modules += 1
@@ -243,8 +259,9 @@ def execute_cross_site_migration(source_site, target_site, source_app, target_ap
         
         for doctype_info in export_data['doctypes']:
             try:
+                target_app_name = doctype_info['target_app']
                 if frappe.db.exists('DocType', doctype_info['name']):
-                    frappe.db.set_value('DocType', doctype_info['name'], 'app', target_app)
+                    frappe.db.set_value('DocType', doctype_info['name'], 'app', target_app_name)
                     imported_doctypes += 1
             except Exception as e:
                 print(f"  ⚠️ DocType {doctype_info['name']}: {e}")
@@ -256,13 +273,20 @@ def execute_cross_site_migration(source_site, target_site, source_app, target_ap
         print(f"   Modules: {imported_modules}")
         print(f"   DocTypes: {imported_doctypes}")
         print(f"\n💡 Target site updated: {target_site}")
-        print("   Run 'bench --site {target_site} migrate' to apply changes.")
+        print(f"   Run 'bench --site {target_site} migrate' to apply changes.")
         
-        # Switch back to source site
-        frappe.db.close()
-        frappe.init(source_site)
-        frappe.connect(site=source_site)
-        print(f"\n🔄 Returned to source site: {source_site}")
+        # Step 4: Switch back to source site with full cleanup
+        print(f"\n🔄 Step 4: Returning to source site: {source_site}...")
+        frappe.destroy()
+        frappe.init(site=source_site)
+        frappe.connect()
+        
+        # Verify we're back on source
+        current_site = frappe.local.site
+        if current_site != source_site:
+            print(f"  ⚠️ Warning: Expected {source_site}, got {current_site}")
+        else:
+            print(f"  ✅ Returned to {source_site} (verified)")
         
         return True
         
@@ -270,6 +294,16 @@ def execute_cross_site_migration(source_site, target_site, source_app, target_ap
         print(f"\n❌ Cross-site migration failed: {e}")
         import traceback
         traceback.print_exc()
+        
+        # Try to restore source site connection
+        try:
+            frappe.destroy()
+            frappe.init(site=source_site)
+            frappe.connect()
+            print(f"🔄 Restored connection to {source_site}")
+        except:
+            pass
+        
         return False
 
 
