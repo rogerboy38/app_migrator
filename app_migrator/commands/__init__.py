@@ -1533,6 +1533,11 @@ PING-PONG STAGING:
   stage               Stage doctypes to host
   unstage             Unstage to target
 
+INTELLIGENCE (AI-Powered):
+  predict-success     Predict migration success
+  generate-plan       Generate intelligent plan
+  diagnose            Comprehensive app diagnosis
+
 FIXES & DIAGNOSTICS:
   analyze             Analyze app structure
   fix-orphans         Fix orphan doctypes
@@ -1571,6 +1576,14 @@ app_migrator.add_command(app_migrator_fix_app_field, 'fix-app-field')
 app_migrator.add_command(app_migrator_fix_json_app, 'fix-json-app')
 app_migrator.add_command(app_migrator_wizard, 'wizard')
 
+# ==================== INTELLIGENCE COMMANDS ====================
+
+from .intelligence import predict_success, generate_intelligent_plan, diagnose_app
+
+app_migrator.add_command(predict_success, 'predict-success')
+app_migrator.add_command(generate_intelligent_plan, 'generate-plan')
+app_migrator.add_command(diagnose_app, 'diagnose')
+
 # ==================== EXPORT ALL COMMANDS ====================
 
 commands = [
@@ -1593,7 +1606,11 @@ commands = [
     app_migrator_ensure_controllers,
     app_migrator_fix_app_field,
     app_migrator_fix_json_app,
-    app_migrator_wizard
+    app_migrator_wizard,
+    # Intelligence commands
+    predict_success,
+    generate_intelligent_plan,
+    diagnose_app
 ]
 
 print("✅ App Migrator Enterprise v9.0.0 ready!")
