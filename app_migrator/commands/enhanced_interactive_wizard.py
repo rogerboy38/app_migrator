@@ -16,6 +16,7 @@ import frappe
 from frappe.utils import get_sites
 import os
 import json
+import subprocess
 from pathlib import Path
 from .doctype_classifier import (
     get_doctype_classification,
@@ -25,6 +26,52 @@ from .doctype_classifier import (
     display_detailed_classifications,
     generate_migration_risk_assessment
 )
+
+
+def get_all_bench_apps():
+    """
+    Get ALL apps in the bench's apps/ directory (not just installed on site)
+    This includes newly created apps that haven't been installed yet.
+    
+    Returns: list of app names available in the bench
+    """
+    try:
+        # Method 1: Use frappe.get_app_path to find apps directory
+        try:
+            frappe_path = frappe.get_app_path('frappe')
+            apps_dir = Path(frappe_path).parent  # apps/ directory
+        except:
+            # Fallback: Try common bench structure
+            bench_path = os.environ.get('FRAPPE_BENCH_ROOT', os.getcwd())
+            if 'apps' in os.listdir(bench_path):
+                apps_dir = Path(bench_path) / 'apps'
+            else:
+                # Navigate up from current directory
+                current = Path.cwd()
+                while current.name != 'frappe-bench' and current != current.parent:
+                    current = current.parent
+                apps_dir = current / 'apps'
+        
+        if not apps_dir.exists():
+            return []
+        
+        # Find all valid Frappe apps (directories with hooks.py or setup.py)
+        bench_apps = []
+        for item in apps_dir.iterdir():
+            if item.is_dir() and not item.name.startswith('.'):
+                # Check if it's a valid Frappe app
+                has_hooks = (item / item.name / 'hooks.py').exists()
+                has_setup = (item / 'setup.py').exists()
+                has_pyproject = (item / 'pyproject.toml').exists()
+                
+                if has_hooks or has_setup or has_pyproject:
+                    bench_apps.append(item.name)
+        
+        return sorted(bench_apps)
+        
+    except Exception as e:
+        print(f"⚠️ Could not scan bench apps directory: {e}")
+        return []
 
 
 def select_site():
@@ -504,14 +551,47 @@ def interactive_migration_wizard():
                 
                 elif choice == 4:
                     # Start migration - select target app
+                    # ✅ FIX: Include ALL bench apps, not just installed ones
                     print("\n" + "=" * 70)
                     print("📋 STEP 6: TARGET APP SELECTION")
                     print("=" * 70)
-                    target_app = select_app(app_names, "Select TARGET app")
-                    if target_app:
-                        print(f"\n✅ Migration planned: {source_app} → {target_app}")
-                        print("\n⚠️ Migration execution not yet implemented in this wizard")
-                        print("💡 Use migration_engine.py for actual migration")
+                    
+                    # Get all apps in bench (including newly created ones)
+                    bench_apps = get_all_bench_apps()
+                    
+                    # Merge with installed apps (remove duplicates)
+                    all_available_apps = list(set(app_names + bench_apps))
+                    all_available_apps.sort()
+                    
+                    # Show which apps are not yet installed
+                    print("\n📦 Available target apps:")
+                    print("  0. ❌ CANCEL")
+                    for i, app in enumerate(all_available_apps, 1):
+                        if app in app_names:
+                            print(f"  {i}. {app} [installed]")
+                        else:
+                            print(f"  {i}. {app} [✨ NEW - not installed]")
+                    
+                    try:
+                        choice_input = input(f"\n🔹 Select target (0-{len(all_available_apps)}): ").strip()
+                        target_choice = int(choice_input)
+                        
+                        if target_choice == 0:
+                            print("🚫 Selection cancelled")
+                        elif 1 <= target_choice <= len(all_available_apps):
+                            target_app = all_available_apps[target_choice - 1]
+                            print(f"\n✅ Migration planned: {app_name} → {target_app}")
+                            
+                            if target_app not in app_names:
+                                print(f"\n💡 Note: '{target_app}' is not installed on this site.")
+                                print(f"   The migration will create module files in the app directory.")
+                            
+                            print("\n⚠️ Migration execution not yet implemented in this wizard")
+                            print("💡 Use migration_engine.py for actual migration")
+                        else:
+                            print(f"❌ Please enter a number between 0 and {len(all_available_apps)}")
+                    except ValueError:
+                        print("❌ Please enter a valid number")
                 
                 elif choice == 5:
                     # Analyze different app
