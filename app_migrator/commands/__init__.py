@@ -1537,6 +1537,7 @@ INTELLIGENCE (AI-Powered):
   predict-success     Predict migration success
   generate-plan       Generate intelligent plan
   diagnose            Comprehensive app diagnosis
+  modernize           Upgrade to pyproject.toml
 
 FIXES & DIAGNOSTICS:
   analyze             Analyze app structure
@@ -1579,10 +1580,12 @@ app_migrator.add_command(app_migrator_wizard, 'wizard')
 # ==================== INTELLIGENCE COMMANDS ====================
 
 from .intelligence import predict_success, generate_intelligent_plan, diagnose_app
+from .modernize import modernize_app
 
 app_migrator.add_command(predict_success, 'predict-success')
 app_migrator.add_command(generate_intelligent_plan, 'generate-plan')
 app_migrator.add_command(diagnose_app, 'diagnose')
+app_migrator.add_command(modernize_app, 'modernize')
 
 # ==================== EXPORT ALL COMMANDS ====================
 
@@ -1610,7 +1613,8 @@ commands = [
     # Intelligence commands
     predict_success,
     generate_intelligent_plan,
-    diagnose_app
+    diagnose_app,
+    modernize_app
 ]
 
 print("✅ App Migrator Enterprise v9.0.0 ready!")
