@@ -267,8 +267,9 @@ def app_migrator_conflicts(context, site, apps, all_apps, output):
     doctype_to_apps = defaultdict(list)
     
     # Determine apps path
-    bench_path = os.path.dirname(os.path.dirname(frappe.get_app_path('frappe')))
-    apps_path = os.path.join(bench_path, 'apps')
+    # frappe.get_app_path('frappe') returns e.g. /home/frappe/frappe-bench/apps/frappe/frappe
+    # We need /home/frappe/frappe-bench/apps
+    apps_path = os.path.dirname(os.path.dirname(frappe.get_app_path('frappe')))
     
     if all_apps:
         # Scan ALL apps in apps folder by reading doctype JSON files
