@@ -173,7 +173,7 @@ class APIManager:
         
         return base64.urlsafe_b64encode(kdf.derive(hash_digest))
     
-    def validate_api_key(self, api_key=None, test_mode=False):
+        def validate_api_key(self, api_key=None, test_mode=False):
         """Validate API key with three-tier access system"""
         try:
             # Use provided key or get from storage
@@ -210,41 +210,87 @@ class APIManager:
                 if test_mode:
                     print("⏳ Attempting Frappe Cloud API validation...")
                 
-                # Mock validation for testing - keys starting with "fc_"
-                if api_key.startswith("fc_") and len(api_key) >= 20:
-                    if test_mode:
-                        print("✅ API key format validated")
-                    return {
-                        "status": "valid",
-                        "email": "user@example.com", 
-                        "account": "user-account",
-                        "source": "frappe_cloud_api",
-                        "note": "Full API validation",
-                        "role": "full"
-                    }
+                # REAL Frappe Cloud API validation
+                import requests
+                headers = {
+                    "Authorization": f"token {api_key}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                }
                 
-                # Actual API validation would go here
-                # response = requests.get(...)
-                # if response.status_code == 200:
-                #     data = response.json()
-                #     return {
-                #         "status": "valid",
-                #         "email": data.get("email"),
-                #         "account": data.get("account"),
-                #         "source": "frappe_cloud_api",
-                #         "note": "Full API validation",
-                #         "role": "full"
-                #     }
+                # Try multiple endpoints for validation
+                endpoints = [
+                    ("https://frappecloud.com/api/method/frappe.auth.get_logged_user", "primary"),
+                    ("https://frappecloud.com/api/method/frappe.client.get_list?doctype=User&fields=["name"]&limit=1", "secondary"),
+                    ("https://frappecloud.com/api/method/frappe.ping", "ping")
+                ]
                 
-                # If we reach here, API validation failed
-                # Fall through to limited tier
+                for url, endpoint_type in endpoints:
+                    try:
+                        if test_mode and endpoint_type == "primary":
+                            print(f"   Trying {endpoint_type} endpoint...")
+                        
+                        response = requests.get(url, headers=headers, timeout=10)
+                        
+                        if response.status_code == 200:
+                            data = response.json()
+                            
+                            if endpoint_type == "primary" and data.get("message"):
+                                # Got user email from primary endpoint
+                                email = data.get("message", "user@frappe.cloud")
+                                account = email.split("@")[0] if "@" in email else "frappe-cloud-user"
+                                
+                                if test_mode:
+                                    print(f"✅ Frappe Cloud API validation successful!")
+                                    print(f"   User: {email}")
+                                
+                                return {
+                                    "status": "valid",
+                                    "email": email,
+                                    "account": account,
+                                    "source": "frappe_cloud_api",
+                                    "note": "Full API validation",
+                                    "role": "full"
+                                }
+                            elif response.status_code == 200:
+                                # Any 200 response means key is valid
+                                if test_mode:
+                                    print(f"✅ Frappe Cloud API validation successful ({endpoint_type})!")
+                                
+                                return {
+                                    "status": "valid",
+                                    "email": "user@frappe.cloud",
+                                    "account": "frappe-cloud-user",
+                                    "source": "frappe_cloud_api",
+                                    "note": f"Full API validation ({endpoint_type})",
+                                    "role": "full"
+                                }
+                                
+                    except requests.exceptions.Timeout:
+                        if test_mode:
+                            print(f"   ⏱️  {endpoint_type} endpoint timeout")
+                        continue
+                    except requests.exceptions.ConnectionError:
+                        if test_mode:
+                            print(f"   🔌 {endpoint_type} endpoint connection error")
+                        continue
+                    except Exception as e:
+                        if test_mode:
+                            print(f"   ⚠️  {endpoint_type} endpoint error: {e}")
+                        continue
+                
+                # If we reach here, all API endpoints failed
+                if test_mode:
+                    print("ℹ️  All Frappe Cloud API endpoints failed")
+                    print("   Checking key plausibility...")
                 
             except Exception as e:
                 if test_mode:
-                    print(f"⚠️  API validation failed: {e}")
+                    print(f"⚠️  API validation error: {e}")
             
             # Test 4: Plausibility check (Limited tier)
             # Check if key looks like a real Frappe Cloud key
+            # Frappe Cloud keys typically: long, mixed case, has underscores, numbers
             plausible = (
                 len(api_key) >= 20 and
                 any(c.isupper() for c in api_key) and
@@ -255,19 +301,20 @@ class APIManager:
             
             if plausible:
                 if test_mode:
-                    print("🔑 Key looks plausible but can't verify (Limited access)")
+                    print("🔑 Key looks plausible but Frappe Cloud API verification failed")
+                    print("   Granting LIMITED access (automatic)")
                 return {
                     "status": "valid",
-                    "email": "unverified@example.com",
+                    "email": "unverified@frappe.cloud",
                     "account": "unverified-account",
                     "source": "plausibility_check",
-                    "note": "Limited access - key looks valid but not verified",
+                    "note": "Limited access - key looks valid but API verification failed",
                     "role": "limited"
                 }
             
             # If nothing matches, it's invalid (guest access)
             if test_mode:
-                print("❌ Key doesn't meet any validation criteria")
+                print("❌ Key doesn't meet validation criteria")
             return None
             
         except Exception as e:
