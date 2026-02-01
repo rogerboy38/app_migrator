@@ -2086,12 +2086,21 @@ app_migrator.add_command(app_migrator_orphans, 'orphans')
 from .intelligence import predict_success, generate_intelligent_plan, diagnose_app
 from .modernize import modernize_app
 from .git_push import git_push
+from .git_pull import git_pull
+from .git_utils import get_app_info, FrappeCloudAPI, clone_app_from_git, convert_to_git_repo
+from .git_info import git_info
+from .api_key_manager import api_key_setup, api_key_status, api_key_cleanup
 
 app_migrator.add_command(predict_success, 'predict-success')
 app_migrator.add_command(generate_intelligent_plan, 'generate-plan')
 app_migrator.add_command(diagnose_app, 'diagnose')
 app_migrator.add_command(modernize_app, 'modernize')
 app_migrator.add_command(git_push, "git-push")
+app_migrator.add_command(git_pull, "git-pull")
+app_migrator.add_command(api_key_cleanup, "api-key-cleanup")
+app_migrator.add_command(api_key_status, "api-key-status")
+app_migrator.add_command(api_key_setup, "api-key-setup")
+app_migrator.add_command(git_info, "git-info")
 
 # ==================== EXPORT ALL COMMANDS ====================
 
