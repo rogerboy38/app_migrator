@@ -209,9 +209,8 @@ def prompt_api_key(test_mode=False):
     click.echo()
     
     if test_mode:
-        # In test mode, simulate user pressing Enter (no key)
-        click.echo("🧪 TEST MODE: Simulating user pressing Enter (no key)")
-        return None
+        click.echo("🧪 TEST MODE: Using test API key")
+        return "fc_test_key_12345"
     
     api_key = click.prompt("Frappe Cloud API key (or press Enter to skip)", default="", hide_input=True)
     

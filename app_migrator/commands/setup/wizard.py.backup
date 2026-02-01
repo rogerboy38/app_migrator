@@ -49,60 +49,47 @@ def setup_wizard(ctx, api_key, ssh_key, auto_approve, sync, test):
     click.echo(f"📁 Bench path: {bench_path}")
     click.echo()
     
-    # Step 1: API Key Setup - FIXED VERSION
+    # Step 1: API Key Setup
     click.echo("🔐 STEP 1: FRAPPE CLOUD IDENTITY VERIFICATION")
     click.echo("-" * 50)
     
     api_manager = APIManager()
-    validation_result = None
-    user_role = "guest"  # Default to guest
-    
-    # FIX 1: Always prompt for API key if not provided via --api-key
-    # Don't automatically get from storage in wizard mode
-    if not api_key:
-        # In wizard mode, always prompt for fresh key
-        api_key = prompt_api_key(test)
-        if api_key and not test:
-            api_manager.set_api_key(api_key, store=True)
-    else:
-        # API key was provided via command line
+    if api_key:
         click.echo("✓ Using provided API key")
         if not test:
             api_manager.set_api_key(api_key, store=True)
+    else:
+        api_key = api_manager.get_api_key()
     
-    # Validate API key - SMART HYBRID (with test_mode parameter)
+    if not api_key:
+        api_key = prompt_api_key(test)
+        if api_key and not test:
+            api_manager.set_api_key(api_key, store=True)
+    
+        # Validate API key - SMART HYBRID
+    user_info = None
+    validation_result = None
+    
     if api_key:
         click.echo("⏳ Validating API key...")
-        validation_result = api_manager.validate_api_key(api_key, test_mode=test)
+        validation_result = api_manager.validate_api_key(api_key)
     
-    # Determine user role using SecurityManager (FIX 2)
     if validation_result:
-        # We have a validation result
+        # FULL VALIDATION SUCCESS
         click.echo(f"✅ Verified: {validation_result.get('email', 'Unknown')}")
         click.echo(f"✅ Account: {validation_result.get('account', 'Unknown')}")
         
-        source = validation_result.get('source', 'unknown')
-        note = validation_result.get('note', '')
-        
-        # Show appropriate message based on source
-        if source == 'test_key':
-            click.echo("   🔒 Validation: Test Key")
-        elif source == 'frappe_cloud_api':
-            click.echo("   🔒 Validation: Frappe Cloud API")
-        elif source == 'plausibility_check':
-            click.echo("   ⚠️  Validation: Limited (key looks plausible)")
+        source = validation_result.get('source', '')
+        if source in ['api_validation', 'format_validation', 'fc_prefix']:
+            click.echo(f"   🔒 Validation: {source.replace('_', ' ').title()}")
+            user_role = "full"
         else:
-            click.echo(f"   ℹ️  Validation: {source.replace('_', ' ').title()}")
+            click.echo(f"   ⚠️  Validation: {source.replace('_', ' ').title()} (limited)")
+            user_role = "limited"
         
-        # Use SecurityManager to determine role (FIX 3)
-        user_role = SecurityManager.get_user_role({
-            "status": "valid",
-            "source": source,
-            "note": note
-        })
         user_info = validation_result
     else:
-        # No validation result
+        # VALIDATION FAILED - SMART HANDLING
         if api_key:
             # Key provided but validation failed
             key_preview = api_key[:15] + "..." if len(api_key) > 18 else api_key
@@ -131,6 +118,15 @@ def setup_wizard(ctx, api_key, ssh_key, auto_approve, sync, test):
             click.echo("👤 Continuing as GUEST (automatic)")
             user_role = "guest"
             user_info = {"role": "guest", "email": "Guest User"}
+    else:
+        click.echo("⚠️  API key validation failed or not provided")
+        if auto_approve or click.confirm("Continue as Guest? (limited functionality)", default=True):
+            user_info = {"role": "guest", "email": "Guest User"}
+            user_role = "guest"
+            click.echo("👤 Continuing as Guest user")
+        else:
+            click.echo("❌ Setup cancelled")
+            return
     
     # Step 2: SSH Key Setup
     click.echo()
@@ -209,9 +205,8 @@ def prompt_api_key(test_mode=False):
     click.echo()
     
     if test_mode:
-        # In test mode, simulate user pressing Enter (no key)
-        click.echo("🧪 TEST MODE: Simulating user pressing Enter (no key)")
-        return None
+        click.echo("🧪 TEST MODE: Using test API key")
+        return "fc_test_key_12345"
     
     api_key = click.prompt("Frappe Cloud API key (or press Enter to skip)", default="", hide_input=True)
     
@@ -472,7 +467,7 @@ def show_summary(api_manager, ssh_manager, bench_name, user_role):
     # User Role
     role_display = {
         "guest": "👤 Guest (limited)",
-        "limited": "🔓 Limited Access",
+        "api_user": "🔑 API User",
         "full": "🚀 Full Access"
     }
     click.echo(f"🎭 Access Level: {role_display.get(user_role, user_role)}")

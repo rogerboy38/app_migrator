@@ -2090,7 +2090,6 @@ from .git_pull import git_pull
 from .git_utils import get_app_info, FrappeCloudAPI, clone_app_from_git, convert_to_git_repo
 from .git_info import git_info
 from .api_key_manager import api_key_setup, api_key_status, api_key_cleanup
-from .setup.wizard import setup_wizard
 
 app_migrator.add_command(predict_success, 'predict-success')
 app_migrator.add_command(generate_intelligent_plan, 'generate-plan')
@@ -2102,7 +2101,6 @@ app_migrator.add_command(api_key_cleanup, "api-key-cleanup")
 app_migrator.add_command(api_key_status, "api-key-status")
 app_migrator.add_command(api_key_setup, "api-key-setup")
 app_migrator.add_command(git_info, "git-info")
-app_migrator.add_command(setup_wizard,"setup-wizard")
 
 # ==================== EXPORT ALL COMMANDS ====================
 
@@ -2133,8 +2131,7 @@ commands = [
     generate_intelligent_plan,
     diagnose_app,
     modernize_app,
-    git_push,
-    setup_wizard
+    git_push
     ]
 
 print("✅ App Migrator Enterprise v9.0.0 ready!")
