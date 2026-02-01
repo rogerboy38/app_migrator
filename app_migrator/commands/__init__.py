@@ -2091,6 +2091,7 @@ app_migrator.add_command(predict_success, 'predict-success')
 app_migrator.add_command(generate_intelligent_plan, 'generate-plan')
 app_migrator.add_command(diagnose_app, 'diagnose')
 app_migrator.add_command(modernize_app, 'modernize')
+app_migrator.add_command(git_push, "git-push")
 
 # ==================== EXPORT ALL COMMANDS ====================
 
@@ -2120,8 +2121,9 @@ commands = [
     predict_success,
     generate_intelligent_plan,
     diagnose_app,
-    modernize_app
-    git_push,]
+    modernize_app,
+    git_push
+    ]
 
 print("✅ App Migrator Enterprise v9.0.0 ready!")
 
