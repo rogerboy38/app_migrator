@@ -387,3 +387,11 @@ This app can use GitHub Actions for CI. The following workflows are configured:
 ### License
 
 mit
+
+## Dependencies
+
+App Migrator requires the following Python packages:
+- `keyring>=25.0` - Secure credential storage
+- `requests>=2.31.0` - HTTP requests for API calls
+
+These are automatically installed when you install the app via `bench get-app`.

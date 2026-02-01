@@ -1,0 +1,3 @@
+# App Migrator Dependencies
+keyring>=25.0
+requests>=2.31.0
