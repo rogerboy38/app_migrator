@@ -24,3 +24,6 @@ documentation_url = "https://github.com/rogerboy38/app_migrator"
 
 # Fixtures
 fixtures = []
+
+# Git push command
+from app_migrator.commands.git_push import git_push as git_push_cmd
