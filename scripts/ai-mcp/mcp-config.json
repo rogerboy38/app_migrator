@@ -1,0 +1,61 @@
+{
+    "mcp": {
+        "name": "frappe-github-mcp",
+        "version": "1.0.0",
+        "description": "Model Context Protocol server for Frappe Cloud and GitHub integration",
+        "author": "rogerboy38",
+        "repository": "https://github.com/rogerboy38/app_migrator"
+    },
+    
+    "github": {
+        "user": "rogerboy38",
+        "repositories": [
+            {
+                "name": "rnd_warehouse_management",
+                "url": "https://github.com/rogerboy38/rnd_warehouse_management",
+                "ssh": "git@github.com:rogerboy38/rnd_warehouse_management.git",
+                "type": "frappe-app",
+                "bench_path": "/home/frappe/frappe-bench/apps/rnd_warehouse_management"
+            },
+            {
+                "name": "rnd_nutrition",
+                "url": "https://github.com/rogerboy38/rnd_nutrition2",
+                "ssh": "git@github.com:rogerboy38/rnd_nutrition2.git",
+                "type": "frappe-app",
+                "bench_path": "/home/frappe/frappe-bench/apps/rnd_nutrition"
+            },
+            {
+                "name": "amb_w_tds",
+                "url": "https://github.com/rogerboy38/amb_w_tds",
+                "ssh": "git@github.com:rogerboy38/amb_w_tds.git",
+                "type": "frappe-app",
+                "bench_path": "/home/frappe/frappe-bench/apps/amb_w_tds"
+            },
+            {
+                "name": "app_migrator",
+                "url": "https://github.com/rogerboy38/app_migrator",
+                "ssh": "git@github.com:rogerboy38/app_migrator.git",
+                "type": "frappe-app",
+                "bench_path": "/home/frappe/frappe-bench/apps/app_migrator"
+            }
+        ]
+    },
+    
+    "frappe": {
+        "bench_path": "/home/frappe/frappe-bench",
+        "apps": ["rnd_nutrition", "rnd_warehouse_management", "amb_w_tds", "app_migrator"],
+        "sites": ["sysmayal3.v.frappe.cloud"]
+    },
+    
+    "ssh": {
+        "key_path": "/home/frappe/.ssh/id_ed25519",
+        "config_path": "/home/frappe/.ssh/config",
+        "github_host": "github.com"
+    },
+    
+    "ai_agent": {
+        "supported_protocols": ["stdio", "http"],
+        "capabilities": ["github_read", "github_write", "frappe_info", "system_status"],
+        "authentication": "ssh_key"
+    }
+}
