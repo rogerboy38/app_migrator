@@ -56,31 +56,69 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
     if dry_run:
         click.secho("🔍 DRY RUN - No changes will be made\n", fg="yellow")
     
-    # Get apps to process
-    bench_path = Path(ctx.bench_path) if hasattr(ctx, 'bench_path') else Path.cwd().parent.parent
+    # Get bench path correctly
+    # Try multiple methods to find the bench root
+    bench_path = None
+    
+    # Method 1: Use ctx.bench_path if available
+    if hasattr(ctx, 'bench_path') and ctx.bench_path:
+        bench_path = Path(ctx.bench_path)
+    else:
+        # Method 2: Try to find bench from current directory
+        current = Path.cwd()
+        # Look for bench directory by checking parent directories
+        for parent in [current] + list(current.parents):
+            if (parent / "apps").exists() and (parent / "sites").exists():
+                bench_path = parent
+                break
+        
+        # Method 3: Default to common location
+        if not bench_path:
+            bench_path = Path("/home/frappe/frappe-bench")
+    
+    if not bench_path or not bench_path.exists():
+        click.secho(f"❌ Cannot find bench directory: {bench_path}", fg="red")
+        return
+    
     apps_dir = bench_path / "apps"
+    
+    if not apps_dir.exists():
+        click.secho(f"❌ Apps directory not found: {apps_dir}", fg="red")
+        return
     
     if app:
         apps = [app]
     else:
-        apps = [d.name for d in apps_dir.iterdir() if d.is_dir() and (d / ".git").exists()]
+        # Find all git repos in apps directory
+        apps = []
+        for item in apps_dir.iterdir():
+            if item.is_dir():
+                git_dir = item / ".git"
+                if git_dir.exists():
+                    apps.append(item.name)
+    
+    click.echo(f"📋 Found {len(apps)} app(s) with git repositories")
     
     successful = []
     failed = []
     
     for app_name in apps:
         app_path = apps_dir / app_name
-        git_dir = app_path / ".git"
         
-        if not git_dir.exists():
-            click.echo(f"  ⚠️  Skipping {app_name} (not a git repository)")
+        if not app_path.exists():
+            click.echo(f"  ⚠️  App directory not found: {app_path}")
             continue
         
         click.echo(f"📦 Processing {app_name}...")
         
         # Change to app directory
         original_cwd = os.getcwd()
-        os.chdir(app_path)
+        try:
+            os.chdir(app_path)
+        except Exception as e:
+            click.secho(f"  ❌ Cannot change to app directory: {e}", fg="red")
+            failed.append(app_name)
+            continue
         
         try:
             # Get current branch
