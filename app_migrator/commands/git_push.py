@@ -4,18 +4,14 @@ import os
 from pathlib import Path
 from frappe.commands import pass_context
 
-# Fix the import - use proper relative import
+# Import the GitHelper
 try:
-    # Try standard import first
     from app_migrator.utils.git_helper import GitHelper
 except ImportError:
-    # Fallback for development/testing
     import sys
     import os
-    # Add the parent directory to sys.path
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     from app_migrator.utils.git_helper import GitHelper
-#from app_migrator.utils.git_helper import GitHelper
 
 @click.command('git-push')
 @click.option('--app', help='Specific app to push (default: all apps)')
@@ -28,18 +24,34 @@ except ImportError:
 def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
     """Enhanced Git Push Helper with multi-remote support"""
     
-    from app_migrator.utils.ssh_manager import check_ssh_connection
-    
     click.secho("🚀 App Migrator Git Push Helper", fg="cyan", bold=True)
     click.secho("================================\n", fg="cyan")
     
-    # Check SSH connection
+    # Check SSH connection - simplified version
     click.echo("🔗 Checking SSH connection to GitHub...")
-    if not check_ssh_connection():
-        click.secho("❌ SSH connection failed. Please check your SSH configuration.", fg="red")
-        return
-    
-    click.secho("✅ SSH connection working\n", fg="green")
+    try:
+        # Simple SSH test
+        result = subprocess.run(
+            "ssh -o BatchMode=yes -o ConnectTimeout=5 git@github.com 2>&1",
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        
+        # Check for any response (even permission denied means SSH works)
+        if result.returncode in [0, 1] or "Permission denied" in result.stderr:
+            click.secho("✅ SSH connection working\n", fg="green")
+        else:
+            click.secho("⚠️  SSH connection may have issues", fg="yellow")
+            if not dry_run:
+                if click.confirm("Continue anyway?"):
+                    click.secho("⚠️  Continuing without SSH verification\n", fg="yellow")
+                else:
+                    click.secho("❌ Aborting", fg="red")
+                    return
+    except Exception as e:
+        click.secho(f"⚠️  SSH check error: {e}", fg="yellow")
+        click.secho("⚠️  Continuing anyway\n", fg="yellow")
     
     if dry_run:
         click.secho("🔍 DRY RUN - No changes will be made\n", fg="yellow")
@@ -71,15 +83,12 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
         os.chdir(app_path)
         
         try:
-            # Initialize GitHelper
-            git_helper = GitHelper()
-            
             # Get current branch
-            current_branch = git_helper.get_current_branch()
+            current_branch = GitHelper.get_current_branch()
             click.echo(f"  🌿 Branch: {current_branch}")
             
             # Get all remotes
-            remotes = git_helper.get_remotes()
+            remotes = GitHelper.get_remotes()
             
             if not remotes:
                 click.echo(f"  ❌ No push remotes found for {app_name}")
@@ -101,7 +110,7 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
                 if not dry_run:
                     # Stage and commit changes
                     subprocess.run("git add .", shell=True, check=True)
-                    subprocess.run(f"git commit -m \"{message}\"", shell=True, check=True)
+                    subprocess.run(f'git commit -m "{message}"', shell=True, check=True)
                     click.secho(f"  ✅ Committed changes with message: {message}", fg="green")
             
             # Process each remote
@@ -109,7 +118,7 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
                 click.echo(f"  🔗 Remote: {remote_name} -> {remote_url}")
                 
                 # Check branch status
-                status = git_helper.get_branch_status(remote_name, current_branch)
+                status = GitHelper.get_branch_status(remote_name, current_branch)
                 
                 if status['status'] == 'no_remote':
                     click.echo(f"    ℹ️  Remote branch {current_branch} doesn't exist on {remote_name}")
@@ -120,7 +129,7 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
                         click.secho(f"    ✅ Created remote branch on {remote_name}", fg="green")
                 
                 elif status['status'] == 'behind':
-                    click.echo(f"    ⬇️  Local branch is {status['count']} commit(s) behind {remote_name}")
+                    click.echo(f"    ⬇️  Local branch is {status.get('count', 0)} commit(s) behind {remote_name}")
                     if pull_first and not dry_run:
                         try:
                             subprocess.run(f"git pull {remote_name} {current_branch}", 
@@ -133,7 +142,9 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
                                 continue
                 
                 elif status['status'] == 'diverged':
-                    click.echo(f"    ⚠️  Branch has diverged ({status['ahead']} ahead, {status['behind']} behind)")
+                    ahead = status.get('ahead', 0)
+                    behind = status.get('behind', 0)
+                    click.echo(f"    ⚠️  Branch has diverged ({ahead} ahead, {behind} behind)")
                     if skip_diverged:
                         click.echo(f"    ⏭️  Skipping {remote_name} due to divergence")
                         continue
@@ -148,7 +159,8 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
                         continue
                 
                 elif status['status'] == 'ahead':
-                    click.echo(f"    ⬆️  Local branch is {status['count']} commit(s) ahead of {remote_name}")
+                    count = status.get('count', 0)
+                    click.echo(f"    ⬆️  Local branch is {count} commit(s) ahead of {remote_name}")
                     push_cmd = f"git push {remote_name} {current_branch}"
                 
                 elif status['status'] == 'same':
