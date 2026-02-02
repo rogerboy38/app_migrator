@@ -2080,9 +2080,7 @@ app_migrator.add_command(app_migrator_fix_json_app, 'fix-json-app')
 app_migrator.add_command(app_migrator_wizard, 'wizard')
 app_migrator.add_command(app_migrator_resolve_duplicates, 'resolve-duplicates')
 app_migrator.add_command(app_migrator_orphans, 'orphans')
-# ==================== API KEY CONNECTIONS   ===================
-from .cli import api_key_setup_cmd
-app_migrator.add_command(api_key_setup_cmd, 'api-key-setup')
+
 # ==================== INTELLIGENCE COMMANDS ====================
 
 from .intelligence import predict_success, generate_intelligent_plan, diagnose_app
@@ -2094,22 +2092,10 @@ from .git_info import git_info
 from .api_key_manager import api_key_setup, api_key_status, api_key_cleanup
 from .setup.wizard import setup_wizard
 
-# ==================== UNIQUE MODULAR COMMANDS ====================
-from .app_setup import quick_setup, simple_api_setup
-from .analyze import test_connection, get_site_info, analyze_apps
-
-app_migrator.add_command(quick_setup, 'quick-setup')
-app_migrator.add_command(simple_api_setup, 'simple-api-setup')
-app_migrator.add_command(test_connection, 'test-connection')
-app_migrator.add_command(get_site_info, 'get-site-info')
-app_migrator.add_command(analyze_apps, 'analyze-apps')
-
 app_migrator.add_command(predict_success, 'predict-success')
 app_migrator.add_command(generate_intelligent_plan, 'generate-plan')
 app_migrator.add_command(diagnose_app, 'diagnose')
 app_migrator.add_command(modernize_app, 'modernize')
-# Git push command
-
 app_migrator.add_command(git_push, "git-push")
 app_migrator.add_command(git_pull, "git-pull")
 app_migrator.add_command(api_key_cleanup, "api-key-cleanup")
@@ -2153,3 +2139,10 @@ commands = [
 
 print("✅ App Migrator Enterprise v9.0.0 ready!")
 
+# Git push command
+
+# Analyze commands
+from app_migrator.commands.analyze.apps import analyze_apps
+
+# Simple commands
+from app_migrator.commands.simple_api_setup import simple_api_setup, quick_setup
