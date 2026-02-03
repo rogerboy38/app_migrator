@@ -2058,25 +2058,6 @@ Usage: bench app-migrator <command> [options]
 Help:  bench app-migrator <command> --help
 """)
 
-# ==================== INTELLIGENCE COMMANDS ====================
-
-from .intelligence import predict_success, generate_intelligent_plan, diagnose_app
-from .modernize import modernize_app
-from .git_push import git_push
-from .git_pull import git_pull
-from .git_utils import get_app_info, FrappeCloudAPI, clone_app_from_git, convert_to_git_repo
-from .git_info import git_info
-from .api_key_manager import api_key_setup, api_key_status, api_key_cleanup
-from .setup.wizard import setup_wizard
-from .fix_module_naming import fix_module_names, standardize_modules
-from .fix_orphan_specific import fix_alexa_orphan
-from .fix_orphan_modules import fix_orphan_modules
-from .fix_orphans_no_dev_mode import fix_orphans_safe
-from .fix_amb_w_tds2_orphans import fix_amb_w_tds2
-from .fix_kpi_factors_validation import fix_kpi_factors
-from .module_diagnostic import module_diagnostic
-from .simple_api_setup import simple_api_setup
-
 # Add subcommands to the group
 app_migrator.add_command(app_migrator_health, 'health')
 app_migrator.add_command(app_migrator_scan, 'scan')
@@ -2099,28 +2080,29 @@ app_migrator.add_command(app_migrator_fix_json_app, 'fix-json-app')
 app_migrator.add_command(app_migrator_wizard, 'wizard')
 app_migrator.add_command(app_migrator_resolve_duplicates, 'resolve-duplicates')
 app_migrator.add_command(app_migrator_orphans, 'orphans')
-app_migrator.add_command(fix_module_names, "fix-module-names")
-app_migrator.add_command(standardize_modules, "standardize-modules")
-app_migrator.add_command(module_diagnostic, "module-diagnostic")
-app_migrator.add_command(fix_alexa_orphan, "fix-alexa-orphan")
-app_migrator.add_command(fix_orphan_modules, "fix-orphan-modules")
-app_migrator.add_command(fix_orphans_safe, "fix-orphans-safe")
-app_migrator.add_command(fix_amb_w_tds2, "fix-amb-w-tds2")
-app_migrator.add_command(fix_kpi_factors, "fix-kpi-factors")
+
+# ==================== INTELLIGENCE COMMANDS ====================
+
+from .intelligence import predict_success, generate_intelligent_plan, diagnose_app
+from .modernize import modernize_app
+# from .git_push import git_push
+from .git_pull import git_pull
+from .git_utils import get_app_info, FrappeCloudAPI, clone_app_from_git, convert_to_git_repo
+from .git_info import git_info
+from .api_key_manager import api_key_setup, api_key_status, api_key_cleanup
+from .setup.wizard import setup_wizard
 
 app_migrator.add_command(predict_success, 'predict-success')
 app_migrator.add_command(generate_intelligent_plan, 'generate-plan')
 app_migrator.add_command(diagnose_app, 'diagnose')
 app_migrator.add_command(modernize_app, 'modernize')
-git_push,
-app_migrator.add_command(git_push, "git-push")
+# app_migrator.add_command(git_push, "git-push")
 app_migrator.add_command(git_pull, "git-pull")
 app_migrator.add_command(api_key_cleanup, "api-key-cleanup")
 app_migrator.add_command(api_key_status, "api-key-status")
 app_migrator.add_command(api_key_setup, "api-key-setup")
 app_migrator.add_command(git_info, "git-info")
 app_migrator.add_command(setup_wizard,"setup-wizard")
-app_migrator.add_command(simple_api_setup, 'simple-api-setup')
 
 # ==================== EXPORT ALL COMMANDS ====================
 
@@ -2151,7 +2133,7 @@ commands = [
     generate_intelligent_plan,
     diagnose_app,
     modernize_app,
-    
+    git_push,
     setup_wizard
     ]
 
