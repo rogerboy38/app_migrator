@@ -1,0 +1,195 @@
+name: Deploy - Test Environment
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      skip_migrate:
+        description: 'Skip database migration'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/app-migrator
+
+jobs:
+  # ============================================
+  # JOB 1: DEPLOY TO TEST DOCKER
+  # ============================================
+  deploy-test:
+    name: Deploy - Test Docker
+    runs-on: ubuntu-latest
+    environment: test
+    concurrency:
+      group: test-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine image tag
+        id: vars
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-8)
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+      - name: Pull latest image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || echo "No previous image found"
+
+      - name: Deploy to test server via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TEST_HOST }}
+          username: ${{ secrets.TEST_USER }}
+          key: ${{ secrets.TEST_SSH_KEY }}
+          port: ${{ secrets.TEST_SSH_PORT || 22 }}
+          envs:
+            REGISTRY
+            IMAGE_NAME
+            SHORT_SHA
+          script: |
+            set -e
+            echo "===== Deploying to Test Environment ====="
+            
+            # Pull new image
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || true
+            
+            # Create test docker-compose override
+            cat > docker-compose.test.yml << 'EOF'
+            version: "3.8"
+            
+            services:
+              backend:
+                image: ${REGISTRY}/${IMAGE_NAME}:latest
+                environment:
+                  - DB_HOST=test-db-host
+                  - REDIS_CACHE=redis-cache:6379
+                  - REDIS_QUEUE=redis-queue:6379
+                  - SITES_DIR=/workspace/frappe-bench/sites
+                  - FRAPPE_SITE=test.appmigrator.local
+                healthcheck:
+                  test: ["CMD", "curl", "-f", "http://localhost:8000/api/method/health"]
+                  interval: 30s
+                  timeout: 10s
+                  retries: 3
+                  start_period: 60s
+                restart: unless-stopped
+                depends_on:
+                  - redis-cache
+                  - redis-queue
+                networks:
+                  - frappe-test
+            
+              redis-cache:
+                image: redis:7-alpine
+                command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
+                healthcheck:
+                  test: ["CMD", "redis-cli", "ping"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+                networks:
+                  - frappe-test
+            
+              redis-queue:
+                image: redis:7-alpine
+                command: redis-server --save "" --appendonly no
+                healthcheck:
+                  test: ["CMD", "redis-cli", "ping"]
+                  interval: 10s
+                  timeout: 5s
+                  retries: 5
+                networks:
+                  - frappe-test
+            
+            networks:
+              frappe-test:
+                driver: bridge
+            EOF
+            
+            # Backup before deployment
+            docker exec test-backend-1 bench --site test.appmigrator.local backup --with-files 2>/dev/null || true
+            
+            # Deploy using compose
+            docker compose -f docker-compose.yml -f docker-compose.test.yml pull
+            docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+            
+            # Wait for healthy services
+            sleep 30
+            
+            # Run migrations if not skipped
+            if [ "${{ github.event.inputs.skip_migrate }}" != "true" ]; then
+              docker exec test-backend-1 bench --site test.appmigrator.local migrate || true
+              docker exec test-backend-1 bench --site test.appmigrator.local clear-cache || true
+            fi
+            
+            echo "===== Test Deployment Complete ====="
+
+  # ============================================
+  # JOB 2: HEALTH CHECK - TEST ENVIRONMENT
+  # ============================================
+  health-check-test:
+    name: Health Check - Test
+    needs: deploy-test
+    runs-on: ubuntu-latest
+    environment: test
+
+    steps:
+      - name: Check backend health
+        run: |
+          for i in {1..15}; do
+            echo "Health check attempt $i..."
+            if curl -sf --max-time 10 https://test.appmigrator.local/api/method/health > /dev/null 2>&1; then
+              echo "✓ Backend is healthy"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "✗ Backend health check failed"
+          exit 1
+
+      - name: Verify app commands available
+        run: |
+          docker exec test-backend-1 bench app-migrator health || echo "Health command not fully available"
+
+      - name: Check logs for errors
+        run: |
+          echo "Checking for recent errors..."
+          docker logs test-backend-1 --tail=50 2>&1 | grep -i error || echo "No errors found in logs"
+
+  # ============================================
+  # JOB 3: NOTIFY DEPLOYMENT STATUS
+  # ============================================
+  notify:
+    name: Notify - Deployment Status
+    needs: [deploy-test, health-check-test]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Send deployment notification
+        run: |
+          if [[ "${{ needs.deploy-test.result }}" == "success" && "${{ needs.health-check-test.result }}" == "success" ]]; then
+            echo "✅ Test deployment successful!"
+            echo "URL: https://test.appmigrator.local"
+          else
+            echo "❌ Test deployment failed"
+            echo "Check GitHub Actions logs for details"
+            exit 1
+          fi

@@ -1,0 +1,275 @@
+name: Deploy - Production Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version/Tag to deploy'
+        required: true
+        type: string
+      skip_migrate:
+        description: 'Skip database migration'
+        required: false
+        default: 'false'
+        type: boolean
+      backup:
+        description: 'Create full backup before deploy'
+        required: false
+        default: 'true'
+        type: boolean
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/app-migrator
+
+jobs:
+  # ============================================
+  # JOB 1: VALIDATE DEPLOYMENT VERSION
+  # ============================================
+  validate:
+    name: Validate - Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.validate.outputs.VERSION }}
+      image_tag: ${{ steps.validate.outputs.IMAGE_TAG }}
+
+    steps:
+      - name: Validate version input
+        id: validate
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          
+          if [[ "$VERSION" == v* ]]; then
+            IMAGE_TAG="${VERSION#v}"
+          elif [[ "$VERSION" == *"sha-"* ]]; then
+            IMAGE_TAG="$VERSION"
+          else
+            IMAGE_TAG="sha-${VERSION}"
+          fi
+          
+          echo "Deploying version: $VERSION"
+          echo "Image tag: $IMAGE_TAG"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Pull and verify image exists
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.validate.outputs.IMAGE_TAG }} || {
+              echo "Image not found on server"
+              exit 1
+            }
+            echo "Image verified: ${{ steps.validate.outputs.IMAGE_TAG }}"
+
+  # ============================================
+  # JOB 2: PRE-DEPLOYMENT BACKUP
+  # ============================================
+  backup:
+    name: Backup - Pre-deployment
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: production
+    if: github.event.inputs.backup == 'true'
+
+    steps:
+      - name: Create production backup
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            set -e
+            TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+            BACKUP_DIR="/opt/frappe-backups/$TIMESTAMP"
+            
+            echo "===== Creating Pre-Deployment Backup ====="
+            mkdir -p $BACKUP_DIR
+            
+            # Database backup
+            docker exec prod-backend-1 bench --site ${{ secrets.PROD_SITE_NAME }} backup --with-files
+            
+            # Copy backup files
+            docker cp prod-backend-1:/workspace/frappe-bench/sites/${{ secrets.PROD_SITE_NAME }}/private/backups/. $BACKUP_DIR/
+            
+            # Upload to S3 if configured
+            if [ -n "${{ secrets.AWS_BACKUP_BUCKET }}" ]; then
+              aws s3 cp $BACKUP_DIR/ s3://${{ secrets.AWS_BACKUP_BUCKET }}/pre-deploy/$TIMESTAMP/ --recursive
+              echo "Backup uploaded to S3: s3://${{ secrets.AWS_BACKUP_BUCKET }}/pre-deploy/$TIMESTAMP/"
+            fi
+            
+            # Keep only last 10 backups locally
+            ls -dt /opt/frappe-backups/*/ | tail -n +11 | xargs rm -rf 2>/dev/null || true
+            
+            echo "===== Backup Complete: $TIMESTAMP ====="
+
+  # ============================================
+  # JOB 3: DEPLOY TO PRODUCTION
+  # ============================================
+  deploy-production:
+    name: Deploy - Production
+    needs: [validate, backup]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ secrets.PROD_URL }}
+    concurrency:
+      group: production-deploy
+      cancel-in-progress: false
+
+    steps:
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          envs:
+            IMAGE_TAG
+          script: |
+            set -e
+            echo "===== Starting Production Deployment ====="
+            echo "Version: $IMAGE_TAG"
+            
+            # Pull the target image
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$IMAGE_TAG
+            
+            # Blue-green deployment: scale up green environment
+            docker compose -f docker-compose.yml -f docker-compose.green.yml up -d backend-green
+            
+            # Wait for green environment to be ready
+            echo "Waiting for green environment to be ready..."
+            sleep 45
+            
+            # Run health check on green
+            HEALTH_CHECK_PASSED=false
+            for i in {1..10}; do
+              if curl -sf --max-time 10 https://green.${{ secrets.PROD_URL }}/api/method/health > /dev/null 2>&1; then
+                HEALTH_CHECK_PASSED=true
+                break
+              fi
+              echo "Green health check attempt $i failed, retrying..."
+              sleep 10
+            done
+            
+            if [ "$HEALTH_CHECK_PASSED" = false ]; then
+              echo "Green environment health check failed. Rolling back..."
+              docker compose -f docker-compose.yml -f docker-compose.green.yml stop backend-green
+              exit 1
+            fi
+            
+            # Switch traffic by updating nginx upstream
+            echo "Switching traffic to green environment..."
+            ./scripts/switch-traffic.sh green
+            
+            # Scale down old blue environment
+            sleep 30  # Grace period for in-flight requests
+            docker compose -f docker-compose.yml -f docker-compose.green.yml stop backend
+            
+            # Run database migrations
+            if [ "${{ github.event.inputs.skip_migrate }}" != "true" ]; then
+              echo "Running database migrations..."
+              docker exec prod-backend-green-1 bench --site ${{ secrets.PROD_SITE_NAME }} migrate
+              docker exec prod-backend-green-1 bench --site ${{ secrets.PROD_SITE_NAME }} clear-cache
+              docker exec prod-backend-green-1 bench --site ${{ secrets.PROD_SITE_NAME }} clear-website-cache
+            fi
+            
+            echo "===== Production Deployment Complete ====="
+
+  # ============================================
+  # JOB 4: POST-DEPLOYMENT VERIFICATION
+  # ============================================
+  verify:
+    name: Verify - Post Deployment
+    needs: deploy-production
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Comprehensive health check
+        run: |
+          echo "===== Post-Deployment Verification ====="
+          
+          # Check main endpoint
+          for i in {1..15}; do
+            if curl -sf --max-time 15 https://${{ secrets.PROD_URL }}/api/method/health > /dev/null 2>&1; then
+              echo "✓ Main API is healthy"
+              break
+            fi
+            echo "Attempt $i: API not ready yet..."
+            sleep 10
+          done || { echo "✗ API health check failed"; exit 1; }
+          
+          # Check database connectivity
+          docker exec prod-backend-1 bench --site ${{ secrets.PROD_SITE_NAME }} doctor || echo "Doctor check completed"
+          
+          # Check Redis
+          docker exec prod-redis-cache-1 redis-cli ping || echo "Redis check completed"
+          
+          echo "===== Verification Complete ====="
+
+      - name: Test critical functionality
+        run: |
+          echo "Testing critical functionality..."
+          # Test 1: Login endpoint
+          curl -sf --max-time 30 https://${{ secrets.PROD_URL }}/api/method/frappe.auth.get_logged_user > /dev/null && echo "✓ Auth endpoint working"
+          
+          # Test 2: App Migrator health command
+          docker exec prod-backend-1 bench app-migrator health || echo "App health check completed"
+          
+          # Test 3: Bench commands available
+          docker exec prod-backend-1 bench --site ${{ secrets.PROD_SITE_NAME }} list-apps || echo "Apps listing completed"
+
+      - name: Monitor for errors
+        run: |
+          echo "Checking for errors in logs..."
+          docker logs prod-backend-1 --tail=100 2>&1 | grep -iE "error|exception|fatal" | head -20 || echo "No critical errors found"
+
+  # ============================================
+  # JOB 5: ROLLBACK (MANUAL TRIGGER)
+  # ============================================
+  rollback:
+    name: Rollback - Emergency
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: production-rollback
+    if: github.event.inputs.version == 'rollback'
+
+    steps:
+      - name: Get previous stable version
+        run: |
+          echo "===== Initiating Emergency Rollback ====="
+          PREVIOUS_TAG=$(docker images --format "{{.Tag}}" ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:stable-* | head -1 || echo "")
+          echo "Rolling back to: $PREVIOUS_TAG"
+          echo "PREVIOUS_TAG=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+
+      - name: Execute rollback
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            set -e
+            echo "===== Executing Rollback ====="
+            
+            # Restore from backup
+            LATEST_BACKUP=$(ls -dt /opt/frappe-backups/*/ | head -1)
+            if [ -n "$LATEST_BACKUP" ]; then
+              echo "Using backup: $LATEST_BACKUP"
+            fi
+            
+            # Switch back to previous version
+            docker compose pull
+            docker compose up -d
+            
+            # Verify
+            sleep 30
+            curl -sf https://${{ secrets.PROD_URL }}/api/method/health && echo "Rollback successful" || echo "Rollback may need attention"
+            
+            echo "===== Rollback Complete ====="

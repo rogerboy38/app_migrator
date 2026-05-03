@@ -3,28 +3,42 @@ name = "app_migrator"
 authors = [
     { name = "App Migrator", email = "fcrm@amb-wellness.com"}
 ]
-description = "App Migrator"
-requires-python = ">=3.10"
+description = "Multi-bench Migration Toolkit for Frappe/ERPNext with CI/CD Integration"
+requires-python = ">=3.14"
 readme = "README.md"
 dynamic = ["version"]
+
 dependencies = [
     "keyring>=25.0",
-    "requests>=2.31.0",
+    "requests>=2.33.0",
     "click>=8.0.0",
-    # "frappe~=15.0.0" # Installed and managed by bench.
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+]
+test = [
+    "frappe>=16.0.0",
 ]
 
 [build-system]
 requires = ["flit_core >=3.4,<4"]
 build-backend = "flit_core.buildapi"
 
-# These dependencies are only installed when developer mode is enabled
-[tool.bench.dev-dependencies]
-# package_name = "~=1.1.0"
+[tool.bench.frappe-dependencies]
+frappe = ">=16.0.0-dev,<=17.0.0-dev"
+
+[tool.bench]
+title = "App Migrator"
+category = "Other"
+description = "App migration utility with GitHub Actions CI/CD support"
 
 [tool.ruff]
 line-length = 110
-target-version = "py310"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = [
@@ -37,19 +51,19 @@ select = [
     "RUF",
 ]
 ignore = [
-    "B017", # assertRaises(Exception) - should be more specific
-    "B018", # useless expression, not assigned to anything
-    "B023", # function doesn't bind loop variable - will have last iteration's value
-    "B904", # raise inside except without from
-    "E101", # indentation contains mixed spaces and tabs
-    "E402", # module level import not at top of file
-    "E501", # line too long
-    "E741", # ambiguous variable name
-    "F401", # "unused" imports
-    "F403", # can't detect undefined names from * import
-    "F405", # can't detect undefined names from * import
-    "F722", # syntax error in forward type annotation
-    "W191", # indentation contains tabs
+    "B017",
+    "B018",
+    "B023",
+    "B904",
+    "E101",
+    "E402",
+    "E501",
+    "E741",
+    "F401",
+    "F403",
+    "F405",
+    "F722",
+    "W191",
 ]
 typing-modules = ["frappe.types.DF"]
 
@@ -58,10 +72,14 @@ quote-style = "double"
 indent-style = "tab"
 docstring-code-format = true
 
-[tool.bench]
-title = "App Migrator"
-category = "Other"
-description = "App migration utility"
+[tool.mypy]
+strict = false
+pretty = true
+files = ["app_migrator/**/*.py"]
+exclude = ["**/patches/**", "**/legacy/**"]
 
-[tool.bench.frappe-dependencies]
-frappe = ">=15.0.0,<17.0.0"
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

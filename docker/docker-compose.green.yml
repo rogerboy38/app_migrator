@@ -1,0 +1,95 @@
+# Blue-Green Deployment Overlay
+# This file extends docker-compose.yml for blue-green deployment strategy
+# Usage: docker compose -f docker-compose.yml -f docker-compose.green.yml up -d
+
+version: "3.8"
+
+services:
+  # ============================================
+  # Green Environment (New Version)
+  # ============================================
+  backend-green:
+    image: ${REGISTRY:-ghcr.io/${{ github.repository }}/app-migrator}:${IMAGE_TAG:-latest}
+    command: gunicorn --bind 0.0.0.0:8000 --workers 4 --timeout 120 --threads 2 frappe.app:application
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME}
+      - DB_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - DB_USER=${DB_USER:-frappe}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_CACHE=redis-cache:6379
+      - REDIS_QUEUE=redis-queue:6379
+      - SITES_DIR=/workspace/frappe-bench/sites
+      - FRAPPE_SITE=${SITE_NAME}
+      - FRAPPE_SITE_IS_GREEN=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/method/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    restart: unless-stopped
+    networks:
+      - frappe-network
+    volumes:
+      - frappe-sites:/workspace/frappe-bench/sites
+
+  queue-short-green:
+    image: ${REGISTRY:-ghcr.io/${{ github.repository }}/app-migrator}:${IMAGE_TAG:-latest}
+    command: python -m frappe queue short
+    environment:
+      - DB_HOST=${DB_HOST}
+      - REDIS_CACHE=redis-cache:6379
+      - REDIS_QUEUE=redis-queue:6379
+      - SITES_DIR=/workspace/frappe-bench/sites
+    restart: unless-stopped
+    networks:
+      - frappe-network
+
+  queue-long-green:
+    image: ${REGISTRY:-ghcr.io/${{ github.repository }}/app-migrator}:${IMAGE_TAG:-latest}
+    command: python -m frappe queue long
+    environment:
+      - DB_HOST=${DB_HOST}
+      - REDIS_CACHE=redis-cache:6379
+      - REDIS_QUEUE=redis-queue:6379
+      - SITES_DIR=/workspace/frappe-bench/sites
+    restart: unless-stopped
+    networks:
+      - frappe-network
+
+  scheduler-green:
+    image: ${REGISTRY:-ghcr.io/${{ github.repository }}/app-migrator}:${IMAGE_TAG:-latest}
+    command: python -m frappe scheduler
+    environment:
+      - DB_HOST=${DB_HOST}
+      - REDIS_CACHE=redis-cache:6379
+      - REDIS_QUEUE=redis-queue:6379
+      - SITES_DIR=/workspace/frappe-bench/sites
+    restart: unless-stopped
+    networks:
+      - frappe-network
+
+  frontend-green:
+    image: frappe/nginx:v16.front
+    environment:
+      - BACKEND=backend-green:8000
+      - SOCKETIO=websocket:9000
+      - UPSTREAM_TIMEOUT=300
+    ports:
+      - "8081:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    depends_on:
+      - backend-green
+    networks:
+      - frappe-network
+
+networks:
+  frappe-network:
+    external: true

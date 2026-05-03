@@ -1,0 +1,26 @@
+# Test Environment Configuration
+# This file defines the test environment for GitHub Actions deployment protection
+
+# Deployment branch policy - only deploy from main branch
+deployment_branch_policy:
+  custom: false  # false = only main branch, true = any branch
+
+# Environment protection rules
+protection_rules:
+  # Require review before production deployment
+  required_reviewers:
+    - minimum: 1
+      # Add team members here
+    
+  # Wait for manual approval
+  wait_timer: 0  # minutes to wait before deployment (0 = immediate after approval)
+
+  # Prevent concurrent deployments
+  prevent_self_review: true
+
+# Environment variables (non-secret)
+variables:
+  ENVIRONMENT: test
+  LOG_LEVEL: debug
+  DEBUG_MODE: "true"
+  FRAPPE_SITE: test.appmigrator.local

@@ -1,0 +1,35 @@
+# Production Environment Configuration
+# This file defines the production environment protection rules
+
+# Deployment branch policy
+deployment_branch_policy:
+  custom: true
+  branches:
+    - main
+    - release/v*  # Allow release branches
+
+# Environment protection rules
+protection_rules:
+  # Require approval from designated reviewers
+  required_reviewers:
+    - minimum: 2  # At least 2 approvals required
+      # Add team members here:
+      # - team-lead
+      
+  # Wait time before deployment (30 minutes for final checks)
+  wait_timer: 30
+
+  # Prevent self-approval (must be reviewed by others)
+  prevent_self_review: true
+
+# Environment variables (non-secret)
+variables:
+  ENVIRONMENT: production
+  LOG_LEVEL: info
+  DEBUG_MODE: "false"
+  FRAPPE_SITE: appmigrator.com
+  
+# Deployment protection
+deployment_strategy:
+  immediate: false  # Must wait for wait_timer
+  latest_from_branch: true
