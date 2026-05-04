@@ -25,6 +25,7 @@ from ._shared import (
     get_bench_apps,
     get_current_site,
 )
+from .ensure_controllers import ensure_controller_files
 
 
 @click.command('app-migrator-unstage')
