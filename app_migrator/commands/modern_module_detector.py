@@ -6,7 +6,7 @@ Handles both traditional and modern app structures
 import ast
 import os
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
 def detect_python_modules(app_path: str) -> list[str]:

@@ -1,6 +1,6 @@
 import shlex
 import subprocess
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 
 class GitHelper:

@@ -5,7 +5,7 @@ Quick health checks for multiple apps
 """
 
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 
 class AppHealthScanner:

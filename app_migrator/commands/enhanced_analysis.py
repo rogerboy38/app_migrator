@@ -3,7 +3,7 @@ Enhanced Analysis Tools with Modern App Structure Support
 """
 
 import os
-from typing import Any, Dict
+from typing import Any
 
 from .pre_installation_diagnostics import PreInstallationAnalyzer
 
