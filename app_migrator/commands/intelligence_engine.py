@@ -42,7 +42,7 @@ class MigrationIntelligence:
                 'detection_method': 'apps_txt_analysis',
                 'auto_fix_available': True
             },
-            
+
             # Pattern 2: Version conflicts (from our experience)
             'version_conflicts': {
                 'triggers': ['multiple __version__ definitions', 'import errors'],
@@ -51,19 +51,168 @@ class MigrationIntelligence:
                 'risk_score': 0.8,
                 'detection_method': 'version_analysis',
                 'auto_fix_available': True
-            }
+            },
+
+            # ===== Patterns digested from non-migration modules (T1.5b) =====
+
+            # Digested from: payment_gateway_migrator.py
+            # Reason: gateway-detection regexes and known-gateway list are
+            # genuine migration intelligence — they identify apps with
+            # payment-processing dependencies that need careful pre-migration
+            # planning (webhook re-registration, key rotation, etc).
+            'payment_gateway_dependency': {
+                'triggers': ['app contains payment processing code'],
+                'symptoms': [
+                    'stripe/razorpay/paypal/mpesa/braintree references',
+                    'gateway configuration files (payment_gateway, gateway_settings)',
+                    'webhook/endpoint configuration',
+                ],
+                'prevention': 'document_gateway_dependencies_and_plan_webhook_reregistration',
+                'risk_score': 0.6,
+                'detection_method': 'gateway_indicator_regex_scan',
+                'auto_fix_available': False,
+                # Regex catalog (lowercase, case-insensitive match)
+                'detection_regexes': [
+                    r'payment.*gateway', r'gateway.*payment',
+                    r'payment_processor', r'payment_method',
+                    r'stripe', r'razorpay', r'paypal', r'mpesa',
+                    r'braintree', r'authorize', r'square',
+                    r'api_key', r'secret_key', r'client_id', r'client_secret',
+                    r'webhook', r'endpoint', r'payment.*config',
+                ],
+                'known_gateways': [
+                    'stripe', 'razorpay', 'paypal', 'mpesa', 'braintree',
+                    'authorize', 'square', 'worldpay', 'adyen',
+                ],
+                'config_filename_fragments': [
+                    'payment_gateway', 'gateway_settings', 'payment_config',
+                    'stripe', 'razorpay', 'paypal', 'mpesa',
+                ],
+                'config_dir_indicators': [
+                    'payment_gateway', 'gateways', 'payments', 'payment',
+                    'stripe', 'razorpay', 'paypal', 'mpesa',
+                ],
+            },
+
+            # Digested from: payment_security_migrator.py
+            # Reason: hardcoded-secret regexes are critical security intelligence
+            # — these are vendor-specific key formats that should never end up
+            # in source code; finding any is a high-severity migration blocker.
+            'hardcoded_secrets': {
+                'triggers': ['hardcoded API keys/secrets in source code'],
+                'symptoms': [
+                    'stripe sk_* keys in .py/.js files',
+                    'razorpay rzp_* keys in source',
+                    'AWS access keys (AKIA*) in source',
+                ],
+                'prevention': 'move_secrets_to_environment_variables_or_secure_config',
+                'risk_score': 0.95,
+                'detection_method': 'vendor_secret_pattern_regex_scan',
+                'auto_fix_available': False,
+                'detection_regexes': [
+                    r'sk_[\w]+',           # Stripe secret key
+                    r'rzp_[\w]+',          # Razorpay key
+                    r'AKIA[0-9A-Z]{16}',   # AWS access key
+                ],
+                # Generic credential-shape regexes (find name=value assignments
+                # of api_key/secret_key/password/token in code)
+                'generic_credential_regexes': [
+                    r'api_key\s*=\s*[\'"]([^\'"]+)[\'"]',
+                    r'api_key\s*:\s*[\'"]([^\'"]+)[\'"]',
+                    r'secret_key\s*=\s*[\'"]([^\'"]+)[\'"]',
+                    r'secret\s*=\s*[\'"]([^\'"]+)[\'"]',
+                    r'password\s*=\s*[\'"]([^\'"]+)[\'"]',
+                    r'token\s*=\s*[\'"]([^\'"]+)[\'"]',
+                ],
+            },
+
+            # Digested from: payment_security_migrator.py
+            # Reason: webhook URLs become invalid post-migration when the host
+            # changes; gateway dashboards must be updated. Detecting them up
+            # front prevents silent payment-failure incidents.
+            'webhook_dependency': {
+                'triggers': ['app uses webhook/callback URLs'],
+                'symptoms': ['webhook_url/callback_url/endpoint config in source'],
+                'prevention': 'document_webhooks_and_update_gateway_dashboards_post_migration',
+                'risk_score': 0.5,
+                'detection_method': 'webhook_pattern_scan',
+                'auto_fix_available': False,
+                'detection_regexes': [
+                    r'webhook_url\s*=\s*[\'"]([^\'"]+)[\'"]',
+                    r'callback_url\s*=\s*[\'"]([^\'"]+)[\'"]',
+                    r'endpoint\s*=\s*[\'"]([^\'"]+)[\'"]',
+                    r'url.*webhook[\'"]?\s*:\s*[\'"]([^\'"]+)[\'"]',
+                ],
+            },
+
+            # Digested from: payment_security_migrator.py
+            # Reason: custom encryption (AES/RSA/Fernet) can fail to decrypt
+            # in target environment if key material isn't migrated; needs
+            # explicit verification post-cutover.
+            'encryption_compatibility': {
+                'triggers': ['app uses cryptography/AES/RSA/Fernet'],
+                'symptoms': ['encrypt(/decrypt( calls', 'cryptography/fernet imports'],
+                'prevention': 'verify_encryption_in_target_before_cutover',
+                'risk_score': 0.5,
+                'detection_method': 'encryption_pattern_scan',
+                'auto_fix_available': False,
+                'detection_regexes': [
+                    r'encrypt\(', r'decrypt\(',
+                    r'cryptography', r'fernet', r'aes', r'rsa',
+                ],
+                'method_detection_patterns': {
+                    'AES': r'aes|AES',
+                    'RSA': r'rsa|RSA',
+                    'Fernet': r'fernet|Fernet',
+                    'Cryptography': r'cryptography',
+                    'Hashlib': r'hashlib',
+                },
+            },
         }
-    
+
     def _load_risk_assessment_rules(self) -> Dict[str, Any]:
         """Risk assessment rules based on your validation functions"""
         return {
             'high_risk_factors': [
                 'multiple_version_definitions',
-                'missing_hooks_py'
+                'missing_hooks_py',
+                # Digested from payment_security_migrator.py (T1.5b)
+                'hardcoded_api_keys',
+                'hardcoded_aws_credentials',
+                'hardcoded_stripe_secrets',
             ],
             'medium_risk_factors': [
-                'apps_txt_instability'
-            ]
+                'apps_txt_instability',
+                # Digested from payment_security_migrator.py (T1.5b)
+                'webhook_url_dependencies',
+                'custom_encryption_implementation',
+                'multiple_payment_gateway_integrations',
+            ],
+            # ===== Severity → action mapping (T1.5b) =====
+            # Digested from payment_security_migrator.py's _generate_risk_assessment.
+            # Maps each risk factor to severity, business impact, and concrete
+            # mitigation. Used by predictive_analysis to surface actionable
+            # guidance, not just a binary "risky/not".
+            'severity_actions': {
+                'hardcoded_api_keys': {
+                    'severity': 'high',
+                    'category': 'API Keys',
+                    'impact': 'Security breach if keys are exposed',
+                    'mitigation': 'Move API keys to environment variables or secure config',
+                },
+                'webhook_url_dependencies': {
+                    'severity': 'medium',
+                    'category': 'Webhooks',
+                    'impact': 'Payment failures if URLs are not updated post-migration',
+                    'mitigation': 'Plan webhook URL updates in payment gateway dashboards',
+                },
+                'custom_encryption_implementation': {
+                    'severity': 'medium',
+                    'category': 'Encryption',
+                    'impact': 'Data decryption failures during migration',
+                    'mitigation': 'Test encryption/decryption in target environment',
+                },
+            },
         }
     
     def _load_success_patterns(self) -> Dict[str, float]:

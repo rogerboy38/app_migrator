@@ -16,30 +16,9 @@ __all__ = ["AppAnalysis"]
 
 logger.debug("App Migrator commands loaded")
 
-# Import Payment Security Migrator
-from .payment_security_migrator import (
-    PaymentSecurityMigrator,
-    analyze_payment_security,
-    migrate_payment_security,
-    generate_security_report
-)
-
-__all__.extend([
-    "PaymentSecurityMigrator",
-    "analyze_payment_security", 
-    "migrate_payment_security",
-    "generate_security_report"
-])
-
-logger.debug("Payment Security Migrator integration loaded")
-
-# Import Payment Gateway Migrator
-try:
-    from .payment_gateway_migrator import PaymentGatewayMigrator
-    __all__.append("PaymentGatewayMigrator")
-    logger.debug("Payment Gateway Migrator integration loaded")
-except ImportError as e:
-    print(f"⚠️ Payment Gateway Migrator not available: {e}")
+# Payment Security/Gateway Migrators were digested into
+# intelligence_engine.py in T1.5b and the originals archived to
+# app_migrator/_archive/. See _archive/README.md for what was extracted.
 
 # ============== CLI COMMANDS FOR BENCH ==============
 import click
