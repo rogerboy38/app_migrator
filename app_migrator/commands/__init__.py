@@ -2132,6 +2132,3 @@ logger.debug("App Migrator Enterprise v%s ready", __version__)
 
 # Analyze commands
 from app_migrator.commands.analyze.apps import analyze_apps
-
-# Simple commands
-from app_migrator.commands.simple_api_setup import simple_api_setup, quick_setup

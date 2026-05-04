@@ -29,6 +29,7 @@ class MigrationIntelligence:
         self.pattern_database = self._load_intelligence_patterns()
         self.risk_assessment_rules = self._load_risk_assessment_rules()
         self.success_patterns = self._load_success_patterns()
+        self.analysis_workflows = self._load_analysis_workflows()
         
     def _load_intelligence_patterns(self) -> Dict[str, Any]:
         """Load patterns from our research and experience"""
@@ -168,6 +169,143 @@ class MigrationIntelligence:
                     'Hashlib': r'hashlib',
                 },
             },
+
+            # ===== Patterns digested from frappe-cloud helpers (T1.5b group 2) =====
+
+            # Digested from: api_key_manager.py (kept) + simple_api_setup.py (kept)
+            #              + api_keys.py (deleted) + setup.py FILE (archived)
+            # Reason: detecting that an app depends on Frappe Cloud-specific
+            # auth/credentials. After migration, the target environment must
+            # reproduce these or the app fails silently at runtime.
+            'frappe_cloud_dependency': {
+                'triggers': [
+                    'app references FRAPPE_CLOUD_API_KEY env var',
+                    'app reads from .frappe_cloud_session or ~/.frappe_migrator_keys.json',
+                    'app calls press.api.* endpoints',
+                ],
+                'symptoms': [
+                    'fc_test_key_/fc_dev_key_ prefixed keys in source',
+                    'keyring service "frappe_cloud_app_migrator" lookups',
+                    'cloud.frappe.io dashboard URL references',
+                ],
+                'prevention': 'reproduce_frappe_cloud_credentials_in_target_environment',
+                'risk_score': 0.55,
+                'detection_method': 'frappe_cloud_signature_scan',
+                'auto_fix_available': False,
+                # Detection signatures (env vars, URLs, file paths, key prefixes)
+                'env_var': 'FRAPPE_CLOUD_API_KEY',
+                'dashboard_url': 'https://cloud.frappe.io/dashboard/settings/developer',
+                'test_key_prefixes': ['fc_test_key_', 'fc_dev_key_'],
+                'keyring_service': 'frappe_cloud_app_migrator',
+                'keyring_key_name': 'frappe_cloud_api_key',
+                'session_file_paths': [
+                    '<bench_path>/.frappe_cloud_session',
+                    '~/.frappe_migrator_keys.json',
+                    '~/.frappe_migrator/',
+                ],
+                'validation_sources': ['test_key', 'frappe_cloud_api', 'plausibility_check'],
+                'access_roles': ['guest', 'limited', 'full'],
+                # Credential storage schema (digested from api_keys.py + setup.py FILE)
+                'fc_data_schema': {
+                    'frappe_cloud': {
+                        'api_key': 'str',
+                        'api_secret': 'str',
+                        'team_name': 'str|None',
+                        'team_id': 'str|None',
+                    },
+                    'sites': {
+                        '<site_url>': {
+                            'api_key': 'str',
+                            'api_secret': 'str',
+                            'configured_at': 'str (iso date)',
+                        },
+                    },
+                },
+            },
+
+            # Digested from: api_key_manager.py APISessionManager.load_api_key()
+            # Reason: when a tool needs to find the FC credential, the order
+            # matters — env var dominates, prompt is last resort. Future
+            # migration tooling (and AI agents) should follow the same order.
+            'api_key_storage_strategy': {
+                'triggers': ['tool needs to authenticate against Frappe Cloud'],
+                'symptoms': ['credential lookup fails or prompts unexpectedly'],
+                'prevention': 'walk_storage_priority_chain',
+                'risk_score': 0.4,
+                'detection_method': 'storage_chain_walk',
+                'auto_fix_available': True,
+                # Priority order (highest to lowest preference)
+                'priority_order': [
+                    'env_var',          # FRAPPE_CLOUD_API_KEY (highest priority)
+                    'keyring',          # system keyring (service: frappe_cloud_app_migrator)
+                    'bench_session',    # <bench>/.frappe_cloud_session
+                    'home_config',      # ~/.frappe_migrator_keys.json
+                    'prompt',           # last resort: ask the user
+                ],
+                # Hashing parameters (from api_key_manager.py._hash_key)
+                'hash_algorithm': 'pbkdf2_hmac_sha256',
+                'hash_iterations': 100000,
+                'hash_salt_bytes': 16,
+                # Display masking convention (from api_keys.py.mask_key)
+                'display_mask': 'first_4_dot_dot_dot_last_4',
+                'default_session_expiry_hours': 24,
+            },
+
+            # Digested from: utils/cloud_api.py (archived) FrappeCloudAPIClient
+            # Reason: this is the actual Frappe Cloud Dashboard API contract.
+            # The base URL (frappecloud.com) is DIFFERENT from the human-facing
+            # dashboard URL (cloud.frappe.io). AI agents driving FC-aware
+            # migrations need this contract verbatim.
+            'frappe_cloud_api_endpoints': {
+                'triggers': ['agent needs to query Frappe Cloud for sites/benches/account info'],
+                'symptoms': ['401/403 responses; missing X-Press-Team header'],
+                'prevention': 'use_documented_endpoint_contract',
+                'risk_score': 0.3,
+                'detection_method': 'reference_lookup',
+                'auto_fix_available': False,
+                'base_url': 'https://frappecloud.com/api/method',  # API host (≠ dashboard host)
+                'auth_header_format': 'Token <api_key>:<api_secret>',  # capital T
+                'team_scope_headers': ['X-Press-Team', 'X-Press-Team-ID'],
+                'response_wrapper': '{"message": <data>}',  # Frappe convention
+                'request_timeout_seconds': 30,
+                'endpoints': {
+                    'press.api.account.me':  {'method': 'GET',  'returns': 'account/team info'},
+                    'press.api.site.all':    {'method': 'GET',  'returns': 'list all sites in team'},
+                    'press.api.site.get':    {'method': 'POST', 'body': {'name': 'site_name'},
+                                              'returns': 'site detail'},
+                    'press.api.bench.all':   {'method': 'GET',  'returns': 'list all benches'},
+                },
+            },
+
+            # Digested from: site_api.py (archived) SiteAPIClient
+            # Reason: per-site Frappe REST API has DIFFERENT auth header
+            # casing from the FC Dashboard API ("token" lowercase here vs
+            # "Token" capital there). Easy to confuse; worth recording.
+            'frappe_site_rest_endpoints': {
+                'triggers': ['agent needs to query an individual Frappe site for installed apps / metadata'],
+                'symptoms': ['401 from site REST API; protocol not specified in URL'],
+                'prevention': 'use_documented_per_site_REST_contract',
+                'risk_score': 0.3,
+                'detection_method': 'reference_lookup',
+                'auto_fix_available': False,
+                'url_pattern': 'https://<site_host>/api/method/<endpoint>',
+                'auth_header_format': 'token <api_key>:<api_secret>',  # LOWERCASE t — different from FC Dashboard
+                'response_wrapper': '{"message": <data>}',
+                'url_normalization': 'auto_prepend_https_if_missing',
+                'request_timeout_seconds': 30,
+                'ping_timeout_seconds': 10,
+                'endpoints': {
+                    'frappe.ping':                            {'method': 'GET',  'purpose': 'connection test'},
+                    'frappe.apps.get_installed_apps':         {'method': 'GET',  'purpose': 'installed apps list (modern)'},
+                    'frappe.utils.versions.get_versions':     {'method': 'GET',  'purpose': 'fallback for installed apps (older sites)'},
+                    'frappe.client.get':                      {'method': 'GET',  'purpose': 'fetch any DocType doc'},
+                    'frappe.utils.get_site_info':             {'method': 'GET',  'purpose': 'site metadata'},
+                },
+                # When get_installed_apps fails (older site), fall back to versions API
+                'fallback_chains': {
+                    'installed_apps': ['frappe.apps.get_installed_apps', 'frappe.utils.versions.get_versions'],
+                },
+            },
         }
 
     def _load_risk_assessment_rules(self) -> Dict[str, Any]:
@@ -176,10 +314,12 @@ class MigrationIntelligence:
             'high_risk_factors': [
                 'multiple_version_definitions',
                 'missing_hooks_py',
-                # Digested from payment_security_migrator.py (T1.5b)
+                # Digested from payment_security_migrator.py (T1.5b group 1)
                 'hardcoded_api_keys',
                 'hardcoded_aws_credentials',
                 'hardcoded_stripe_secrets',
+                # Digested from frappe-cloud helpers (T1.5b group 2)
+                'missing_frappe_cloud_credentials_in_target',
             ],
             'medium_risk_factors': [
                 'apps_txt_instability',
@@ -212,6 +352,17 @@ class MigrationIntelligence:
                     'impact': 'Data decryption failures during migration',
                     'mitigation': 'Test encryption/decryption in target environment',
                 },
+                # Digested from frappe-cloud helpers (T1.5b group 2)
+                'missing_frappe_cloud_credentials_in_target': {
+                    'severity': 'high',
+                    'category': 'Frappe Cloud Auth',
+                    'impact': 'App fails silently at runtime when target env lacks FC credentials',
+                    'mitigation': (
+                        'Generate API key at https://cloud.frappe.io/dashboard/settings/developer '
+                        'and reproduce env var FRAPPE_CLOUD_API_KEY (or keyring entry under '
+                        'service "frappe_cloud_app_migrator") in the target environment'
+                    ),
+                },
             },
         }
     
@@ -220,6 +371,49 @@ class MigrationIntelligence:
         return {
             'standard_frappe_app': 0.85,
             'minimal_customization': 0.90
+        }
+
+    def _load_analysis_workflows(self) -> Dict[str, Any]:
+        """
+        Workflow patterns (multi-step procedures) digested from
+        non-migration modules.
+
+        New namespace introduced in T1.5b group 2. Distinct from
+        pattern_database (which holds atomic facts/heuristics) — this
+        holds multi-step procedures that an AI agent or operator can
+        follow end-to-end. Future workflow patterns (multi-app
+        coordinated upgrades, V13.9.0-style transports, donor/receiver
+        flows) belong here too.
+        """
+        return {
+            # Digested from: analyze_main.py (archived) — analyze-all CLI
+            # Reason: canonical "what's installed where" workflow for
+            # FC-hosted multi-site environments. Two-tier query that
+            # combines the Dashboard API (site list) with per-site REST
+            # (installed apps) plus a fallback for older sites.
+            'site_inventory_analysis_flow': {
+                'purpose': 'Build inventory of installed apps across all FC-hosted sites',
+                'tier_1': {
+                    'endpoint': 'press.api.site.all',
+                    'pattern_ref': 'frappe_cloud_api_endpoints',
+                    'returns': 'list of sites in team',
+                },
+                'tier_2': {
+                    'endpoint': 'frappe.apps.get_installed_apps',
+                    'pattern_ref': 'frappe_site_rest_endpoints',
+                    'returns': 'list of installed apps per site',
+                    'requires': 'site has frappe_cloud_dependency credentials configured',
+                },
+                'fallback': {
+                    'endpoint': 'frappe.utils.versions.get_versions',
+                    'pattern_ref': 'frappe_site_rest_endpoints',
+                    'when': 'tier_2 returns empty (older Frappe versions)',
+                    'returns': 'app names as keys of versions dict',
+                },
+                'concurrency_model': 'serial scan',
+                'rate_limit_advice': 'limit batch size when scanning many sites',
+                'output_formats': ['table', 'json', 'csv'],
+            },
         }
 
     def analyze_app_structure(self, app_name: str) -> Dict[str, Any]:
