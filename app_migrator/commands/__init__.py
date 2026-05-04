@@ -164,6 +164,7 @@ Help:  bench app-migrator <command> --help
 
 # ==================== INTELLIGENCE COMMANDS ====================
 
+from .analyze.apps import analyze_apps
 from .api_key_manager import api_key_cleanup, api_key_setup, api_key_status
 from .fix_amb_w_tds2_orphans import fix_amb_w_tds2
 from .fix_kpi_factors_validation import fix_kpi_factors
@@ -178,7 +179,7 @@ from .intelligence import diagnose_app, generate_intelligent_plan, predict_succe
 from .modernize import modernize_app
 from .module_diagnostic import module_diagnostic
 from .setup.wizard import setup_wizard
-from .simple_api_setup import simple_api_setup
+from .simple_api_setup import quick_setup, simple_api_setup
 
 # Add subcommands to the group
 app_migrator.add_command(app_migrator_health, 'health')
@@ -221,6 +222,8 @@ app_migrator.add_command(api_key_setup, "api-key-setup")
 app_migrator.add_command(git_info, "git-info")
 app_migrator.add_command(setup_wizard,"setup-wizard")
 app_migrator.add_command(simple_api_setup, 'simple-api-setup')
+app_migrator.add_command(analyze_apps, 'analyze-apps')
+app_migrator.add_command(quick_setup, 'quick-setup')
 
 # ==================== EXPORT ALL COMMANDS ====================
 
@@ -260,4 +263,3 @@ logger.debug("App Migrator Enterprise v%s ready", __version__)
 # Git push command
 
 # Analyze commands
-from app_migrator.commands.analyze.apps import analyze_apps
