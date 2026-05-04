@@ -20,43 +20,9 @@ from pathlib import Path
 from .session_manager import ensure_frappe_connection, with_session_management
 
 
-# ========== PROGRESS TRACKING SYSTEM (V4) ==========
-
-class ProgressTracker:
-    """Enterprise progress tracking with visual feedback"""
-    
-    def __init__(self, app_name, total_steps=4):
-        self.app_name = app_name
-        self.total_steps = total_steps
-        self.current_step = 0
-        self.steps = [
-            "🔍 Validating migration",
-            "📥 Downloading app", 
-            "⚙️ Installing app",
-            "✅ Finalizing"
-        ]
-        self.start_time = time.time()
-    
-    def update(self, message=None):
-        """Update progress with optional custom message"""
-        self.current_step += 1
-        elapsed = int(time.time() - self.start_time)
-        
-        if message:
-            print(f"\r🔄 [{self.current_step}/{self.total_steps}] {message} ({elapsed}s)", end="", flush=True)
-        else:
-            if self.current_step <= len(self.steps):
-                print(f"\r🔄 [{self.current_step}/{self.total_steps}] {self.steps[self.current_step-1]} ({elapsed}s)", end="", flush=True)
-    
-    def complete(self):
-        """Mark as completed"""
-        elapsed = int(time.time() - self.start_time)
-        print(f"\r✅ [{self.total_steps}/{self.total_steps}] {self.app_name} completed! ({elapsed}s)")
-    
-    def fail(self, error):
-        """Mark as failed"""
-        elapsed = int(time.time() - self.start_time)
-        print(f"\r❌ [{self.current_step}/{self.total_steps}] {self.app_name} failed: {error} ({elapsed}s)")
+# ========== PROGRESS TRACKING SYSTEM ==========
+# Canonical ProgressTracker lives in _shared.py (T1.8.1).
+from ._shared import ProgressTracker  # noqa: F401  (re-exported for back-compat)
 
 
 def run_command_with_progress(command, description, timeout=600):

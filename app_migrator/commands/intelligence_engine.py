@@ -14,7 +14,8 @@ import subprocess
 from datetime import datetime
 
 # Import your existing components
-from .migration_engine import ProgressTracker, validate_migration_readiness, run_command_with_progress
+from ._shared import ProgressTracker
+from .migration_engine import validate_migration_readiness, run_command_with_progress
 from .database_intel import get_database_info, analyze_site_compatibility
 from .session_manager import SessionManager, with_session_management
 
