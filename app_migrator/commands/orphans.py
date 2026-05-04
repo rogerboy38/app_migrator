@@ -111,7 +111,7 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
                                             'py_path': py_file,
                                             'has_controller': has_controller
                                         }
-                        except:
+                        except Exception:
                             pass
 
     # Get all DocTypes from database

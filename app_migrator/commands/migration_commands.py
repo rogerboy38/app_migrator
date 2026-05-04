@@ -88,7 +88,7 @@ def scan_site_impl(site_name: str, apps_filter: list[str] | None = None) -> Site
                     "version": frappe.get_attr(f"{app_name}.__version__") if hasattr(frappe.get_module(app_name), '__version__') else "unknown",
                     "path": frappe.get_app_path(app_name) if hasattr(frappe, 'get_app_path') else "unknown"
                 }
-            except:
+            except Exception:
                 app_info = {"name": app_name, "version": "unknown", "path": "unknown"}
             result.installed_apps.append(app_info)
 
@@ -119,7 +119,7 @@ def scan_site_impl(site_name: str, apps_filter: list[str] | None = None) -> Site
             try:
                 fields_count = frappe.db.count("DocField", {"parent": dt.name})
                 dt_info["fields_count"] = fields_count
-            except:
+            except Exception:
                 pass
 
             if dt.istable:
@@ -632,7 +632,7 @@ def generate_plan_impl(
             # Get record count
             try:
                 count = frappe.db.count(dt_name)
-            except:
+            except Exception:
                 count = 0
 
             data_rule = {
@@ -913,7 +913,7 @@ def execute_plan_impl(
             click.echo("\n🔙 Rolling back changes...")
             try:
                 frappe.db.rollback()
-            except:
+            except Exception:
                 pass
 
     return result

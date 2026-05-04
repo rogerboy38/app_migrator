@@ -180,7 +180,7 @@ required_apps = ["frappe"]
                 with open(requirements_path) as f:
                     deps = [line.strip() for line in f.readlines() if line.strip() and not line.startswith('#')]
                 dependency_analysis["dependencies"].extend(deps)
-            except:
+            except Exception:
                 pass
 
         # Check pyproject.toml for dependencies
@@ -354,7 +354,7 @@ required_apps = ["frappe"]
                         name_match = re.search(r'name\s*=\s*"([^"]+)"', content)
                         if name_match:
                             metadata['app_name'] = name_match.group(1)
-            except:
+            except Exception:
                 pass
 
         return metadata

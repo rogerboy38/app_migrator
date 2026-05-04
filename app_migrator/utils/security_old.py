@@ -47,7 +47,7 @@ class APIManager:
                 decrypted_key = cipher.decrypt(encrypted_key.encode()).decode()
                 self._current_key = decrypted_key
                 return decrypted_key
-            except:
+            except Exception:
                 return None
 
         return None

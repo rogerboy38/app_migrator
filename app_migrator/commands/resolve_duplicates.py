@@ -84,7 +84,7 @@ def app_migrator_resolve_duplicates(keep, remove_from, add_dependency, dry_run):
                                             'custom': data.get('custom', 0),
                                             'fields': len(data.get('fields', []))
                                         }
-                        except:
+                        except Exception:
                             pass
         return doctypes
 

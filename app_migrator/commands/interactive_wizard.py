@@ -110,7 +110,7 @@ def list_apps_in_site(site_name=None):
                 status = "✅" if exists else "❌"
 
                 print(f"{idx}. {status} {app}")
-            except:
+            except Exception:
                 print(f"{idx}. ❓ {app}")
 
         print("=" * 80 + "\n")

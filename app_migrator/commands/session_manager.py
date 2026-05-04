@@ -313,7 +313,7 @@ def with_session_tracking(session_id=None):
             if session_id:
                 try:
                     session = SessionManager(session_id=session_id)
-                except:
+                except Exception:
                     pass
 
             operation_name = func.__name__

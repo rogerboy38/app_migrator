@@ -550,7 +550,7 @@ class MigrationIntelligence:
                         content = f.read()
                         if '__version__' in content:
                             version_definitions.append(str(version_file))
-                except:
+                except Exception:
                     pass
 
             if len(version_definitions) > 1:

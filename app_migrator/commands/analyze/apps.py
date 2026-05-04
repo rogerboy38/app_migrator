@@ -88,7 +88,7 @@ def analyze_apps(ctx, output, detailed, test):
                         version_match = re.search(r"version\s*=\s*['\"]([^'\"]+)['\"]", content)
                         if version_match:
                             version = version_match.group(1)
-                except:
+                except Exception:
                     pass
 
             app_info["version"] = version
@@ -106,7 +106,7 @@ def analyze_apps(ctx, output, detailed, test):
                     )
                     if result.stdout:
                         app_info["git_remote"] = result.stdout.strip().split('\n')[0] if result.stdout else "no remote"
-                except:
+                except Exception:
                     app_info["git_remote"] = "error"
 
             analysis_results["apps"].append(app_info)

@@ -42,7 +42,7 @@ def app_migrator_fix_orphans(context, site, target_module, dry_run):
         try:
             modules = frappe.get_all("Module Def", filters={"app_name": app}, pluck="name")
             valid_modules.update(modules)
-        except:
+        except Exception:
             pass
 
     # Also add app names as valid modules (some doctypes use app name as module)

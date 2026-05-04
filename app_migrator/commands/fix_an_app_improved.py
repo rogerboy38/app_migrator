@@ -130,7 +130,7 @@ class AppFixer:
                     config = json.load(f)
                     installed_apps = config.get('installed_apps', [])
                     return self.app_name in installed_apps
-            except:
+            except Exception:
                 pass
         return False
 

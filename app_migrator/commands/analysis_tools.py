@@ -373,7 +373,7 @@ class AppAnalysis:
                     # Convert string representation of list to actual list
                     try:
                         normalized[var] = ast.literal_eval(normalized[var])
-                    except:
+                    except Exception:
                         normalized[var] = [normalized[var]]
                 elif not isinstance(normalized[var], list):
                     normalized[var] = []
@@ -502,7 +502,7 @@ class AppAnalysis:
                     try:
                         size = file_path.stat().st_size
                         file_sizes.append((str(file_path), size))
-                    except:
+                    except Exception:
                         continue
 
             # Analyze file size distribution

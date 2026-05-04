@@ -183,7 +183,7 @@ def generate_intelligent_plan(context, site, source_apps, target_app, output):
                     if field.fieldtype == "Link" and field.options:
                         links.append(field.options)
                 doctype_dependencies[dt.name] = links
-            except:
+            except Exception:
                 doctype_dependencies[dt.name] = []
 
     # Build phases based on dependencies

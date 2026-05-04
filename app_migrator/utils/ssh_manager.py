@@ -39,7 +39,7 @@ class SSHManager:
             result = subprocess.run(["ssh-add", "-l"],
                                   capture_output=True, text=True)
             status["ssh_agent_running"] = result.returncode == 0
-        except:
+        except Exception:
             status["ssh_agent_running"] = False
 
         # Test GitHub connection
@@ -185,7 +185,7 @@ class SSHManager:
             try:
                 with open(pub_key_path) as f:
                     return f.read().strip()
-            except:
+            except Exception:
                 return None
 
         return None

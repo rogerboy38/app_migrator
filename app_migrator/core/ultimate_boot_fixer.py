@@ -168,7 +168,7 @@ class UltimateBootFixer:
             import importlib
             importlib.invalidate_caches()
             fixes.append("Cleared Python import caches")
-        except:
+        except Exception:
             pass
 
         return fixes

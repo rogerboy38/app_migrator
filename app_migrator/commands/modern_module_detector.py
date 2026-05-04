@@ -90,7 +90,7 @@ def detect_app_metadata(app_path: str) -> dict[str, Any]:
             with open(app_json_path) as f:
                 import json
                 metadata.update(json.load(f))
-        except:
+        except Exception:
             pass
 
     # Check for modern pyproject.toml
@@ -132,7 +132,7 @@ def _parse_pyproject_toml(pyproject_path: str) -> dict[str, Any]:
                 name_match = re.search(r'name\s*=\s*"([^"]+)"', content)
                 if name_match:
                     metadata['app_name'] = name_match.group(1)
-    except:
+    except Exception:
         pass
 
     return metadata
@@ -158,7 +158,7 @@ def _parse_hooks_py(hooks_path: str) -> dict[str, Any]:
             if match:
                 metadata[key] = match.group(1)
 
-    except:
+    except Exception:
         pass
 
     return metadata

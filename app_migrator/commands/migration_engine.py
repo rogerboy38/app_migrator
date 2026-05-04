@@ -74,7 +74,7 @@ def monitor_directory_creation(app_name, timeout=600, check_interval=5):
                     shell=True, capture_output=True, text=True
                 )
                 size = result.stdout.strip().split()[0]
-            except:
+            except Exception:
                 size = "unknown size"
             print(f"✅ Directory created: {app_name} ({size})")
             return True
@@ -161,7 +161,7 @@ def validate_migration_readiness(source_app, target_app):
                 issues.append(f"Low disk space: {free_space:.1f}GB free")
             else:
                 print(f"  ✅ Disk space: {free_space:.1f}GB free")
-        except:
+        except Exception:
             print("  ⚠️  Could not check disk space")
 
         # Summary
@@ -455,7 +455,7 @@ def clone_app_local(app_name, source_bench="frappe-bench-clean", target_bench="f
                 try:
                     session = SessionManager(session_id=session_id)
                     session.update_progress(f"clone_{app_name}", "completed")
-                except:
+                except Exception:
                     pass
             return True
         else:
@@ -469,7 +469,7 @@ def clone_app_local(app_name, source_bench="frappe-bench-clean", target_bench="f
             try:
                 session = SessionManager(session_id=session_id)
                 session.update_progress(f"clone_{app_name}", "failed", str(e))
-            except:
+            except Exception:
                 pass
         return False
 

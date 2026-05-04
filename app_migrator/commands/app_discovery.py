@@ -47,7 +47,7 @@ class AppDiscovery:
             import frappe
             installed_apps = frappe.get_installed_apps()
             return app_name in installed_apps
-        except:
+        except Exception:
             # Fallback: check if module can be imported
             try:
                 __import__(app_name)

@@ -96,7 +96,7 @@ def get_app_module_mapping() -> dict[str, list[str]]:
                     with open(modules_file) as f:
                         modules = [line.strip() for line in f if line.strip()]
                         app_module_map[app_name] = modules
-                except:
+                except Exception:
                     pass
 
     return app_module_map

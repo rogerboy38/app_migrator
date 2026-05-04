@@ -108,7 +108,7 @@ def app_migrator_analyze(context, app_name):
                     import re
                     deps = re.findall(r'"([a-zA-Z0-9_-]+)"', content)
                     result["dependencies"] = [d for d in deps if d not in ['python', 'frappe', app_name]][:10]
-        except:
+        except Exception:
             pass
 
     # Check for issues

@@ -170,7 +170,7 @@ class SafeMigrationManager(MigrationManager):
             import shutil
             total, used, free = shutil.disk_usage("/")
             return free / total
-        except:
+        except Exception:
             return 0.5
 
     def _check_system_resources(self):

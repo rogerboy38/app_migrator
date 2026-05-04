@@ -48,7 +48,7 @@ def get_bench_apps_simple(bench_path):
                 app = line.split()[0]
                 apps.append(app)
         return sorted(apps)
-    except:
+    except Exception:
         return []
 
 def bench_health_check():
@@ -80,6 +80,6 @@ def get_bench_size_simple(bench_path):
     try:
         result = subprocess.run(f"du -sh {bench_path}", shell=True, capture_output=True, text=True)
         return result.stdout.strip().split()[0]
-    except:
+    except Exception:
         return "unknown"
 

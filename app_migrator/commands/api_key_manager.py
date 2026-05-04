@@ -40,7 +40,7 @@ class APISessionManager:
             stored_key_hash = decoded[16:]
             key_hash = hashlib.pbkdf2_hmac('sha256', api_key.encode(), salt, 100000)
             return key_hash == stored_key_hash
-        except:
+        except Exception:
             return False
 
     def prompt_for_api_key(self) -> str | None:

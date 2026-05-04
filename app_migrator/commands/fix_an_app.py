@@ -115,7 +115,7 @@ class AppFixer:
             if result and result.returncode == 0:
                 # Simple check - in real implementation, use frappe.get_installed_apps()
                 return True
-        except:
+        except Exception:
             pass
         return False
 
