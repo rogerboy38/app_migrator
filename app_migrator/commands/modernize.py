@@ -1,5 +1,4 @@
 """
-from ._shared import find_bench_root
 App Migrator Modernize Commands
 Upgrade apps from traditional to modern pyproject.toml structure
 """
@@ -9,6 +8,8 @@ import os
 from datetime import datetime
 
 import click
+
+from ._shared import find_bench_root
 
 try:
     from frappe.commands import pass_context

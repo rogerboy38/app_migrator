@@ -1,5 +1,4 @@
 """
-from ._shared import find_bench_root
 App Migrator Intelligence Commands
 AI-powered migration analysis and prediction
 """
@@ -9,6 +8,8 @@ import os
 from datetime import datetime
 
 import click
+
+from ._shared import find_bench_root
 
 try:
     import frappe

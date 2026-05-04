@@ -1,5 +1,4 @@
 """
-from ._shared import find_bench_root
 Data Quality Module - V5.0.0
 Data quality operations including orphan fixing, restoration, and reference management
 
@@ -18,6 +17,8 @@ from pathlib import Path
 
 import frappe
 from frappe.utils import get_sites
+
+from ._shared import find_bench_root
 
 
 def ensure_frappe_connection():

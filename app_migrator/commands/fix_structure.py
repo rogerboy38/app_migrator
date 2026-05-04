@@ -12,6 +12,8 @@ from pathlib import Path
 
 import click
 
+from ._shared import find_bench_root
+
 try:
     import frappe
     from frappe.commands import pass_context

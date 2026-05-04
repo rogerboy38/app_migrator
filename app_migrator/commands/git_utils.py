@@ -1,5 +1,4 @@
 """
-from ._shared import find_bench_root
 Git Utilities for Frappe Apps - Integration with Frappe Cloud API
 """
 
@@ -11,6 +10,8 @@ from typing import Dict, List, Optional
 
 import click
 import requests
+
+from ._shared import find_bench_root
 
 
 class FrappeCloudAPI:

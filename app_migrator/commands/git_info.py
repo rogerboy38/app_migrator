@@ -1,5 +1,4 @@
 """
-from ._shared import find_bench_root
 Git Information Command - Show detailed git status for all apps
 """
 
@@ -8,6 +7,7 @@ from pathlib import Path
 
 import click
 
+from ._shared import find_bench_root
 from .git_utils import FrappeCloudAPI, get_app_info
 
 

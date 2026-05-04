@@ -21,7 +21,7 @@ from frappe.utils import get_sites
 
 # ========== PROGRESS TRACKING SYSTEM ==========
 # Canonical ProgressTracker lives in _shared.py (T1.8.1).
-from ._shared import ProgressTracker
+from ._shared import ProgressTracker, find_bench_root
 from .session_manager import ensure_frappe_connection, with_session_management
 
 
