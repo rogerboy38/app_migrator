@@ -1548,15 +1548,6 @@ def app_migrator_fix_json_app(app_name, dry_run):
         print(f"\n✅ All JSON files are correct - no issues found")
 
 
-# ==================== INTERACTIVE WIZARD COMMAND ====================
-
-@click.command('app-migrator-wizard')
-def app_migrator_wizard():
-    """Launch interactive migration wizard (no site required)"""
-    from app_migrator.commands.enhanced_interactive_wizard import interactive_migration_wizard
-    interactive_migration_wizard()
-
-
 # ==================== RESOLVE DUPLICATES COMMAND ====================
 
 @click.command('app-migrator-resolve-duplicates')
@@ -2022,7 +2013,7 @@ def app_migrator(ctx):
 ╚═══════════════════════════════════════════════════════╝
 
 QUICK START:
-  wizard              Launch interactive wizard
+  setup-wizard        Interactive setup wizard
   health              Check system health
 
 SITE ANALYSIS:
@@ -2101,7 +2092,6 @@ app_migrator.add_command(app_migrator_fix_structure, 'fix-structure')
 app_migrator.add_command(app_migrator_ensure_controllers, 'ensure-controllers')
 app_migrator.add_command(app_migrator_fix_app_field, 'fix-app-field')
 app_migrator.add_command(app_migrator_fix_json_app, 'fix-json-app')
-app_migrator.add_command(app_migrator_wizard, 'wizard')
 app_migrator.add_command(app_migrator_resolve_duplicates, 'resolve-duplicates')
 app_migrator.add_command(app_migrator_orphans, 'orphans')
 app_migrator.add_command(fix_module_names, "fix-module-names")
@@ -2147,7 +2137,6 @@ commands = [
     app_migrator_ensure_controllers,
     app_migrator_fix_app_field,
     app_migrator_fix_json_app,
-    app_migrator_wizard,
     app_migrator_orphans,
     # Intelligence commands
     predict_success,
