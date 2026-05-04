@@ -3,6 +3,7 @@
 import os
 
 import click
+
 from ._shared import find_bench_root
 
 try:
@@ -55,11 +56,11 @@ def app_migrator_apps(context, site):
     if site and installed:
         not_downloaded = [a for a in installed if a not in downloaded]
         if not_downloaded:
-            print(f"\n⚠️ INSTALLED BUT NOT IN APPS DIR:")
+            print("\n⚠️ INSTALLED BUT NOT IN APPS DIR:")
             for app in not_downloaded:
                 print(f"   {app}")
 
-    print(f"\n📊 SUMMARY:")
+    print("\n📊 SUMMARY:")
     print(f"   Downloaded: {len(downloaded)}")
     print(f"   Installed:  {len(installed)}")
     print(f"   Available:  {len(downloaded) - len(installed)}")

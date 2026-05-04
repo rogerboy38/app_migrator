@@ -1,7 +1,8 @@
-import click
 import os
 import sys
 from pathlib import Path
+
+import click
 
 # Add app_migrator to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -12,7 +13,7 @@ def app_migrator():
     pass
 
 # Import and register all command modules
-from . import api_keys, cloud_api, site_api, setup, analyze
+from . import analyze, api_keys, cloud_api, setup, site_api
 
 # Register commands
 app_migrator.add_command(api_keys.api_key_status)

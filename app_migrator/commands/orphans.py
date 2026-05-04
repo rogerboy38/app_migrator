@@ -19,11 +19,11 @@ except ImportError:
     pass_context = lambda f: f
 
 from ._shared import (
-    ProgressTracker,
     MigrationSession,
-    get_current_site,
+    ProgressTracker,
     detect_available_benches,
     get_bench_apps,
+    get_current_site,
 )
 
 
@@ -58,34 +58,34 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
         if not site:
             print("❌ No site specified and no current site set. Use --site or 'bench use <site>'")
             return
-    
+
     mode = "DRY-RUN" if dry_run else "APPLY"
     print(f"🔍 ORPHAN DETECTION [{mode}]")
     print(f"   Site: {site}")
     print("=" * 60)
-    
+
     frappe.init(site=site)
     frappe.connect()
-    
+
     # Get installed apps and their modules
     installed_apps = frappe.get_installed_apps()
-    
+
     # Build module-to-app mapping from Module Def
     module_to_app = {}
     module_defs = frappe.get_all("Module Def", fields=["name", "app_name"])
     for md in module_defs:
         if md.app_name:
             module_to_app[md.name] = md.app_name
-    
+
     # Scan filesystem for DocType definitions
     apps_path = os.path.dirname(os.path.dirname(frappe.get_app_path('frappe')))
     filesystem_doctypes = {}  # dt_name -> app_name
-    
+
     for app_name in os.listdir(apps_path):
         app_dir = os.path.join(apps_path, app_name)
         if not os.path.isdir(app_dir) or app_name.startswith('.'):
             continue
-        
+
         for root, dirs, files in os.walk(app_dir):
             if '/doctype/' in root or '\\doctype\\' in root:
                 for f in files:
@@ -103,7 +103,7 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
                                         dt_folder_name = os.path.basename(dt_folder)
                                         py_file = os.path.join(dt_folder, f"{dt_folder_name}.py")
                                         has_controller = os.path.exists(py_file)
-                                        
+
                                         filesystem_doctypes[dt_name] = {
                                             'app': app_name,
                                             'module': dt_module,
@@ -113,13 +113,13 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
                                         }
                         except:
                             pass
-    
+
     # Get all DocTypes from database
-    all_doctypes = frappe.get_all("DocType", 
+    all_doctypes = frappe.get_all("DocType",
         fields=["name", "module", "app", "custom"],
         filters={"custom": 0}  # Focus on standard DocTypes
     )
-    
+
     # Categorize orphans
     orphans = {
         'no_app_field': [],       # app field is NULL
@@ -127,14 +127,14 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
         'wrong_app': [],          # app field doesn't match filesystem
         'no_controller': [],      # JSON exists but no .py controller file
     }
-    
+
     for dt in all_doctypes:
         dt_name = dt.name
         dt_module = dt.module
         dt_app = dt.app
-        
+
         fs_info = filesystem_doctypes.get(dt_name)
-        
+
         # Check 1: No app field
         if not dt_app:
             if fs_info:
@@ -151,7 +151,7 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
                     'app': dt_app
                 })
             continue
-        
+
         # Check 2: No JSON in filesystem
         if not fs_info:
             # Only flag if not in installed apps (could be core Frappe/ERPNext)
@@ -162,7 +162,7 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
                     'app': dt_app
                 })
             continue
-        
+
         # Check 3: App mismatch
         if dt_app != fs_info['app']:
             orphans['wrong_app'].append({
@@ -171,7 +171,7 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
                 'correct_app': fs_info['app'],
                 'module': dt_module
             })
-        
+
         # Check 4: Missing controller file (THE KEY CHECK!)
         if not fs_info.get('has_controller'):
             orphans['no_controller'].append({
@@ -180,11 +180,11 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
                 'module': fs_info['module'],
                 'py_path': fs_info['py_path']
             })
-    
+
     # Summary
     total_orphans = sum(len(v) for v in orphans.values())
-    
-    print(f"\n📊 ORPHAN ANALYSIS:")
+
+    print("\n📊 ORPHAN ANALYSIS:")
     print(f"   Total DocTypes scanned: {len(all_doctypes)}")
     print(f"   Filesystem DocTypes found: {len(filesystem_doctypes)}")
     print(f"   Total orphans: {total_orphans}")
@@ -193,44 +193,44 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
     print(f"   📌 Wrong 'app' field: {len(orphans['wrong_app'])}")
     print(f"   🔴 Missing .py controller (WILL ORPHAN!): {len(orphans['no_controller'])}")
     print(f"   ⚠️  No JSON definition: {len(orphans['no_json'])}")
-    
+
     # Show details
     if orphans['no_app_field']:
-        print(f"\n🔧 DOCTYPES WITH NULL APP FIELD:")
+        print("\n🔧 DOCTYPES WITH NULL APP FIELD:")
         for o in orphans['no_app_field'][:10]:
             print(f"   • {o['name']:<40} → suggested: {o['suggested_app']}")
         if len(orphans['no_app_field']) > 10:
             print(f"   ... and {len(orphans['no_app_field']) - 10} more")
-    
+
     if orphans['wrong_app']:
-        print(f"\n⚠️ DOCTYPES WITH WRONG APP FIELD:")
+        print("\n⚠️ DOCTYPES WITH WRONG APP FIELD:")
         for o in orphans['wrong_app'][:10]:
             print(f"   • {o['name']:<40} current: {o['current_app']}, should be: {o['correct_app']}")
         if len(orphans['wrong_app']) > 10:
             print(f"   ... and {len(orphans['wrong_app']) - 10} more")
-    
+
     if orphans['no_controller']:
-        print(f"\n🔴 DOCTYPES WITH MISSING .PY CONTROLLER (will be deleted by migrate!):")
+        print("\n🔴 DOCTYPES WITH MISSING .PY CONTROLLER (will be deleted by migrate!):")
         for o in orphans['no_controller'][:15]:
             print(f"   • {o['name']:<40} app: {o['app']}, missing: {os.path.basename(o['py_path'])}")
         if len(orphans['no_controller']) > 15:
             print(f"   ... and {len(orphans['no_controller']) - 15} more")
-    
+
     if orphans['no_json']:
-        print(f"\n❓ DOCTYPES WITH NO JSON (may be deletable):")
+        print("\n❓ DOCTYPES WITH NO JSON (may be deletable):")
         for o in orphans['no_json'][:10]:
             print(f"   • {o['name']:<40} module: {o['module']}, app: {o['app']}")
         if len(orphans['no_json']) > 10:
             print(f"   ... and {len(orphans['no_json']) - 10} more")
-    
+
     # Apply fixes
     if not dry_run:
         fixed_count = 0
         deleted_count = 0
-        
+
         if fix_mode:
-            print(f"\n🔧 APPLYING AUTO-FIX...")
-            
+            print("\n🔧 APPLYING AUTO-FIX...")
+
             # Fix NULL app field
             for o in orphans['no_app_field']:
                 try:
@@ -242,7 +242,7 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
                     fixed_count += 1
                 except Exception as e:
                     print(f"   ❌ {o['name']}: {e}")
-            
+
             # Fix wrong app field
             for o in orphans['wrong_app']:
                 try:
@@ -251,21 +251,21 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
                     fixed_count += 1
                 except Exception as e:
                     print(f"   ❌ {o['name']}: {e}")
-            
+
             frappe.db.commit()
-            
+
             # Create missing controller files (THE KEY FIX!)
             controllers_created = 0
             if orphans['no_controller']:
-                print(f"\n🔧 CREATING MISSING CONTROLLER FILES...")
+                print("\n🔧 CREATING MISSING CONTROLLER FILES...")
                 for o in orphans['no_controller']:
                     py_path = o['py_path']
                     dt_name = o['name']
-                    
+
                     # Convert doctype name to class name (Title Case -> PascalCase)
                     # e.g., "TDS Settings" -> "TdsSettings"
                     class_name = ''.join(word.capitalize() for word in dt_name.replace('-', ' ').split())
-                    
+
                     controller_content = f'''import frappe
 from frappe.model.document import Document
 
@@ -280,15 +280,15 @@ class {class_name}(Document):
                         controllers_created += 1
                     except Exception as e:
                         print(f"   ❌ {dt_name}: {e}")
-                
+
                 print(f"\n✅ Created {controllers_created} controller files")
-            
+
             print(f"\n✅ Fixed {fixed_count} DocTypes, created {controllers_created} controllers")
-        
+
         elif reassign:
             print(f"\n🔧 REASSIGNING TO: {reassign}...")
             reassign_module = reassign.replace("_", " ").title()
-            
+
             all_fixable = orphans['no_app_field'] + orphans['wrong_app']
             for o in all_fixable:
                 try:
@@ -300,15 +300,15 @@ class {class_name}(Document):
                     fixed_count += 1
                 except Exception as e:
                     print(f"   ❌ {o['name']}: {e}")
-            
+
             frappe.db.commit()
             print(f"\n✅ Reassigned {fixed_count} DocTypes to {reassign}")
-        
+
         elif delete_mode:
             if not click.confirm(f"⚠️ DELETE {len(orphans['no_json'])} orphaned DocTypes? This is IRREVERSIBLE!"):
                 print("❌ Cancelled")
             else:
-                print(f"\n🗑️ DELETING ORPHANS...")
+                print("\n🗑️ DELETING ORPHANS...")
                 for o in orphans['no_json']:
                     try:
                         frappe.delete_doc("DocType", o['name'], force=True)
@@ -316,21 +316,21 @@ class {class_name}(Document):
                         deleted_count += 1
                     except Exception as e:
                         print(f"   ❌ {o['name']}: {e}")
-                
+
                 frappe.db.commit()
                 print(f"\n✅ Deleted {deleted_count} orphaned DocTypes")
-        
+
         print(f"\n📋 Now run: bench --site {site} migrate")
-    
+
     else:
         if total_orphans > 0:
-            print(f"\n📋 RESOLUTION OPTIONS:")
+            print("\n📋 RESOLUTION OPTIONS:")
             print(f"   bench app-migrator orphans --site {site} --fix --apply")
             print(f"   bench app-migrator orphans --site {site} --reassign <app_name> --apply")
             print(f"   bench app-migrator orphans --site {site} --delete --apply")
         else:
-            print(f"\n✅ No orphaned DocTypes found!")
-    
+            print("\n✅ No orphaned DocTypes found!")
+
     frappe.db.close()
 
 

@@ -112,7 +112,7 @@ def app_migrator_conflicts(context, site, apps, all_apps, output):
 
     # Display
     total = len(result["conflicts"]["duplicate_doctypes"]) + len(result["conflicts"]["orphan_doctypes"])
-    print(f"\n📊 CONFLICT SUMMARY:")
+    print("\n📊 CONFLICT SUMMARY:")
     print(f"   Scan Mode: {'All Apps (filesystem)' if all_apps else 'Installed Apps (database)'}")
     print(f"   Apps Scanned: {len(apps_list)}")
     print(f"   Duplicate DocTypes: {len(result['conflicts']['duplicate_doctypes'])}")

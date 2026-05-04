@@ -6,27 +6,28 @@ import os
 import subprocess
 from pathlib import Path
 
+
 def compare_benches(bench1, bench2):
     """Compare two benches and show differences"""
     print(f"🔀 COMPARING BENCHES: {bench1} vs {bench2}")
-    
+
     apps1 = get_bench_apps_simple(bench1)
     apps2 = get_bench_apps_simple(bench2)
-    
+
     common = set(apps1) & set(apps2)
     unique1 = set(apps1) - set(apps2)
     unique2 = set(apps2) - set(apps1)
-    
-    print(f"📊 COMPARISON RESULTS:")
+
+    print("📊 COMPARISON RESULTS:")
     print(f"   ✅ Common apps: {len(common)}")
     print(f"   📦 Unique to {bench1}: {len(unique1)}")
     print(f"   📦 Unique to {bench2}: {len(unique2)}")
-    
+
     if unique1:
         print(f"\n🎯 Migration targets ({bench1} → {bench2}):")
         for app in sorted(unique1):
             print(f"   • {app}")
-    
+
     return {
         "common": common,
         "unique1": unique1,
@@ -54,16 +55,16 @@ def bench_health_check():
     """Perform health check on all benches"""
     print("🏥 BENCH HEALTH CHECK")
     benches = detect_available_benches_simple()
-    
+
     for bench in benches:
         bench_path = f"/home/frappe/{bench}"
         size = get_bench_size_simple(bench_path)
         apps = get_bench_apps_simple(bench_path)
-        
+
         print(f"\n📦 {bench}:")
         print(f"   📊 Size: {size}")
         print(f"   🎯 Apps: {len(apps)}")
-        print(f"   ✅ Status: Healthy" if apps else "   ⚠️ Status: Empty")
+        print("   ✅ Status: Healthy" if apps else "   ⚠️ Status: Empty")
 
 def detect_available_benches_simple():
     """Simple bench detection"""

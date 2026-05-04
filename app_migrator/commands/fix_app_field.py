@@ -19,11 +19,11 @@ except ImportError:
     pass_context = lambda f: f
 
 from ._shared import (
-    ProgressTracker,
     MigrationSession,
-    get_current_site,
+    ProgressTracker,
     detect_available_benches,
     get_bench_apps,
+    get_current_site,
 )
 
 
@@ -52,28 +52,28 @@ def app_migrator_fix_app_field(context, site, module, app, dry_run):
     print(f"   Module: {module}")
     print(f"   Target App: {app}")
     print("=" * 60)
-    
+
     frappe.init(site=site)
     frappe.connect()
-    
+
     # Find DocTypes with NULL app field in this module
     doctypes_with_null_app = frappe.db.sql("""
         SELECT name, module, custom, app 
         FROM `tabDocType` 
         WHERE module = %s AND (app IS NULL OR app = '')
     """, (module,), as_dict=True)
-    
+
     if not doctypes_with_null_app:
         print(f"\n✅ No DocTypes found with NULL app field in module '{module}'")
         frappe.db.close()
         return
-    
+
     print(f"\n⚠️ DOCTYPES WITH NULL APP FIELD ({len(doctypes_with_null_app)}):")
     for dt in doctypes_with_null_app:
         print(f"   • {dt['name']} (custom={dt['custom']}, app={dt['app']})")
-    
+
     if not dry_run:
-        print(f"\n🔧 FIXING APP FIELD...")
+        print("\n🔧 FIXING APP FIELD...")
         fixed_count = 0
         for dt in doctypes_with_null_app:
             try:
@@ -82,13 +82,13 @@ def app_migrator_fix_app_field(context, site, module, app, dry_run):
                 fixed_count += 1
             except Exception as e:
                 print(f"   ❌ {dt['name']}: {e}")
-        
+
         frappe.db.commit()
         print(f"\n✅ Fixed {fixed_count}/{len(doctypes_with_null_app)} DocTypes")
         print(f"\n📋 Now run: bench --site {site} migrate")
     else:
-        print(f"\n📋 Run with --apply to fix the app field")
-    
+        print("\n📋 Run with --apply to fix the app field")
+
     frappe.db.close()
 
 

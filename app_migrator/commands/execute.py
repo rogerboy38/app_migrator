@@ -24,7 +24,7 @@ def app_migrator_execute(context, site, plan_file, dry_run):
     print(f"🚀 Executing migration [{mode}]")
     print("=" * 60)
 
-    with open(plan_file, 'r') as f:
+    with open(plan_file) as f:
         plan = json.load(f)
 
     if not dry_run:
@@ -51,6 +51,6 @@ def app_migrator_execute(context, site, plan_file, dry_run):
     tracker.complete()
 
     if dry_run:
-        print(f"\n✅ Dry-run complete. Run with --apply to execute.")
+        print("\n✅ Dry-run complete. Run with --apply to execute.")
     else:
         print(f"\n✅ Migration complete! Run 'bench --site {site} migrate'")

@@ -3,7 +3,7 @@
 import click
 
 try:
-    import frappe  # noqa: F401
+    import frappe
     from frappe.commands import pass_context
 except ImportError:
     pass_context = lambda f: f

@@ -76,14 +76,14 @@ def get_current_site():
         # Try common_site_config.json first (has default_site)
         config_file = os.path.join(sites_path, 'common_site_config.json')
         if os.path.exists(config_file):
-            with open(config_file, 'r') as f:
+            with open(config_file) as f:
                 config = json.load(f)
                 if config.get('default_site'):
                     return config['default_site']
         # Fallback to currentsite.txt
         currentsite_file = os.path.join(sites_path, 'currentsite.txt')
         if os.path.exists(currentsite_file):
-            with open(currentsite_file, 'r') as f:
+            with open(currentsite_file) as f:
                 return f.read().strip()
     return None
 
@@ -246,6 +246,6 @@ class MigrationSession:
     def load(session_id):
         session_file = os.path.expanduser(f"~/migration_sessions/{session_id}.json")
         if os.path.exists(session_file):
-            with open(session_file, 'r') as f:
+            with open(session_file) as f:
                 return json.load(f)
         return None

@@ -4,19 +4,20 @@ Predictive analytics and issue prevention system
 Integrates with existing migration_engine.py and database_intel.py
 """
 
-import frappe
 import json
 import os
-import time
-from pathlib import Path
-from typing import Dict, List, Any, Tuple
 import subprocess
+import time
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
+
+import frappe
 
 # Import your existing components
 from ._shared import ProgressTracker
-from .migration_engine import validate_migration_readiness, run_command_with_progress
-from .database_intel import get_database_info, analyze_site_compatibility
+from .database_intel import analyze_site_compatibility, get_database_info
+from .migration_engine import run_command_with_progress, validate_migration_readiness
 from .session_manager import SessionManager, with_session_management
 
 
@@ -24,7 +25,7 @@ class MigrationIntelligence:
     """
     🧠 INTELLIGENCE ENGINE - Integrates with your existing ProgressTracker and validation systems
     """
-    
+
     def __init__(self, session_id=None):
         self.session_id = session_id
         self.pattern_database = self._load_intelligence_patterns()
@@ -32,8 +33,8 @@ class MigrationIntelligence:
         self.success_patterns = self._load_success_patterns()
         self.analysis_workflows = self._load_analysis_workflows()
         self.ai_prompts = self._load_ai_prompts()
-        
-    def _load_intelligence_patterns(self) -> Dict[str, Any]:
+
+    def _load_intelligence_patterns(self) -> dict[str, Any]:
         """Load patterns from our research and experience"""
         return {
             # Pattern 1: Apps.txt stability (from our research)
@@ -310,7 +311,7 @@ class MigrationIntelligence:
             },
         }
 
-    def _load_risk_assessment_rules(self) -> Dict[str, Any]:
+    def _load_risk_assessment_rules(self) -> dict[str, Any]:
         """Risk assessment rules based on your validation functions"""
         return {
             'high_risk_factors': [
@@ -367,15 +368,15 @@ class MigrationIntelligence:
                 },
             },
         }
-    
-    def _load_success_patterns(self) -> Dict[str, float]:
+
+    def _load_success_patterns(self) -> dict[str, float]:
         """Success probability patterns from historical data"""
         return {
             'standard_frappe_app': 0.85,
             'minimal_customization': 0.90
         }
 
-    def _load_analysis_workflows(self) -> Dict[str, Any]:
+    def _load_analysis_workflows(self) -> dict[str, Any]:
         """
         Workflow patterns (multi-step procedures) digested from
         non-migration modules.
@@ -418,7 +419,7 @@ class MigrationIntelligence:
             },
         }
 
-    def _load_ai_prompts(self) -> Dict[str, Any]:
+    def _load_ai_prompts(self) -> dict[str, Any]:
         """
         Intent-classification and agent-reasoning data digested from
         non-migration modules.
@@ -525,7 +526,7 @@ class MigrationIntelligence:
             },
         }
 
-    def analyze_app_structure(self, app_name: str) -> Dict[str, Any]:
+    def analyze_app_structure(self, app_name: str) -> dict[str, Any]:
         """Comprehensive app structure analysis for intelligence"""
         analysis = {
             'app_name': app_name,
@@ -535,55 +536,55 @@ class MigrationIntelligence:
             'risk_factors': [],
             'recommendations': []
         }
-        
+
         try:
             app_path = Path(f"/home/frappe/frappe-bench/apps/{app_name}")
-            
+
             # Check for version conflicts
             version_files = list(app_path.rglob("**/__init__.py"))
             version_definitions = []
-            
+
             for version_file in version_files:
                 try:
-                    with open(version_file, 'r') as f:
+                    with open(version_file) as f:
                         content = f.read()
                         if '__version__' in content:
                             version_definitions.append(str(version_file))
                 except:
                     pass
-            
+
             if len(version_definitions) > 1:
                 analysis['version_conflict_risk'] = True
                 analysis['risk_factors'].append('Multiple version definitions')
                 analysis['recommendations'].append('Consolidate to single __version__ in root __init__.py')
-            
+
             # Check for hooks.py (stability indicator)
             if (app_path / 'hooks.py').exists():
                 analysis['success_probability'] += 0.2
             else:
                 analysis['risk_factors'].append('Missing hooks.py')
                 analysis['recommendations'].append('Create proper hooks.py configuration')
-            
+
             # Calculate final success probability
             analysis['success_probability'] = max(0.1, min(0.9, analysis['success_probability']))
-            
+
         except Exception as e:
             analysis['error'] = str(e)
             analysis['success_probability'] = 0.1
-        
+
         return analysis
 
     @with_session_management
-    def intelligent_validate_migration(self, source_app: str, target_app: str) -> Dict[str, Any]:
+    def intelligent_validate_migration(self, source_app: str, target_app: str) -> dict[str, Any]:
         """
         🧠 ENHANCED VALIDATION with predictive risk assessment
         """
         print(f"🧠 INTELLIGENT VALIDATION: {source_app} → {target_app}")
         print("=" * 70)
-        
+
         # Run your existing validation
         basic_ready, basic_issues = validate_migration_readiness(source_app, target_app)
-        
+
         # Add intelligent predictions
         intelligence_report = {
             'basic_validation': {
@@ -593,17 +594,17 @@ class MigrationIntelligence:
             'predictive_analysis': self._predict_migration_risks(source_app, target_app),
             'success_probability': self._calculate_success_probability(source_app, target_app)
         }
-        
+
         self._display_intelligent_validation_report(intelligence_report)
         return intelligence_report
 
-    def _predict_migration_risks(self, source_app: str, target_app: str) -> List[Dict[str, Any]]:
+    def _predict_migration_risks(self, source_app: str, target_app: str) -> list[dict[str, Any]]:
         """Predict migration risks based on pattern analysis"""
         predicted_risks = []
-        
+
         # Analyze app structure for risk patterns
         source_analysis = self.analyze_app_structure(source_app)
-        
+
         # Predict version conflicts
         if source_analysis.get('version_conflict_risk', False):
             predicted_risks.append({
@@ -613,25 +614,25 @@ class MigrationIntelligence:
                 'description': 'Multiple version definitions detected',
                 'prevention': 'Consolidate to single __version__ in root __init__.py'
             })
-        
+
         return predicted_risks
 
     def _calculate_success_probability(self, source_app: str, target_app: str) -> float:
         """Calculate success probability based on analysis"""
         source_analysis = self.analyze_app_structure(source_app)
         target_analysis = self.analyze_app_structure(target_app)
-        
+
         base_probability = 0.5
         base_probability += source_analysis['success_probability'] * 0.3
         base_probability += target_analysis['success_probability'] * 0.2
-        
+
         return min(0.95, max(0.1, base_probability))
 
-    def _display_intelligent_validation_report(self, report: Dict[str, Any]):
+    def _display_intelligent_validation_report(self, report: dict[str, Any]):
         """Display comprehensive intelligent validation report"""
         print("\n🧠 INTELLIGENT VALIDATION REPORT")
         print("=" * 70)
-        
+
         # Basic validation results
         basic = report['basic_validation']
         print(f"📊 Basic Validation: {'✅ READY' if basic['ready'] else '❌ NOT READY'}")
@@ -639,16 +640,16 @@ class MigrationIntelligence:
             print("   Issues found:")
             for issue in basic['issues']:
                 print(f"   • {issue}")
-        
+
         # Predictive analysis
         predictions = report['predictive_analysis']
         if predictions:
-            print(f"\n🔮 Predictive Risk Assessment:")
+            print("\n🔮 Predictive Risk Assessment:")
             for risk in predictions:
                 print(f"   ⚠️  {risk['type']} (Confidence: {risk['confidence']*100}%)")
                 print(f"      Impact: {risk['impact']} - {risk['description']}")
                 print(f"      Prevention: {risk['prevention']}")
-        
+
         # Success probability
         success_pct = report['success_probability'] * 100
         print(f"\n🎯 Success Probability: {success_pct:.1f}%")
@@ -663,14 +664,14 @@ def predict_migration_success(source_app: str, target_app: str):
 def generate_intelligent_migration_plan(source_app: str, target_app: str):
     """Generate intelligent migration plan with risk mitigation"""
     intelligence = MigrationIntelligence()
-    
+
     plan = {
         'validation_phase': intelligence.intelligent_validate_migration(source_app, target_app),
         'prevention_phase': ['Run intelligent validation first'],
         'execution_phase': ['Execute migration with monitoring'],
         'monitoring_phase': ['Track success indicators']
     }
-    
+
     return plan
 
 def display_intelligence_dashboard():
@@ -678,7 +679,7 @@ def display_intelligence_dashboard():
     print("🧠 APP MIGRATOR INTELLIGENCE DASHBOARD")
     print("=" * 50)
     print("🎯 Predictive Analytics: ACTIVE")
-    print("🛡️  Risk Prevention: ENABLED") 
+    print("🛡️  Risk Prevention: ENABLED")
     print("📊 Pattern Learning: COLLECTING DATA")
     print("🚀 Success Prediction: OPERATIONAL")
     print("\n💡 Available Intelligent Commands:")
@@ -704,7 +705,7 @@ if __name__ == "__main__":
     # Test intelligence engine
     intelligence = MigrationIntelligence()
     print("🧪 Testing Intelligence Engine...")
-    
+
     # Test app analysis
     analysis = intelligence.analyze_app_structure("app_migrator")
     print(f"App Analysis: {analysis}")

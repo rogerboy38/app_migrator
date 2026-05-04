@@ -20,7 +20,7 @@ except ImportError:
 @pass_context
 def app_migrator_plan(context, site, source_apps, target_app, output):
     """Generate a migration plan"""
-    print(f"📋 Generating migration plan")
+    print("📋 Generating migration plan")
     print(f"   Source: {source_apps}")
     print(f"   Target: {target_app}")
     print("=" * 60)

@@ -54,7 +54,7 @@ def app_migrator_scan(context, site, output):
     frappe.db.close()
 
     # Display
-    print(f"\n📊 SCAN RESULTS:")
+    print("\n📊 SCAN RESULTS:")
     print(f"   Frappe: {result['frappe_version']}")
     print(f"   Apps: {result['summary']['apps']}")
     for app in result["apps"]:

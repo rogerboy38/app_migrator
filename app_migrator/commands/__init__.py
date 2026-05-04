@@ -7,6 +7,7 @@ Merged: Original analysis + Enterprise multi-bench + Session management
 __version__ = "10.0.0-rc1"
 
 import logging
+
 logger = logging.getLogger("app_migrator")
 
 # ONLY import the main class - no function imports!
@@ -21,13 +22,14 @@ logger.debug("App Migrator commands loaded")
 # app_migrator/_archive/. See _archive/README.md for what was extracted.
 
 # ============== CLI COMMANDS FOR BENCH ==============
-import click
 import json
 import os
 import subprocess
-import time
 import sys
+import time
 from datetime import datetime
+
+import click
 
 try:
     import frappe
@@ -39,58 +41,36 @@ except ImportError:
 
 # ==================== ENTERPRISE UTILITIES ====================
 # Helpers extracted to _shared.py in T1.8.1
-from ._shared import (
-    ProgressTracker,
-    MigrationSession,
-    get_current_site,
-    detect_available_benches,
-    get_bench_apps,
-)
-
-# ==================== HEALTH COMMAND (T1.8.2 → health.py) ====================
-from .health import app_migrator_health
-
-# ==================== SCAN SITE COMMAND (T1.8.2 → scan.py) ====================
-from .scan import app_migrator_scan
-
-# ==================== DETECT CONFLICTS COMMAND (T1.8.2 → conflicts.py) ====================
-from .conflicts import app_migrator_conflicts
-
-# ==================== GENERATE PLAN COMMAND (T1.8.2 → plan.py) ====================
-from .plan import app_migrator_plan
-
-# ==================== EXECUTE PLAN COMMAND (T1.8.2 → execute.py) ====================
-from .execute import app_migrator_execute
-
-# ==================== ENTERPRISE: LIST BENCHES (T1.8.2 → benches.py) ====================
-from .benches import app_migrator_benches
-
-# ==================== ENTERPRISE: SESSION MANAGEMENT (T1.8.3 → session.py) ====================
-from .session import app_migrator_session_start, app_migrator_session_status
-
-# ==================== LIST APPS (DOWNLOADED VS INSTALLED) (T1.8.2 → apps.py) ====================
-from .apps import app_migrator_apps
-
 # ==================== FIX ORPHAN DOCTYPES [DEPRECATED] (T1.8.5 → _legacy/fix_orphans.py) ====================
 from ._legacy.fix_orphans import app_migrator_fix_orphans
+from ._shared import (
+    MigrationSession,
+    ProgressTracker,
+    detect_available_benches,
+    get_bench_apps,
+    get_current_site,
+)
 
 # ==================== ANALYZE APP STRUCTURE (T1.8.4 → analyze_cmd.py) ====================
 from .analyze_cmd import app_migrator_analyze
 
+# ==================== LIST APPS (DOWNLOADED VS INSTALLED) (T1.8.2 → apps.py) ====================
+from .apps import app_migrator_apps
+
+# ==================== ENTERPRISE: LIST BENCHES (T1.8.2 → benches.py) ====================
+from .benches import app_migrator_benches
+
+# ==================== DETECT CONFLICTS COMMAND (T1.8.2 → conflicts.py) ====================
+from .conflicts import app_migrator_conflicts
+
 # ==================== CREATE HOST COMMAND (T1.8.3 → create_host.py) ====================
 from .create_host import app_migrator_create_host
 
-# ==================== STAGE COMMAND (T1.8.3 → stage.py) ====================
-from .stage import app_migrator_stage
-
-# ==================== UNSTAGE COMMAND (T1.8.3 → unstage.py) ====================
-from .unstage import app_migrator_unstage
-
-# ==================== FIX STRUCTURE COMMAND (T1.8.3 → fix_structure.py) ====================
-from .fix_structure import app_migrator_fix_structure
-
 # ==================== ENSURE CONTROLLERS COMMAND (T1.8.3 → ensure_controllers.py) ====================
 from .ensure_controllers import app_migrator_ensure_controllers
+
+# ==================== EXECUTE PLAN COMMAND (T1.8.2 → execute.py) ====================
+from .execute import app_migrator_execute
 
 # ==================== FIX APP FIELD COMMAND (T1.8.3 → fix_app_field.py) ====================
 from .fix_app_field import app_migrator_fix_app_field
@@ -98,11 +78,32 @@ from .fix_app_field import app_migrator_fix_app_field
 # ==================== FIX JSON APP COMMAND (T1.8.3 → fix_json_app.py) ====================
 from .fix_json_app import app_migrator_fix_json_app
 
-# ==================== RESOLVE DUPLICATES COMMAND (T1.8.3 → resolve_duplicates.py) ====================
-from .resolve_duplicates import app_migrator_resolve_duplicates
+# ==================== FIX STRUCTURE COMMAND (T1.8.3 → fix_structure.py) ====================
+from .fix_structure import app_migrator_fix_structure
+
+# ==================== HEALTH COMMAND (T1.8.2 → health.py) ====================
+from .health import app_migrator_health
 
 # ==================== ORPHANS COMMAND (T1.8.3 → orphans.py) ====================
 from .orphans import app_migrator_orphans
+
+# ==================== GENERATE PLAN COMMAND (T1.8.2 → plan.py) ====================
+from .plan import app_migrator_plan
+
+# ==================== RESOLVE DUPLICATES COMMAND (T1.8.3 → resolve_duplicates.py) ====================
+from .resolve_duplicates import app_migrator_resolve_duplicates
+
+# ==================== SCAN SITE COMMAND (T1.8.2 → scan.py) ====================
+from .scan import app_migrator_scan
+
+# ==================== ENTERPRISE: SESSION MANAGEMENT (T1.8.3 → session.py) ====================
+from .session import app_migrator_session_start, app_migrator_session_status
+
+# ==================== STAGE COMMAND (T1.8.3 → stage.py) ====================
+from .stage import app_migrator_stage
+
+# ==================== UNSTAGE COMMAND (T1.8.3 → unstage.py) ====================
+from .unstage import app_migrator_unstage
 
 # ==================== MAIN GROUP COMMAND ====================
 
@@ -163,20 +164,20 @@ Help:  bench app-migrator <command> --help
 
 # ==================== INTELLIGENCE COMMANDS ====================
 
-from .intelligence import predict_success, generate_intelligent_plan, diagnose_app
-from .modernize import modernize_app
-from .git_push import git_push
-from .git_pull import git_pull
-from .git_utils import get_app_info, FrappeCloudAPI, clone_app_from_git, convert_to_git_repo
-from .git_info import git_info
-from .api_key_manager import api_key_setup, api_key_status, api_key_cleanup
-from .setup.wizard import setup_wizard
-from .fix_module_naming import fix_module_names, standardize_modules
-from .fix_orphan_specific import fix_alexa_orphan
-from .fix_orphan_modules import fix_orphan_modules
+from .api_key_manager import api_key_cleanup, api_key_setup, api_key_status
 from .fix_amb_w_tds2_orphans import fix_amb_w_tds2
 from .fix_kpi_factors_validation import fix_kpi_factors
+from .fix_module_naming import fix_module_names, standardize_modules
+from .fix_orphan_modules import fix_orphan_modules
+from .fix_orphan_specific import fix_alexa_orphan
+from .git_info import git_info
+from .git_pull import git_pull
+from .git_push import git_push
+from .git_utils import FrappeCloudAPI, clone_app_from_git, convert_to_git_repo, get_app_info
+from .intelligence import diagnose_app, generate_intelligent_plan, predict_success
+from .modernize import modernize_app
 from .module_diagnostic import module_diagnostic
+from .setup.wizard import setup_wizard
 from .simple_api_setup import simple_api_setup
 
 # Add subcommands to the group
@@ -249,7 +250,7 @@ commands = [
     generate_intelligent_plan,
     diagnose_app,
     modernize_app,
-    
+
     setup_wizard
     ]
 

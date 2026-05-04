@@ -19,11 +19,11 @@ except ImportError:
     pass_context = lambda f: f
 
 from ._shared import (
-    ProgressTracker,
     MigrationSession,
-    get_current_site,
+    ProgressTracker,
     detect_available_benches,
     get_bench_apps,
+    get_current_site,
 )
 
 
@@ -43,25 +43,25 @@ def app_migrator_unstage(context, site, host, target, dry_run):
     mode = "DRY-RUN" if dry_run else "APPLY"
     host_module_title = host.replace("_", " ").title()
     target_module_title = target.replace("_", " ").title()
-    
+
     print(f"📥 UNSTAGING DOCTYPES [{mode}]")
     print(f"   From module: {host_module_title}")
     print(f"   To module: {target_module_title}")
     print("=" * 60)
-    
+
     frappe.init(site=site)
     frappe.connect()
-    
+
     # Get doctypes in the host module
-    host_doctypes = frappe.get_all("DocType", 
+    host_doctypes = frappe.get_all("DocType",
         filters={"module": host_module_title},
         fields=["name", "module"])
-    
+
     print(f"\n📦 DOCTYPES TO REASSIGN ({len(host_doctypes)}):")
-    
+
     for dt in host_doctypes:
         print(f"   • {dt.name}")
-    
+
     if not dry_run:
         print(f"\n🔧 REASSIGNING TO MODULE '{target_module_title}'...")
         success_count = 0
@@ -77,21 +77,21 @@ def app_migrator_unstage(context, site, host, target, dry_run):
                 success_count += 1
             except Exception as e:
                 print(f"   ❌ {dt.name}: {e}")
-        
+
         frappe.db.commit()
         print(f"\n✅ Reassigned {success_count}/{len(host_doctypes)} doctypes to '{target_module_title}'")
-        
+
         # Auto-create missing controller files for the target app
-        print(f"\n🔧 Ensuring controller files exist for target app...")
+        print("\n🔧 Ensuring controller files exist for target app...")
         created = ensure_controller_files(target, target, dry_run=False)
         if created:
             print(f"   Created {len(created)} controller file(s)")
         else:
-            print(f"   All controller files already exist")
-        
+            print("   All controller files already exist")
+
         print(f"\n📋 Now run: bench --site {site} migrate")
     else:
-        print(f"\n📋 Run with --apply to reassign")
-    
+        print("\n📋 Run with --apply to reassign")
+
     frappe.db.close()
 

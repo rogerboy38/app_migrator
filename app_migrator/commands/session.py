@@ -7,7 +7,7 @@ since they're a logical pair.
 import click
 
 try:
-    import frappe  # noqa: F401
+    import frappe
     from frappe.commands import pass_context
 except ImportError:
     pass_context = lambda f: f
@@ -37,7 +37,7 @@ def app_migrator_session_status(context, session_id):
         print(f"❌ Session not found: {session_id}")
         return
 
-    print(f"📊 SESSION STATUS")
+    print("📊 SESSION STATUS")
     print("=" * 40)
     print(f"   Name: {data['metadata']['name']}")
     print(f"   ID: {data['metadata']['session_id']}")
