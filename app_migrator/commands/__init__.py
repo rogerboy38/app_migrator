@@ -593,7 +593,10 @@ def app_migrator_apps(context, site):
 @click.option('--dry-run/--apply', default=True, help='Dry run or apply')
 @pass_context
 def app_migrator_fix_orphans(context, site, target_module, dry_run):
-    """Fix orphan doctypes (doctypes with no module or invalid module)"""
+    """[DEPRECATED] Fix orphan doctypes — use 'orphans --fix --apply' instead (will be removed in v11)"""
+    click.echo("⚠️  DEPRECATED: 'fix-orphans' is deprecated and will be removed in v11.")
+    click.echo("   Use 'bench app-migrator orphans --fix --apply' instead.")
+    click.echo("")
     mode = "DRY-RUN" if dry_run else "APPLY"
     print(f"🔧 FIXING ORPHAN DOCTYPES [{mode}]")
     print(f"   Site: {site}")
@@ -2074,7 +2077,6 @@ from .setup.wizard import setup_wizard
 from .fix_module_naming import fix_module_names, standardize_modules
 from .fix_orphan_specific import fix_alexa_orphan
 from .fix_orphan_modules import fix_orphan_modules
-from .fix_orphans_no_dev_mode import fix_orphans_safe
 from .fix_amb_w_tds2_orphans import fix_amb_w_tds2
 from .fix_kpi_factors_validation import fix_kpi_factors
 from .module_diagnostic import module_diagnostic
@@ -2106,8 +2108,7 @@ app_migrator.add_command(fix_module_names, "fix-module-names")
 app_migrator.add_command(standardize_modules, "standardize-modules")
 app_migrator.add_command(module_diagnostic, "module-diagnostic")
 app_migrator.add_command(fix_alexa_orphan, "fix-alexa-orphan")
-app_migrator.add_command(fix_orphan_modules, "fix-orphan-modules")
-app_migrator.add_command(fix_orphans_safe, "fix-orphans-safe")
+app_migrator.add_command(fix_orphan_modules, "fix-modules")
 app_migrator.add_command(fix_amb_w_tds2, "fix-amb-w-tds2")
 app_migrator.add_command(fix_kpi_factors, "fix-kpi-factors")
 
