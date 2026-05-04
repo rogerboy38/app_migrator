@@ -30,6 +30,7 @@ class MigrationIntelligence:
         self.risk_assessment_rules = self._load_risk_assessment_rules()
         self.success_patterns = self._load_success_patterns()
         self.analysis_workflows = self._load_analysis_workflows()
+        self.ai_prompts = self._load_ai_prompts()
         
     def _load_intelligence_patterns(self) -> Dict[str, Any]:
         """Load patterns from our research and experience"""
@@ -413,6 +414,113 @@ class MigrationIntelligence:
                 'concurrency_model': 'serial scan',
                 'rate_limit_advice': 'limit batch size when scanning many sites',
                 'output_formats': ['table', 'json', 'csv'],
+            },
+        }
+
+    def _load_ai_prompts(self) -> Dict[str, Any]:
+        """
+        Intent-classification and agent-reasoning data digested from
+        non-migration modules.
+
+        New namespace introduced in T1.5b group 3. Distinct from
+        pattern_database (atomic facts) and analysis_workflows
+        (multi-step procedures) — this holds LLM-adjacent reasoning
+        data: intent regexes, exact-match routes, follow-up suggestion
+        graphs, and (in the future) actual prompt templates for AI
+        agents driving migrations.
+        """
+        return {
+            # Digested from: app_migrator/_archive/ai_integration.py
+            #                AppMigratorAIAgent.command_patterns + exact_matches +
+            #                _execute_help_direct + app_aliases
+            # Reason: pre-baked intent classifier mapping natural-language
+            # queries to canonical command names. Reusable as a fallback
+            # router OR ground-truth dataset for any future LLM-driven
+            # query parser.
+            'nl_command_routing': {
+                # Regex patterns: NL phrasing → canonical command name
+                'intent_regexes': {
+                    r'analyze (?:the )?(?:health of )?(\w+)(?: app)?':  'diagnose-app',
+                    r'diagnose (?:the )?(\w+)(?: app)?':                'diagnose-app',
+                    r'check (?:the )?(?:health of )?(\w+)(?: app)?':    'diagnose-app',
+                    r'health (?:scan|check|analysis)':                  'scan-bench-health',
+                    r'scan health':                                     'scan-bench-health',
+                    r'quick health check (?:for )?(\w+)':               'quick-health-check',
+                    r'fix (?:broken|all|) apps':                        'repair-bench-apps',
+                    r'fix apps':                                        'repair-bench-apps',
+                    r'repair apps':                                     'repair-bench-apps',
+                    r'batch repair':                                    'repair-bench-apps',
+                    r'predict success (?:for )?(\w+)':                  'predict-success',
+                    r'intelligence dashboard':                          'intelligence-dashboard',
+                    r'list benches':                                    'list-benches',
+                    r'bench apps':                                      'bench-apps',
+                    r'help|commands|what can you do':                   'help',
+                },
+                # Exact-string matches (faster path; (command, default_arg) tuples)
+                'intent_exact_matches': {
+                    'scan health':            ('scan-bench-health',     ''),
+                    'fix apps':               ('repair-bench-apps',     ''),
+                    'repair apps':            ('repair-bench-apps',     ''),
+                    'health scan':            ('scan-bench-health',     ''),
+                    'quick health check':     ('quick-health-check',    ''),
+                    'list benches':           ('list-benches',          ''),
+                    'bench apps':             ('bench-apps',            'frappe-bench-v5'),
+                    'intelligence dashboard': ('intelligence-dashboard', ''),
+                    'predict success':        ('predict-success',       'erpnext'),
+                },
+                # User-facing capability listing with NL examples (digested
+                # verbatim from _execute_help_direct)
+                'skill_summary': [
+                    'analyze [app]            - Analyze app health',
+                    'scan health              - Scan bench health',
+                    'fix apps                 - Fix broken apps (dry run)',
+                    'repair apps              - Repair apps (dry run)',
+                    'quick health check [app] - Quick app health check',
+                    'predict success [app]    - Predict migration success',
+                    'list benches             - List available benches',
+                    'bench apps [bench]       - List apps in bench',
+                    'intelligence dashboard   - Show AI intelligence',
+                ],
+                # Trivial app-name aliases (kept for completeness; documented
+                # as such because it's effectively identity mapping)
+                'app_aliases': {
+                    'payments':     'payments',
+                    'erpnext':      'erpnext',
+                    'frappe':       'frappe',
+                    'app_migrator': 'app_migrator',
+                },
+                # Stop-words filtered out of regex-extracted args (digested
+                # from _extract_arguments)
+                'arg_stopwords': ['the', 'for', 'in', 'of'],
+            },
+
+            # Digested from: app_migrator/_archive/ai_integration.py
+            #                AppMigratorAIAgent._enhance_with_ai_insights
+            # Reason: precomputed "what's next" reasoning graph. After a
+            # given command runs, what should the agent suggest as the
+            # likely next step? Useful for LLM-driven migration loops.
+            'command_followup_graph': {
+                'scan-bench-health':      [
+                    "Bench health analysis completed",
+                    "Use 'fix apps' to repair any issues found",
+                ],
+                'repair-bench-apps':      [
+                    "App repair analysis completed",
+                    "This was a dry run. All fixes are simulated",
+                ],
+                'diagnose-app':           [
+                    "App diagnosis completed",
+                    "Review the health score and blockers",
+                ],
+                'predict-success':        [
+                    "Success prediction completed",
+                    "Use this to plan your migration strategy",
+                ],
+                # Fallback: returned when no command-specific entry matches
+                'default':                [
+                    "Command executed successfully",
+                    "Cloud-friendly execution completed",
+                ],
             },
         }
 

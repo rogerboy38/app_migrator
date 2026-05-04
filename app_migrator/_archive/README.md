@@ -106,3 +106,57 @@ Files KEPT IN PLACE (in `app_migrator/commands/`):
 - **`simple_api_setup.py`** — live; registers `simple-api-setup`. Per
   Hugh's mental model (agentic FC auth = real value), kept for now.
   May move to a future `app_frappe_cloud_helper` companion app.
+
+### Group 3 — ai_integration + commands/modules/ sweep (T1.5b, archived/deleted 2026-05-04)
+
+Group 3 had two parts:
+
+#### Part A — ai_integration.py (archived)
+
+- **`ai_integration.py`** — defined `AppMigratorAIAgent`, a natural-language
+  CLI front-end that mapped queries like "analyze payments" or "scan
+  health" to canonical command names via regex + exact-string routing.
+  Cloud-friendly (direct function imports, no subprocess). Defined one
+  unregistered click command (`ai_migrate_cli`); zero live importers
+  anywhere; module had broken internal imports referencing modules that
+  may not exist (`app_health_scanner`, `diagnostic_commands`,
+  `pre_installation_diagnostics`). **Archived in its broken state for
+  historical record** — the patterns digested into the `ai_prompts`
+  namespace are the only callable intelligence salvageable.
+  Digested into: `intelligence_engine.py` →
+  `ai_prompts['nl_command_routing']` (15 intent regexes, 9 exact-match
+  routes, skill summary, app aliases, arg stop-words),
+  `ai_prompts['command_followup_graph']` (precomputed "what's next"
+  reasoning per command type, with a `default` fallback).
+
+#### Part B — commands/modules/ cluster (deleted, not archived)
+
+The `app_migrator/commands/modules/` subdirectory was a closed
+dead-code cluster surfaced as collateral during Group 2's audit. Three
+files, zero live importers, zero unique intelligence. Bulk-deleted
+rather than archived because they offer no historical value beyond
+what's already captured in kept modules and the digested patterns:
+
+- `modules/__init__.py` — empty (package marker only).
+- `modules/api_keys.py` — yet another `APIKeyManager` class wrapping
+  `~/.frappe_migrator_keys.json`, plus a colliding `api-key-status`
+  command (never registered) and an `api-key-add` CRUD wrapper. The
+  fc_data storage schema is already preserved in
+  `pattern_database['frappe_cloud_dependency']['fc_data_schema']`.
+- `modules/git_ops.py` — three STUB commands (`git-pull`, `git-push`,
+  `git-info`) with empty bodies. Real implementations are in
+  `commands/git_pull.py`, `commands/git_push.py`, `commands/git_info.py`
+  (kept).
+
+The `ai_prompts` namespace introduced in this group is now the
+canonical home for intent-classification and agent-reasoning data.
+Future entries here include actual prompt templates for AI agents
+driving migrations.
+
+After Group 3, the namespace structure on `MigrationIntelligence` is:
+
+| Namespace            | Holds                                       | Examples |
+|----------------------|---------------------------------------------|----------|
+| `pattern_database`   | Atomic facts / heuristics / regex catalogs  | frappe_cloud_dependency, hardcoded_secrets |
+| `analysis_workflows` | Multi-step procedures                       | site_inventory_analysis_flow |
+| `ai_prompts` (NEW)   | Intent classification + agent-reasoning     | nl_command_routing, command_followup_graph |
