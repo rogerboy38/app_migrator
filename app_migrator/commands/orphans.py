@@ -86,7 +86,7 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
         if not os.path.isdir(app_dir) or app_name.startswith('.'):
             continue
 
-        for root, dirs, files in os.walk(app_dir):
+        for root, _dirs, files in os.walk(app_dir):
             if '/doctype/' in root or '\\doctype\\' in root:
                 for f in files:
                     if f.endswith('.json') and not f.startswith('_'):

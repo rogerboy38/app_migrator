@@ -64,7 +64,7 @@ def app_migrator_fix_json_app(app_name, dry_run):
     already_correct = []
     errors = []
 
-    for root, dirs, files in os.walk(app_path):
+    for root, _dirs, files in os.walk(app_path):
         if "/doctype/" in root:
             for f in files:
                 if f.endswith(".json") and not f.startswith("_"):

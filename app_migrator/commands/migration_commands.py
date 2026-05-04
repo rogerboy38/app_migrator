@@ -335,7 +335,7 @@ def detect_conflicts_impl(site_name: str, apps: list[str]) -> ConflictDetectionR
             # Group by fieldname to find potential clashes
             field_definitions = defaultdict(list)
             for field in fields_data:
-                key = f"{field['parent']}.{field['fieldname']}"
+                f"{field['parent']}.{field['fieldname']}"
                 field_definitions[field['fieldname']].append({
                     "doctype": field['parent'],
                     "fieldtype": field['fieldtype'],
@@ -670,7 +670,7 @@ def generate_plan_impl(
 
         # Calculate effort and risk
         total_records = sum(r["record_count"] for r in plan.data_rules)
-        total_doctypes = len(plan.doctype_mappings)
+        len(plan.doctype_mappings)
         conflicts = sum(1 for m in plan.doctype_mappings if m["conflict"])
 
         if total_records < 10000 and conflicts == 0:

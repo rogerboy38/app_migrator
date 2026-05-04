@@ -46,7 +46,7 @@ class AppHealthScanner:
         critical_apps = 0
         total_blockers = 0
 
-        for app_name, health in apps_health.items():
+        for _app_name, health in apps_health.items():
             if "error" in health:
                 critical_apps += 1
                 continue
@@ -75,7 +75,7 @@ class AppHealthScanner:
         total_score = 0
         valid_apps = 0
 
-        for app_name, health in apps_health.items():
+        for _app_name, health in apps_health.items():
             if "error" not in health:
                 total_score += health.get("health_score", 0)
                 valid_apps += 1

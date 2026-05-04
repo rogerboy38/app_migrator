@@ -132,7 +132,7 @@ def fix_alexa_orphan(site, apply):
                 cf_exists = frappe.db.exists("Custom Field", cf_filters)
 
                 if cf_exists:
-                    cf = frappe.get_doc("Custom Field", cf_filters)
+                    frappe.get_doc("Custom Field", cf_filters)
                     click.echo(f"📋 Custom Field: {fieldname} in {dt_name} (exists)")
 
                     # Check if it's orphaned (parent doesn't exist or different)

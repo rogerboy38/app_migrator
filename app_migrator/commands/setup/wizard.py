@@ -102,7 +102,6 @@ def setup_wizard(ctx, api_key, ssh_key, auto_approve, sync, test):
             "source": source,
             "note": note
         })
-        user_info = validation_result
     else:
         # No validation result
         if api_key:
@@ -115,24 +114,16 @@ def setup_wizard(ctx, api_key, ssh_key, auto_approve, sync, test):
                 click.echo("   ℹ️  Key looks plausible but couldn't verify")
                 click.echo("   🔓 Continuing with LIMITED access (automatic)")
                 user_role = "limited"
-                user_info = {
-                    "role": "limited",
-                    "email": "unverified@frappe.cloud",
-                    "account": "unverified_account",
-                    "note": "Key accepted with limited verification"
-                }
             else:
                 # Key is too short/suspicious
                 click.echo("   ❌ Key appears invalid (too short)")
                 click.echo("   👤 Falling back to GUEST mode (automatic)")
                 user_role = "guest"
-                user_info = {"role": "guest", "email": "Guest User"}
         else:
             # No key provided
             click.echo("ℹ️  No API key provided")
             click.echo("👤 Continuing as GUEST (automatic)")
             user_role = "guest"
-            user_info = {"role": "guest", "email": "Guest User"}
 
     # Step 2: SSH Key Setup
     click.echo()

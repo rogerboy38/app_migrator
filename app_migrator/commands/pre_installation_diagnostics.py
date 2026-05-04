@@ -195,7 +195,7 @@ required_apps = ["frappe"]
     def diagnose_installation_blockers(self, app_path: str) -> list[str]:
         """Identify potential installation blockers"""
         blockers = []
-        app_name = os.path.basename(app_path)
+        os.path.basename(app_path)
 
         if not os.path.exists(app_path):
             blockers.append(f"App directory does not exist: {app_path}")
@@ -307,7 +307,7 @@ required_apps = ["frappe"]
             modules.append(app_name)
 
             # Find submodules within the nested package
-            for root, dirs, files in os.walk(nested_app_path):
+            for root, _dirs, files in os.walk(nested_app_path):
                 if "__init__.py" in files:
                     rel_path = os.path.relpath(root, app_path)
                     module_name = rel_path.replace('/', '.')

@@ -67,7 +67,7 @@ def app_migrator_resolve_duplicates(keep, remove_from, add_dependency, dry_run):
     # Find all doctypes in both apps
     def get_doctypes(app_path, app_name):
         doctypes = {}
-        for root, dirs, files in os.walk(app_path):
+        for root, _dirs, files in os.walk(app_path):
             if '/doctype/' in root or '\\doctype\\' in root:
                 for f in files:
                     if f.endswith('.json') and not f.startswith('_'):

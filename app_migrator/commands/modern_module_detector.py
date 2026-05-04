@@ -54,7 +54,7 @@ def _find_modules_modern(app_path: str, app_name: str) -> list[str]:
         modules.append(app_name)
 
         # Find submodules within the nested package
-        for root, dirs, files in os.walk(nested_app_path):
+        for root, _dirs, files in os.walk(nested_app_path):
             if "__init__.py" in files:
                 rel_path = os.path.relpath(root, app_path)
                 module_name = rel_path.replace('/', '.')
@@ -68,7 +68,7 @@ def _find_modules_hybrid(app_path: str, app_name: str) -> list[str]:
     modules = []
 
     # Walk through all directories looking for Python packages
-    for root, dirs, files in os.walk(app_path):
+    for root, _dirs, files in os.walk(app_path):
         if "__init__.py" in files:
             rel_path = os.path.relpath(root, app_path)
             if rel_path == '.':

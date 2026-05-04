@@ -617,7 +617,7 @@ class AppAnalysis:
         """Calculate maximum directory depth"""
         try:
             max_depth = 0
-            for root, dirs, files in os.walk(path):
+            for root, _dirs, _files in os.walk(path):
                 depth = root.replace(str(path), '').count(os.sep)
                 if depth > max_depth:
                     max_depth = depth
@@ -714,7 +714,7 @@ class AppAnalysis:
             hooks_data = analysis.get("hooks_data", {})
             modules = analysis.get("modules", [])
             validation = analysis.get("structure_validation", {})
-            issues = analysis.get("issues", [])
+            analysis.get("issues", [])
 
             # hooks.py recommendations
             if not hooks_data.get("exists"):
@@ -850,7 +850,7 @@ class AppAnalysis:
             hooks_data = structure_analysis.get("hooks_data", {})
             modules = structure_analysis.get("modules", [])
             doctypes = structure_analysis.get("doctypes", [])
-            file_analysis = structure_analysis.get("file_analysis", {})
+            structure_analysis.get("file_analysis", {})
 
             # 1. Structure Compatibility (30%)
             structure_score = self._analyze_structure_compatibility(structure_analysis)
@@ -987,7 +987,7 @@ class AppAnalysis:
             # Analyze based on file patterns
             python_files = file_analysis.get("python_files", 0)
             json_files = file_analysis.get("json_files", 0)
-            js_files = file_analysis.get("js_files", 0)
+            file_analysis.get("js_files", 0)
             total_files = file_analysis.get("total_files", 0)
 
             # Good balance of file types

@@ -68,7 +68,7 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
         # Method 2: Try to find bench from current directory
         current = Path.cwd()
         # Look for bench directory by checking parent directories
-        for parent in [current] + list(current.parents):
+        for parent in [current, *list(current.parents)]:
             if (parent / "apps").exists() and (parent / "sites").exists():
                 bench_path = parent
                 break

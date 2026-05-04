@@ -55,7 +55,7 @@ def app_migrator_conflicts(context, site, apps, all_apps, output):
             apps_list.append(app_name)
 
             # Find all doctype JSON files in this app
-            for root, dirs, files in os.walk(app_dir):
+            for root, _dirs, files in os.walk(app_dir):
                 if '/doctype/' in root or '\\doctype\\' in root:
                     for f in files:
                         if f.endswith('.json') and not f.startswith('_'):

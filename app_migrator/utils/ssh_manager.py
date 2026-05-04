@@ -116,7 +116,7 @@ class SSHManager:
 
         try:
             print(f"🔑 Creating {key_type} SSH key...")
-            result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
 
             # Set proper permissions
             os.chmod(key_path, 0o600)
