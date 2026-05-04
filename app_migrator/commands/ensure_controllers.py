@@ -45,7 +45,7 @@ def ensure_controller_files(app_name, module_name=None, dry_run=True):
     """
     import re
     
-    apps_dir = os.path.expanduser("~/frappe-bench/apps")
+    apps_dir = os.path.join(find_bench_root(), "apps")
     app_path = os.path.join(apps_dir, app_name, app_name)
     
     if not os.path.isdir(app_path):

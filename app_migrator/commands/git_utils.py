@@ -1,4 +1,5 @@
 """
+from ._shared import find_bench_root
 Git Utilities for Frappe Apps - Integration with Frappe Cloud API
 """
 
@@ -75,7 +76,7 @@ class FrappeCloudAPI:
 
 def get_app_info(app_name: str, api_key: Optional[str] = None) -> Dict:
     """Get comprehensive information about an app"""
-    bench_path = Path(os.getenv('BENCH_PATH', '/home/frappe/frappe-bench'))
+    bench_path = Path(find_bench_root())
     app_path = bench_path / 'apps' / app_name
     
     info = {
@@ -140,7 +141,7 @@ def get_app_info(app_name: str, api_key: Optional[str] = None) -> Dict:
 
 def clone_app_from_git(app_name: str, git_url: str, branch: str = 'main') -> bool:
     """Clone an app from git repository"""
-    bench_path = Path(os.getenv('BENCH_PATH', '/home/frappe/frappe-bench'))
+    bench_path = Path(find_bench_root())
     app_path = bench_path / 'apps' / app_name
     
     if app_path.exists():
@@ -172,7 +173,7 @@ def clone_app_from_git(app_name: str, git_url: str, branch: str = 'main') -> boo
 
 def convert_to_git_repo(app_name: str, git_url: Optional[str] = None) -> bool:
     """Convert a non-git app directory to a git repository"""
-    bench_path = Path(os.getenv('BENCH_PATH', '/home/frappe/frappe-bench'))
+    bench_path = Path(find_bench_root())
     app_path = bench_path / 'apps' / app_name
     
     if not app_path.exists():

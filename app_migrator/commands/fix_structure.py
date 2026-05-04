@@ -50,7 +50,7 @@ def app_migrator_fix_structure(context, app_name):
     print(f"   App: {app_name}")
     print("=" * 60)
     
-    apps_dir = os.path.expanduser("~/frappe-bench/apps")
+    apps_dir = os.path.join(find_bench_root(), "apps")
     app_path = os.path.join(apps_dir, app_name)
     
     if not os.path.exists(app_path):

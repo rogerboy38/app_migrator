@@ -1,4 +1,5 @@
 """
+from ._shared import find_bench_root
 Data Quality Module - V5.0.0
 Data quality operations including orphan fixing, restoration, and reference management
 
@@ -165,7 +166,7 @@ def restore_missing_doctypes(source_app):
             fields=['name', 'module', 'custom']
         )
         
-        bench_path = Path('/home/frappe/frappe-bench')
+        bench_path = Path(find_bench_root())
         app_path = bench_path / 'apps' / source_app / source_app
         
         if not app_path.exists():
@@ -464,7 +465,7 @@ def verify_data_integrity(app_name):
         
         print(f"\n📊 Checking {len(app_doctypes)} doctypes...\n")
         
-        bench_path = Path('/home/frappe/frappe-bench')
+        bench_path = Path(find_bench_root())
         app_path = bench_path / 'apps' / app_name / app_name
         
         for dt in app_doctypes:

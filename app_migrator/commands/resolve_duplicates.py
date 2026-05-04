@@ -51,7 +51,7 @@ def app_migrator_resolve_duplicates(keep, remove_from, add_dependency, dry_run):
     print("=" * 60)
     
     # Find apps path
-    apps_path = os.path.expanduser("~/frappe-bench/apps")
+    apps_path = os.path.join(find_bench_root(), "apps")
     keep_app_path = os.path.join(apps_path, keep)
     remove_app_path = os.path.join(apps_path, remove_from)
     

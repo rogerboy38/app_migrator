@@ -63,7 +63,7 @@ def run_command_with_progress(command, description, timeout=600):
 
 def monitor_directory_creation(app_name, timeout=600, check_interval=5):
     """Monitor app directory creation with progress"""
-    target_path = f"/home/frappe/frappe-bench/apps/{app_name}"
+    target_path = os.path.join(find_bench_root(), "apps", app_name)
     print(f"👀 Monitoring directory: {target_path}")
     
     for i in range(timeout // check_interval):
@@ -136,7 +136,7 @@ def validate_migration_readiness(source_app, target_app):
             print(f"  ✅ No naming conflicts")
         
         # Check 4: File system paths
-        bench_path = Path('/home/frappe/frappe-bench')
+        bench_path = Path(find_bench_root())
         source_path = bench_path / 'apps' / source_app
         target_path = bench_path / 'apps' / target_app
         
@@ -351,7 +351,7 @@ def move_module_files(source_app, target_app, modules):
     print("=" * 70)
     
     try:
-        bench_path = Path('/home/frappe/frappe-bench')
+        bench_path = Path(find_bench_root())
         source_app_path = bench_path / 'apps' / source_app / source_app
         target_app_path = bench_path / 'apps' / target_app / target_app
         

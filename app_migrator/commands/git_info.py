@@ -1,4 +1,5 @@
 """
+from ._shared import find_bench_root
 Git Information Command - Show detailed git status for all apps
 """
 
@@ -34,7 +35,7 @@ def git_info(app=None, api_key=None, verbose=False):
         api_key = os.getenv('FRAPPE_CLOUD_API_KEY')
     
     # Get apps
-    bench_path = Path(os.getenv('BENCH_PATH', '/home/frappe/frappe-bench'))
+    bench_path = Path(find_bench_root())
     apps_path = bench_path / 'apps'
     
     if app:

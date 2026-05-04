@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from ._shared import find_bench_root
 """
 Module Naming Consistency Fixer
 Fixes inconsistent module naming patterns across all apps:
@@ -80,7 +81,7 @@ def analyze_module_naming_pattern(module_name: str) -> Dict:
 def get_app_module_mapping() -> Dict[str, List[str]]:
     """Get mapping of apps to their modules from hooks.py files"""
     app_module_map = {}
-    bench_path = Path(os.getenv('BENCH_PATH', '/home/frappe/frappe-bench'))
+    bench_path = Path(find_bench_root())
     
     for app_dir in (bench_path / 'apps').iterdir():
         if app_dir.is_dir() and not app_dir.name.startswith('.'):

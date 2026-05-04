@@ -88,14 +88,108 @@ def get_current_site():
     return None
 
 
-# ==================== BENCH DISCOVERY (legacy) ====================
-# Note: T1.9 will add find_bench_root() and discover_all_benches() with
-# proper apps/apps.txt + sites/ + Procfile detection. The functions below
-# are the legacy ~/frappe-bench* glob, kept to preserve current behavior
-# until T1.9 replaces them.
+# ==================== BENCH DISCOVERY ====================
+
+def _looks_like_bench(path):
+    """
+    Return True if `path` looks like a Frappe bench root.
+
+    Detection triple: apps/ directory + sites/apps.txt + Procfile.
+
+    Note: the Phase 1 plan said apps/apps.txt, but empirically Frappe
+    benches put apps.txt at sites/apps.txt — apps/ holds the cloned
+    app source directories (frappe, erpnext, etc.), not the apps.txt
+    list. Verified against the team's 16+ benches on UbuntuVM.
+    """
+    return (
+        os.path.isdir(os.path.join(path, "apps"))
+        and os.path.isfile(os.path.join(path, "sites", "apps.txt"))
+        and os.path.isfile(os.path.join(path, "Procfile"))
+    )
+
+
+def find_bench_root(start_path=None):
+    """
+    Find the bench root from a starting path by walking up looking for
+    the bench detection triple (see _looks_like_bench).
+
+    Resolution order:
+      1. Explicit start_path argument (if given)
+      2. FRAPPE_BENCH env var
+      3. BENCH_PATH env var (back-compat — older code used this name)
+      4. Current working directory (walk up)
+      5. Fallback to ~/frappe-bench (with DeprecationWarning) — only if
+         no other detection succeeded
+
+    Raises RuntimeError if no bench root is found anywhere.
+    """
+    if start_path is None:
+        start_path = (
+            os.environ.get("FRAPPE_BENCH")
+            or os.environ.get("BENCH_PATH")
+            or os.getcwd()
+        )
+
+    p = Path(start_path).resolve()
+    while p != p.parent:
+        if _looks_like_bench(str(p)):
+            return str(p)
+        p = p.parent
+
+    # Fallback (with deprecation warning) — only kicks in if neither
+    # FRAPPE_BENCH/BENCH_PATH was set nor cwd was inside a bench.
+    home_bench = os.path.expanduser("~/frappe-bench")
+    if os.path.isdir(home_bench):
+        import warnings
+        warnings.warn(
+            "Falling back to ~/frappe-bench. Set FRAPPE_BENCH env var or "
+            "run from inside a bench directory for multi-bench support.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return home_bench
+
+    raise RuntimeError(
+        "No frappe-bench root found. Run from inside a bench directory, "
+        "or set the FRAPPE_BENCH environment variable."
+    )
+
+
+def discover_all_benches(parent_dir=None):
+    """
+    Discover all Frappe benches under a parent directory.
+
+    A bench is identified by _looks_like_bench (apps/ + sites/apps.txt +
+    Procfile). Default parent_dir is ~/, since that's where Hugh's
+    team's benches live.
+
+    Returns absolute paths, sorted alphabetically.
+    """
+    if parent_dir is None:
+        parent_dir = os.path.expanduser("~")
+
+    benches = []
+    try:
+        entries = os.listdir(parent_dir)
+    except OSError:
+        return []
+
+    for entry in entries:
+        path = os.path.join(parent_dir, entry)
+        if os.path.isdir(path) and _looks_like_bench(path):
+            benches.append(path)
+    return sorted(benches)
+
 
 def detect_available_benches():
-    """Detect all available benches (legacy ~/frappe-bench* glob)"""
+    """
+    [LEGACY] Detect available benches by ~/frappe-bench* glob.
+
+    Kept for back-compat. New code should use discover_all_benches(),
+    which uses the proper apps.txt + sites/ + Procfile detection
+    (catches benches with non-conventional names; rejects directories
+    that merely match the prefix).
+    """
     benches = []
     frappe_home = os.path.expanduser('~')
     for item in os.listdir(frappe_home):

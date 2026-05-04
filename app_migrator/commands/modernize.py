@@ -1,4 +1,5 @@
 """
+from ._shared import find_bench_root
 App Migrator Modernize Commands
 Upgrade apps from traditional to modern pyproject.toml structure
 """
@@ -25,7 +26,7 @@ def modernize_app(context, app_name, dry_run):
     print(f"   App: {app_name}")
     print("=" * 60)
     
-    app_path = os.path.expanduser(f"~/frappe-bench/apps/{app_name}")
+    app_path = os.path.join(find_bench_root(), "apps", app_name)
     
     if not os.path.exists(app_path):
         print(f"❌ App not found: {app_path}")

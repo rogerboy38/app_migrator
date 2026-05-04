@@ -1,4 +1,5 @@
 """
+from ._shared import find_bench_root
 App Migrator Intelligence Commands
 AI-powered migration analysis and prediction
 """
@@ -62,7 +63,7 @@ def predict_success(context, site, source_app, target_version):
     metrics["workflows"] = len(workflows)
     
     # Check hooks.py complexity
-    hooks_path = os.path.expanduser(f"~/frappe-bench/apps/{source_app}/{source_app}/hooks.py")
+    hooks_path = os.path.join(find_bench_root(), "apps", source_app, source_app, "hooks.py")
     if os.path.exists(hooks_path):
         with open(hooks_path, 'r') as f:
             hooks_content = f.read()
@@ -252,7 +253,7 @@ def diagnose_app(context, app_name, site, output):
         "recommendations": []
     }
     
-    app_path = os.path.expanduser(f"~/frappe-bench/apps/{app_name}")
+    app_path = os.path.join(find_bench_root(), "apps", app_name)
     
     if not os.path.exists(app_path):
         print(f"❌ App not found: {app_path}")

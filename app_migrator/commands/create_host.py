@@ -35,7 +35,7 @@ def app_migrator_create_host(context, host_app_name):
     print(f"🏗️ CREATE HOST APP: {host_app_name}")
     print("=" * 60)
     
-    apps_dir = os.path.expanduser("~/frappe-bench/apps")
+    apps_dir = os.path.join(find_bench_root(), "apps")
     host_path = os.path.join(apps_dir, host_app_name)
     
     if os.path.exists(host_path):

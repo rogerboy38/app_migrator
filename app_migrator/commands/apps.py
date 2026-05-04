@@ -3,6 +3,7 @@
 import os
 
 import click
+from ._shared import find_bench_root
 
 try:
     import frappe
@@ -20,7 +21,7 @@ def app_migrator_apps(context, site):
     print("=" * 60)
 
     # Get downloaded apps from apps directory
-    apps_dir = os.path.expanduser("~/frappe-bench/apps")
+    apps_dir = os.path.join(find_bench_root(), "apps")
     downloaded = []
     if os.path.exists(apps_dir):
         for item in os.listdir(apps_dir):
