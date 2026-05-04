@@ -26,10 +26,10 @@ try:
     FRAPPE_AVAILABLE = True
 except ImportError:
     FRAPPE_AVAILABLE = False
-    pass_context = lambda f: f
-    get_site = lambda c: None
-
-
+    def pass_context(f):
+        return f
+    def get_site(c):
+        return None
 # ==================== SCAN SITE COMMAND ====================
 
 class SiteScanResult:

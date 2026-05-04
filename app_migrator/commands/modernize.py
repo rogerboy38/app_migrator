@@ -14,9 +14,8 @@ from ._shared import find_bench_root
 try:
     from frappe.commands import pass_context
 except ImportError:
-    pass_context = lambda f: f
-
-
+    def pass_context(f):
+        return f
 @click.command('app-migrator-modernize')
 @click.argument('app_name')
 @click.option('--dry-run/--apply', default=True, help='Dry run or apply')

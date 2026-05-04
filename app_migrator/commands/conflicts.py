@@ -11,9 +11,8 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
-    pass_context = lambda f: f
-
-
+    def pass_context(f):
+        return f
 @click.command('app-migrator-conflicts')
 @click.option('--site', required=True, help='Site name')
 @click.option('--apps', help='Comma-separated apps to analyze')

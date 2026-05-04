@@ -37,8 +37,8 @@ try:
     FRAPPE_AVAILABLE = True
 except ImportError:
     FRAPPE_AVAILABLE = False
-    pass_context = lambda f: f
-
+    def pass_context(f):
+        return f
 # ==================== ENTERPRISE UTILITIES ====================
 # Helpers extracted to _shared.py in T1.8.1
 # ==================== FIX ORPHAN DOCTYPES [DEPRECATED] (T1.8.5 → _legacy/fix_orphans.py) ====================

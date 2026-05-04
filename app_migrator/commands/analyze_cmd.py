@@ -20,8 +20,8 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
-    pass_context = lambda f: f
-
+    def pass_context(f):
+        return f
 from ._shared import (
     MigrationSession,
     ProgressTracker,

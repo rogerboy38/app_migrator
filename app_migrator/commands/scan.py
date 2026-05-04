@@ -9,9 +9,8 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
-    pass_context = lambda f: f
-
-
+    def pass_context(f):
+        return f
 @click.command('app-migrator-scan')
 @click.option('--site', required=True, help='Site name')
 @click.option('--output', '-o', help='Output JSON file')

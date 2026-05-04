@@ -17,9 +17,8 @@ try:
     FRAPPE_AVAILABLE = True
 except ImportError:
     FRAPPE_AVAILABLE = False
-    pass_context = lambda f: f
-
-
+    def pass_context(f):
+        return f
 # ==================== PREDICT SUCCESS ====================
 
 @click.command('app-migrator-predict-success')
