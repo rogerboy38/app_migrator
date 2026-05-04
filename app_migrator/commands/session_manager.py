@@ -31,7 +31,7 @@ class SessionManager:
     def __init__(self, name=None, session_id=None):
         """
         Initialize session manager
-        
+
         Args:
             name: Session name (for new session)
             session_id: Existing session ID (to load session)
@@ -143,7 +143,7 @@ class SessionManager:
     def update_progress(self, operation, status, details=None):
         """
         Update session progress
-        
+
         Args:
             operation: Operation name
             status: 'started', 'completed', 'failed'

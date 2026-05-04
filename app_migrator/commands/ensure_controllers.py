@@ -32,16 +32,16 @@ from ._shared import (
 def ensure_controller_files(app_name, module_name=None, dry_run=True):
     """
     Create missing .py controller files for DocTypes in an app.
-    
+
     When DocTypes are marked as custom=0 (standard), Frappe requires
     a .py controller file. This function creates basic controller files
     for any DocTypes that are missing them.
-    
+
     Args:
         app_name: The app name (e.g., 'amb_w_tds')
         module_name: Optional module name (defaults to app_name)
         dry_run: If True, only report what would be created
-    
+
     Returns:
         List of created/would-create file paths
     """
@@ -114,10 +114,10 @@ class {class_name}(Document):
 def app_migrator_ensure_controllers(context, app_name, module, dry_run):
     """
     Create missing .py controller files for DocTypes in an app.
-    
+
     This is needed when converting custom DocTypes (custom=1) to standard
     DocTypes (custom=0). Standard DocTypes require a .py controller file.
-    
+
     Example:
         bench app-migrator-ensure-controllers amb_w_tds --apply
     """

@@ -35,16 +35,16 @@ from ._shared import (
 def app_migrator_fix_structure(context, app_name):
     """
     Analyze Frappe app folder structure and report findings.
-    
+
     Frappe apps can have different valid structures:
-    
+
     1. Single-module app (module name = app name):
        apps/{app}/{app}/{app}/doctype/  <- VALID (triple-nested)
-       
+
     2. Multi-module app:
        apps/{app}/{app}/{module1}/doctype/
        apps/{app}/{app}/{module2}/doctype/
-    
+
     This command analyzes the structure and reports what it finds.
     It does NOT automatically move files (that was causing issues).
     """

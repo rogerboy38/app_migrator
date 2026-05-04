@@ -10,12 +10,12 @@ from frappe.model.document import Document
 def create_migration(source_app, target_app, migration_type="full"):
     """
     Create a new migration session between two apps
-    
+
     Args:
         source_app (str): Source application name
-        target_app (str): Target application name  
+        target_app (str): Target application name
         migration_type (str): Type of migration (full, schema, data, custom)
-    
+
     Returns:
         dict: Migration session details
     """
@@ -55,10 +55,10 @@ def create_migration(source_app, target_app, migration_type="full"):
 def analyze_app_structure(app_name):
     """
     Analyze app structure and return components
-    
+
     Args:
         app_name (str): Application name to analyze
-    
+
     Returns:
         dict: App structure analysis
     """
@@ -106,10 +106,10 @@ def analyze_app_structure(app_name):
 def get_migration_status(migration_id):
     """
     Get status of a migration session
-    
+
     Args:
         migration_id (str): Migration session ID
-    
+
     Returns:
         dict: Migration status and details
     """
@@ -126,7 +126,7 @@ def get_migration_status(migration_id):
 def list_available_apps():
     """
     List all available apps in the bench
-    
+
     Returns:
         list: Available applications
     """
@@ -152,11 +152,11 @@ def list_available_apps():
 def validate_migration_readiness(source_app, target_app):
     """
     Validate if migration can proceed between apps
-    
+
     Args:
         source_app (str): Source application
         target_app (str): Target application
-    
+
     Returns:
         dict: Validation results
     """

@@ -37,17 +37,17 @@ from ._shared import (
 def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run):
     """
     Intelligent orphaned DocType detection and resolution.
-    
+
     Detects DocTypes where:
     1. The 'module' doesn't match any installed app
     2. The 'app' field is NULL or doesn't match filesystem
     3. No JSON definition exists in any app
-    
+
     Resolution options:
       --fix       Auto-match to correct app by scanning filesystem
       --delete    Remove orphaned DocTypes (use with caution!)
       --reassign  Move all orphans to a specific app/module
-    
+
     Examples:
         bench app-migrator orphans --site mysite
         bench app-migrator orphans --site mysite --fix --apply

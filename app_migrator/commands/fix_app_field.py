@@ -36,13 +36,13 @@ from ._shared import (
 def app_migrator_fix_app_field(context, site, module, app, dry_run):
     """
     Fix DocTypes with NULL app field to prevent orphan deletion.
-    
+
     CRITICAL: When a DocType's 'app' field is NULL, bench migrate marks it
     as an orphan and DELETES it, even if the JSON file exists!
-    
+
     This command finds all DocTypes in a module where app=NULL and sets
     the correct app name.
-    
+
     Example:
         bench app-migrator-fix-app-field --site mysite --module "Amb W Tds" --app amb_w_tds --apply
     """
@@ -58,8 +58,8 @@ def app_migrator_fix_app_field(context, site, module, app, dry_run):
 
     # Find DocTypes with NULL app field in this module
     doctypes_with_null_app = frappe.db.sql("""
-        SELECT name, module, custom, app 
-        FROM `tabDocType` 
+        SELECT name, module, custom, app
+        FROM `tabDocType`
         WHERE module = %s AND (app IS NULL OR app = '')
     """, (module,), as_dict=True)
 

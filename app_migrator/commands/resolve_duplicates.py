@@ -37,10 +37,10 @@ from ._shared import (
 def app_migrator_resolve_duplicates(keep, remove_from, add_dependency, dry_run):
     """
     Resolve duplicate doctypes between two apps.
-    
+
     Compares doctypes, keeps authoritative version in --keep app,
     removes duplicates from --remove-from app, and optionally adds dependency.
-    
+
     Example:
         bench app-migrator resolve-duplicates --keep amb_w_tds --remove-from rnd_nutrition --apply
     """

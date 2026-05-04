@@ -3,7 +3,7 @@
 fix_an_app.py - Automated Frappe app repair tool
 Fixes common structural issues discovered through research:
 - Missing hooks.py in correct location
-- apps.txt synchronization issues  
+- apps.txt synchronization issues
 - Git repository structure problems
 - Python package structure errors
 - Bench installation inconsistencies

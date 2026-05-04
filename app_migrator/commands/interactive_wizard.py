@@ -269,7 +269,7 @@ def select_doctypes_by_status(app_name):
 def interactive_migration_wizard():
     """
     Complete interactive migration wizard with enhanced features
-    
+
     Enhanced features:
     - Site listing and selection
     - App listing and selection

@@ -33,13 +33,13 @@ from ._shared import (
 def app_migrator_fix_json_app(app_name, dry_run):
     """
     Fix JSON app field issues to prevent orphan deletion on fresh installs.
-    
+
     This command fixes TWO common issues:
     1. 'app': null - Replaces with correct app name
     2. Duplicate 'app' fields - Removes the first occurrence (keeps the one near 'module')
-    
+
     Both issues cause DocTypes to be deleted as orphans during bench migrate.
-    
+
     Example:
         bench app-migrator-fix-json-app amb_w_tds --apply
     """

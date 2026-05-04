@@ -175,7 +175,7 @@ def scan_site_impl(site_name: str, apps_filter: list[str] | None = None) -> Site
 def scan_site(context, site, apps, output, output_format):
     """
     Scan site to list installed apps, versions, doctypes, child tables, and custom fields.
-    
+
     Examples:
         bench app-migrator scan-site --site mysite.localhost
         bench app-migrator scan-site --site mysite.localhost --apps amb_w_spc,amb_w_tds
@@ -431,7 +431,7 @@ def detect_conflicts_impl(site_name: str, apps: list[str]) -> ConflictDetectionR
 def detect_conflicts(context, site, apps, output, output_format):
     """
     Detect conflicts between apps: duplicate doctypes, field clashes, schema inconsistencies.
-    
+
     Examples:
         bench app-migrator detect-conflicts --site mysite.localhost --apps amb_w_spc,amb_w_spc_2,amb_w_tds
         bench app-migrator detect-conflicts --site mysite.localhost --apps amb_w_spc,amb_w_tds --output conflicts.json
@@ -704,7 +704,7 @@ def generate_plan_impl(
 def generate_plan(context, site, apps, target, config_file, output, output_format):
     """
     Generate a migration plan for consolidating multiple apps.
-    
+
     Examples:
         bench app-migrator generate-plan --site mysite.localhost --apps amb_w_spc,amb_w_spc_2,amb_w_tds --target amb_consolidated --output plan.json
         bench app-migrator generate-plan --site mysite.localhost --apps amb_w_spc,amb_w_tds --target amb_v16 --config rules.yaml --output plan.yaml --format yaml
@@ -929,7 +929,7 @@ def execute_plan_impl(
 def execute_plan(context, site, plan_file, dry_run, batch_size, output):
     """
     Execute a migration plan with dry-run or apply mode.
-    
+
     Examples:
         bench app-migrator execute-plan --site mysite.localhost --plan plan.json --dry-run
         bench app-migrator execute-plan --site mysite.localhost --plan plan.json --apply

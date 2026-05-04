@@ -22,7 +22,7 @@ class ProgressTracker:
     def __init__(self, app_name, total_steps=4, custom_steps=None):
         """
         Initialize progress tracker
-        
+
         Args:
             app_name: Name of the app/operation being tracked
             total_steps: Total number of steps (default: 4)
@@ -49,7 +49,7 @@ class ProgressTracker:
     def update(self, message=None):
         """
         Update progress with optional custom message
-        
+
         Args:
             message: Optional custom progress message
         """
@@ -92,7 +92,7 @@ class ProgressTracker:
     def fail(self, error):
         """
         Mark progress as failed
-        
+
         Args:
             error: Error message or description
         """
@@ -112,7 +112,7 @@ class ProgressTracker:
     def display_progress_bar(self, width=50):
         """
         Display visual progress bar
-        
+
         Args:
             width: Width of the progress bar in characters
         """
@@ -133,7 +133,7 @@ class MultiStepProgressTracker:
     def __init__(self, operation_name, steps):
         """
         Initialize multi-step progress tracker
-        
+
         Args:
             operation_name: Name of the operation
             steps: List of step dictionaries with 'name' and optional 'substeps'
@@ -221,12 +221,12 @@ class MultiStepProgressTracker:
 def run_with_progress(func, description, *args, **kwargs):
     """
     Run a function with simple progress tracking
-    
+
     Args:
         func: Function to execute
         description: Description of the operation
         *args, **kwargs: Arguments to pass to the function
-    
+
     Returns:
         Result of the function
     """

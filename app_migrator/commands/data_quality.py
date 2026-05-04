@@ -44,7 +44,7 @@ def ensure_frappe_connection():
 def fix_orphan_doctypes(source_app):
     """
     Fix orphan doctypes with enhanced module-based assignment
-    
+
     Orphans are doctypes that:
     1. Have no module assigned
     2. Have a module that doesn't belong to the app

@@ -286,10 +286,10 @@ class APISessionManager:
 def api_key_setup(keep_secret=False, expiry_hours=24, description="", clear=False):
     """
     Setup Frappe Cloud API Key Session
-    
+
     Securely configure API key for Frappe Cloud integration.
     Options to store in system keyring or keep in memory.
-    
+
     Examples:
         bench app-migrator api-key-setup                     # Interactive setup
         bench app-migrator api-key-setup --keep-secret      # Store in keyring
@@ -377,9 +377,9 @@ def api_key_setup(keep_secret=False, expiry_hours=24, description="", clear=Fals
 def api_key_status(verbose=False):
     """
     Check Frappe Cloud API Key Status
-    
+
     Show current session status and expiry information.
-    
+
     Examples:
         bench app-migrator api-key-status      # Show status
         bench app-migrator api-key-status -v   # Verbose details
@@ -446,9 +446,9 @@ def api_key_status(verbose=False):
 def api_key_cleanup(force=False, keep_keyring=False):
     """
     Cleanup Frappe Cloud API Key Session
-    
+
     Securely remove API key from session and keyring.
-    
+
     Examples:
         bench app-migrator api-key-cleanup      # Interactive cleanup
         bench app-migrator api-key-cleanup -f   # Force cleanup

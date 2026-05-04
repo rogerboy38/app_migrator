@@ -104,7 +104,7 @@ class MigrationService:
 
     def _migrate_data(self):
         """
-        Migrate data components  
+        Migrate data components
         """
         step = {
             "name": "migrate_data",

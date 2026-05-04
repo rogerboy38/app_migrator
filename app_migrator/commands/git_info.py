@@ -18,9 +18,9 @@ from .git_utils import FrappeCloudAPI, get_app_info
 def git_info(app=None, api_key=None, verbose=False):
     """
     Show Git Information for Frappe Apps
-    
+
     Display detailed git status, remotes, and available git URLs for all apps.
-    
+
     Examples:
         bench app-migrator git-info              # Show info for all apps
         bench app-migrator git-info --app erpnext # Show info for specific app

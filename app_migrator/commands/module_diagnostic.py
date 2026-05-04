@@ -13,7 +13,7 @@ import frappe
 def module_diagnostic(site):
     """
     Quick diagnostic of module naming and orphan issues
-    
+
     Example:
         bench app-migrator module-diagnostic --site mysite
     """

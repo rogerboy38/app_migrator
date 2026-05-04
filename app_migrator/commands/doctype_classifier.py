@@ -28,7 +28,7 @@ class DoctypeStatus:
 def get_doctype_classification(doctype_name):
     """
     Classify a single doctype based on technical specifications
-    
+
     Returns: dict with classification details
     """
     try:
@@ -93,13 +93,13 @@ def get_doctype_classification(doctype_name):
 def batch_classify_doctypes(doctype_names):
     """
     Classify multiple doctypes in a single batch operation (OPTIMIZED)
-    
+
     Performance: 3 queries total instead of 3N queries
     Speedup: 60-360x faster for large apps
-    
+
     Args:
         doctype_names: List of doctype names to classify
-        
+
     Returns:
         dict: {doctype_name: classification_dict}
     """
@@ -181,7 +181,7 @@ def batch_classify_doctypes(doctype_names):
 def get_all_doctypes_by_app(app_name):
     """
     Get all doctypes for a specific app with classifications (OPTIMIZED VERSION)
-    
+
     Returns: list of classified doctypes
     """
     doctypes = frappe.get_all(
@@ -207,7 +207,7 @@ def get_all_doctypes_by_app(app_name):
 def get_all_custom_fields_by_app(app_name):
     """
     Get all Custom Fields applied to doctypes from a specific app
-    
+
     Based on technical spec: Query tabCustom Field table
     """
     # Get all doctypes from the app first
@@ -232,7 +232,7 @@ def get_all_custom_fields_by_app(app_name):
 def get_all_property_setters_by_app(app_name):
     """
     Get all Property Setters for doctypes from a specific app
-    
+
     Based on technical spec: Query tabProperty Setter table
     """
     # Get all doctypes from the app first
@@ -257,7 +257,7 @@ def get_all_property_setters_by_app(app_name):
 def get_orphan_doctypes():
     """
     Detect orphan doctypes (app=None or not in file system)
-    
+
     Based on technical spec: Analyze database for orphans
     """
     # Get all doctypes with app=None or empty module
@@ -279,7 +279,7 @@ def get_orphan_doctypes():
 def analyze_touched_tables():
     """
     Parse touched_tables.json for migration history
-    
+
     Based on technical spec: Read sites/{sitename}/touched_tables.json
     """
     try:
@@ -309,7 +309,7 @@ def analyze_touched_tables():
 def generate_migration_risk_assessment(doctype_name):
     """
     Generate risk assessment for migrating a doctype
-    
+
     Based on technical spec risk matrix
     """
     classification = get_doctype_classification(doctype_name)

@@ -4,7 +4,7 @@ COMPLETE REWRITE with comprehensive error handling while preserving all original
 
 Original functionality preserved:
 - App structure analysis
-- Migration compatibility scoring  
+- Migration compatibility scoring
 - Code complexity analysis
 - Dependency analysis
 - Security vulnerability scanning

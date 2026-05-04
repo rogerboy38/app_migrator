@@ -268,9 +268,9 @@ def git_pull(app=None, force=False, dry_run=False, safe=False,
             skip_ssh_check=False, convert_non_git=False, api_key='auto', show_all=False):
     """
     Git Pull Helper for Frappe Apps
-    
+
     Pull latest changes from GitHub for one or all apps.
-    
+
     Examples:
         bench app-migrator git-pull                     # Pull all apps
         bench app-migrator git-pull --app rnd_nutrition # Pull specific app

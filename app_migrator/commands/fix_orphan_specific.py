@@ -19,7 +19,7 @@ import frappe
 def fix_alexa_orphan(site, apply):
     """
     Fix specific orphan doctype: Alexa User Mapping
-    
+
     Issue: module='Raven Ai Agent' should likely be 'Raven AI Agent' or 'raven_ai_agent'
     """
 

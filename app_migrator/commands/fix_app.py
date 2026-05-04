@@ -228,10 +228,10 @@ app_license = "MIT"
 def fix_app(app_name, site, bench_path, quick):
     """
     Fix common structural issues in Frappe apps
-    
+
     Automatically diagnoses and fixes:
     • Missing hooks.py in package directory
-    • Apps.txt synchronization issues  
+    • Apps.txt synchronization issues
     • Embedded git repository problems
     • Missing __init__.py files
     • Basic app structure validation
