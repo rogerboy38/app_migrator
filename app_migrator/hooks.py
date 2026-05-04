@@ -2,7 +2,7 @@ app_name = "app_migrator"
 app_title = "App Migrator"
 app_publisher = "App Migrator"
 app_description = "Frappe App Migration Tool for v16 consolidation"
-app_version = "9.0.0"
+app_version = "10.0.0-rc1"
 app_email = "fcrm@amb-wellness.com"
 app_license = "mit"
 

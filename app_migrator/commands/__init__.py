@@ -1,10 +1,10 @@
 """
 App Migrator Commands - Enterprise Edition
-Version: 9.0.0
+Version: 10.0.0-rc1
 Merged: Original analysis + Enterprise multi-bench + Session management
 """
 
-__version__ = "9.0.0"
+__version__ = "10.0.0-rc1"
 
 import logging
 logger = logging.getLogger("app_migrator")
