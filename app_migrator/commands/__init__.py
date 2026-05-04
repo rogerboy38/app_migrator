@@ -245,6 +245,7 @@ commands = [
     app_migrator_fix_app_field,
     app_migrator_fix_json_app,
     app_migrator_orphans,
+    app_migrator_resolve_duplicates,
     # Intelligence commands
     predict_success,
     generate_intelligent_plan,
