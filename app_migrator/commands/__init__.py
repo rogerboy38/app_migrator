@@ -6,12 +6,15 @@ Merged: Original analysis + Enterprise multi-bench + Session management
 
 __version__ = "9.0.0"
 
+import logging
+logger = logging.getLogger("app_migrator")
+
 # ONLY import the main class - no function imports!
 from .analysis_tools import AppAnalysis
 
 __all__ = ["AppAnalysis"]
 
-print("✅ App Migrator commands loaded safely")
+logger.debug("App Migrator commands loaded")
 
 # Import Payment Security Migrator
 from .payment_security_migrator import (
@@ -28,13 +31,13 @@ __all__.extend([
     "generate_security_report"
 ])
 
-print("✅ Payment Security Migrator added to commands")
+logger.debug("Payment Security Migrator integration loaded")
 
 # Import Payment Gateway Migrator
 try:
     from .payment_gateway_migrator import PaymentGatewayMigrator
     __all__.append("PaymentGatewayMigrator")
-    print("✅ Payment Gateway Migrator added to commands")
+    logger.debug("Payment Gateway Migrator integration loaded")
 except ImportError as e:
     print(f"⚠️ Payment Gateway Migrator not available: {e}")
 
@@ -2155,7 +2158,7 @@ commands = [
     setup_wizard
     ]
 
-print("✅ App Migrator Enterprise v9.0.0 ready!")
+logger.debug("App Migrator Enterprise v%s ready", __version__)
 
 # Git push command
 
