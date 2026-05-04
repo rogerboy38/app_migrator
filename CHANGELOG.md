@@ -8,7 +8,21 @@ restructures the existing CLI surface, deduplicates intelligence, and
 removes accumulated cruft so future work can ship cleanly.
 
 ### Added
-- `intelligence_engine.py` namespace structure on `MigrationIntelligence`:
+- `intelligence_engine.py` namespace structure on `MigrationIntelligence`
+  (5 namespaces total). All five are **instance attributes** populated
+  in `__init__` from `_load_*` helper methods — instantiate the class
+  to access them:
+
+  ```python
+  from app_migrator.commands.intelligence_engine import MigrationIntelligence
+  mi = MigrationIntelligence()
+  mi.pattern_database          # 10 entries
+  mi.analysis_workflows        # 1 entry
+  mi.ai_prompts                # 2 entries
+  mi.risk_assessment_rules     # high_risk_factors / medium_risk_factors / severity_actions
+  mi.success_patterns          # 2 entries
+  ```
+
   - `pattern_database` — 10 atomic-fact entries (was 2 in v9): payment
     gateway detection, hardcoded-secret regexes, webhook + encryption
     patterns, `frappe_cloud_dependency`, `api_key_storage_strategy`,
@@ -23,6 +37,7 @@ removes accumulated cruft so future work can ship cleanly.
     NEW namespace.
   - `risk_assessment_rules['severity_actions']` — 4 categorized
     risk → severity/category/impact/mitigation mappings.
+  - `success_patterns` — 2 entries (unchanged from v9).
 - `app_migrator/_archive/` directory with attribution `README.md`.
   Holds 9 digested non-migration modules: `payment_gateway_migrator`,
   `payment_security_migrator`, `ai_integration`, `analyze_main`,
@@ -70,9 +85,12 @@ removes accumulated cruft so future work can ship cleanly.
   `_shared.py`, both old sites import from there.
 
 ### Deprecated
-- `fix-orphans` command — emits a deprecation banner pointing users to
-  `orphans --fix --apply`. Lives under `commands/_legacy/fix_orphans.py`
-  to make the v11 deletion an atomic dir-rm. Will be **removed in v11**.
+- `fix-orphans` command — emits a deprecation banner from inside the
+  function body (`commands/_legacy/fix_orphans.py:23-24`) directing
+  users to `orphans --fix --apply`. The command itself still works
+  for back-compat. Lives under `commands/_legacy/` so the v11 removal
+  is a single `git rm -r commands/_legacy/`. **Scheduled for removal
+  in v11.**
 
 ### Removed
 - 5 pure-orphan duplicate files: `api_keys.py`, `api_key_setup.py`,
@@ -117,3 +135,86 @@ removes accumulated cruft so future work can ship cleanly.
 - **v11**: Remove deprecated `fix-orphans` command. Remove
   `~/frappe-bench` fallback in `find_bench_root()`. Pi/IoT support
   reconsidered.
+
+### Lint Cleanup (11 commits — Ruff: 3,814 errors → 0)
+
+Post-init-pass cleanup arc that landed after the per-command extraction
+work. Each commit was a focused mechanical pass over a single rule
+class, keeping the diffs reviewable.
+
+- `5794855` — exclude `_archive/` and `tests/legacy_command_tests/` from
+  Ruff's lint scope (they hold preserved historical code, not active
+  surface)
+- `890190f` — `ruff --fix`: 3,090 mechanical fixes across the active
+  command surface
+- `8b11cf0` — fix: properly import `find_bench_root` in 10 command
+  modules (T1.9's sweep had introduced 16 NameError bugs by adding the
+  call without consistently importing the symbol)
+- `d4d85ea` — fix: import `ensure_controller_files` in `unstage.py`
+  (was being called transitively but no longer in scope after the
+  T1.8.3 split)
+- `5803c59` — `E722`: replace 38 bare `except:` with `except Exception:`
+- `ef04adf` — `UP035`: remove 33 PEP 585-deprecated typing imports
+  (`typing.Dict` → `dict`, etc.)
+- `33dd9f1` — `E731`: replace 24 lambda fallback assignments with `def`
+  blocks (`pass_context = lambda f: f` → `def pass_context(f): return f`)
+- `5f78b37` — `W293/W291/I001`: strip whitespace in 85 docstring sites
+- `d9cba94` — `B007/F841/RUF005`: 23 mechanical cleanups (unused loop
+  vars, dead bindings, list-concat style)
+- `58e6d94` — config: ignore `RUF001` (intentional Unicode info icons
+  like 🆕 in CLI banners)
+- `09cb61c` — `E701/B007/RUF013/RUF059`: final 9 lint fixes
+
+### Wiring Fixes (2 commits)
+
+Post-extraction wiring corrections — surfaced once the per-command
+modules were active, revealing commands that had been registered in
+some places but missed in others.
+
+- `f50f3e9` — fix: export `app_migrator_resolve_duplicates` as a
+  top-level command. Was registered in the click group but absent from
+  the bench command list, so `bench app-migrator-resolve-duplicates`
+  (top-level form) wouldn't work.
+- `951d60a` — fix: wire orphaned `analyze-apps` and `quick-setup` as
+  subcommands. Both were defined in their source files (analyze/apps.py
+  and simple_api_setup.py respectively) but never registered.
+
+### Smoke test
+
+The full fresh-bench install smoke (`bench get-app` → `bench install-app`
+→ `bench app-migrator health` on a previously-app-migrator-free bench)
+could not be run as written: every non-default bench on UbuntuVM at
+acceptance time is on Python 3.12.3, while v10.0.0-rc1's
+`pyproject.toml` requires `>=3.14`. Only the active bench
+(`/home/frappe/frappe-bench`) has Python 3.14. Creating a fresh
+Python-3.14 bench is left to a follow-up; a tagged build awaits.
+
+**Partial smoke (run on the active Python 3.14 bench, all green):**
+
+| Check                                                         | Result |
+|---------------------------------------------------------------|--------|
+| `pip install -e ./apps/app_migrator` (build + install)        | ✅     |
+| dist-info reflects the new version                            | ✅ `app_migrator-10.0.0rc1.dist-info` |
+| `python3 -c "import app_migrator; print(__version__)"`        | ✅ `10.0.0-rc1` |
+| All 18 extracted per-command modules import cleanly           | ✅     |
+| All 6 helpers in `_shared.py` import                          | ✅     |
+| `MigrationIntelligence()` instantiates; 5 namespaces present  | ✅ `pattern_database=10, risk_assessment_rules=3, success_patterns=2, analysis_workflows=1, ai_prompts=2` |
+| `bench app-migrator --help` command count                     | ✅ 41 (was 39 pre-wiring; +2 from `951d60a`'s `analyze-apps` + `quick-setup`) |
+| `bench list-apps`                                             | ✅ `app_migrator    10.0.0-rc1    release/v10.0.0-cleanup` |
+| `ruff check app_migrator`                                     | ✅ "All checks passed!" (0 errors; verifies the 3,814-error cleanup arc holds) |
+
+These partial smokes validate everything about the install path that
+doesn't require a separate Python interpreter — build, install, import,
+CLI surface, intelligence engine, lint. The portion deferred is
+"installs cleanly on a Python 3.14 bench other than the one used to
+build it," which requires a fresh Python 3.14 environment.
+
+### Known Limitations
+
+- **Python 3.14 ecosystem**: at acceptance time none of the team's
+  pre-existing benches on UbuntuVM had been migrated to Python 3.14
+  yet. v10.0.0-rc1 is the first release that requires it (per launch
+  brief §1.4). A fresh-bench install verification is queued for once
+  a 3.14 bench exists.
+- **Customer-specific commands still in core**: see "Breaking changes"
+  above. Not removed in v10; queued for v10.1.
