@@ -39,6 +39,10 @@ description = "App migration utility with GitHub Actions CI/CD support"
 [tool.ruff]
 line-length = 110
 target-version = "py314"
+extend-exclude = [
+    "_archive",
+    "tests/legacy_command_tests",
+]
 
 [tool.ruff.lint]
 select = [
