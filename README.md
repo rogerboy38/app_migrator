@@ -1,414 +1,186 @@
-# App Migrator Enterprise 🚀
+# app_migrator
 
-**Multi-bench Migration Toolkit for Frappe/ERPNext**
+**Version:** 10.0.0-rc1  
+**Python:** 3.14+  
+**Frappe:** v16+
 
-![Frappe 15+](https://img.shields.io/badge/Frappe-15+-blue.svg)
-![ERPNext Compatible](https://img.shields.io/badge/ERPNext-Compatible-green.svg)
-![License MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
-![Version v9.0.0+](https://img.shields.io/badge/Version-v9.0.0+-brightgreen.svg)
+---
 
-## 📋 Overview
+## What it does
 
-App Migrator Enterprise is a comprehensive CLI tool for managing Frappe app migrations, diagnostics, and maintenance across multiple benches. It provides intelligent analysis, conflict resolution, and automated migration workflows with enhanced Git operations.
+You have N parallel Frappe apps and want to consolidate to M ≤ N — possibly one receiver app that absorbs DocTypes from multiple donor apps. app_migrator is the CLI tool that gets you there.
 
-## ✨ Enhanced Features (v9.0.0+)
+The core problem it solves is the "alacran-mother" pattern: when you uninstall a donor app (e.g., an abandoned module), Frappe deletes its DocTypes — even the ones you spent years customizing. app_migrator detects this and lets you migrate DocTypes to a receiver app before uninstalling the donor. Beyond that, it handles multi-bench discovery (so you don't hardcode `~/frappe-bench`), conflict analysis between overlapping apps, and AI-driven migration planning.
 
-### **🎯 Git Operations - Fully Enhanced**
-- **Multi-remote Support**: Handle multiple remotes (origin, upstream) per app
-- **Intelligent Status Detection**: Shows ahead/behind/diverged/same status with commit counts
-- **Automatic Commit Handling**: Commit uncommitted changes with custom messages
-- **Safe Push Options**: Dry-run, force push, pull-first, skip-diverged
-- **SSH Connection Testing**: Automatic GitHub SSH connectivity verification
-- **Comprehensive Summary**: Detailed success/failure reports with emoji-enhanced output
+Phase 1 (this release) cleaned up a 2,134-line monolith into 39 per-command modules, added proper bench discovery, modernized to Python 3.14 + Frappe v16, and established a lint-clean codebase.
 
-### **🏗️ Core Migration Features**
-- Multi-bench Management: Analyze and manage apps across different benches
-- Conflict Detection: Identify and resolve conflicts between apps
-- Migration Planning: Generate intelligent migration plans
-- Orphan Detection: Find and fix orphaned DocTypes
-- Health Checks: Comprehensive app diagnosis and validation
-- Modernization: Upgrade apps from traditional to modern Python structure
+---
 
-## 🚀 Quick Start
+## Quick start
 
-### Installation
 ```bash
-# Clone the app
+# Install
 bench get-app app_migrator https://github.com/rogerboy38/app_migrator
+bench --site mysite install-app app_migrator
 
-# Install on your site
-bench --site [site-name] install-app app_migrator
+# Scan for orphans before doing anything
+bench --site mysite app-migrator orphans
 
-# Build assets
-bench build --app app_migrator
-bench restart
-Basic Usage
-bash
+# Full site scan
+bench --site mysite app-migrator scan
 
-# View all available commands
-bench app-migrator --help
+# Health check
+bench --site mysite app-migrator health
+```
 
-# Check system health
-bench app-migrator health
+Bench discovery is automatic — it walks `~/` for benches, respects `FRAPPE_BENCH` env var.
 
-# Scan your site for analysis
-bench app-migrator scan --site [site-name]
+---
 
-📊 Command Reference
+## Commands
 
-Total commands available: 26
-#	Command	Description	Category
-1	app-migrator	Main command group	Group
-2	app-migrator health	Check App Migrator health and list commands	Diagnostics
-3	app-migrator scan	Scan site for apps, doctypes, custom fields	Analysis
-4	app-migrator conflicts	Detect conflicts between apps (use --all-apps to scan all)	Conflict Resolution
-5	app-migrator plan	Generate a migration plan	Migration
-6	app-migrator execute	Execute a migration plan	Migration
-7	app-migrator benches	List all available benches and their apps	Bench Management
-8	app-migrator session-start	Start a new migration session	Sessions
-9	app-migrator session-status	Check migration session status	Sessions
-10	app-migrator apps	List downloaded apps vs installed apps	App Management
-11	app-migrator fix-orphans	Fix orphan doctypes (doctypes with no module or app)	Maintenance
-12	app-migrator analyze	Analyze app structure (modern pyproject.toml vs traditional setup.py)	Analysis
-13	app-migrator create-host	Create a staging/host app for ping-pong migration	Migration
-14	app-migrator stage	Stage doctypes from source app to host app with prefix	Migration
-15	app-migrator unstage	Unstage doctypes from host module to target module without prefix	Migration
-16	app-migrator fix-structure	Analyze Frappe app folder structure and report issues	Maintenance
-17	app-migrator ensure-controllers	Create missing .py controller files for DocTypes in apps	Maintenance
-18	app-migrator fix-app-field	Fix DocTypes with NULL app field to prevent orphan detection	Maintenance
-19	app-migrator fix-json-app	Fix JSON app field issues to prevent orphan detection	Maintenance
-20	app-migrator wizard	Launch interactive migration wizard (no site required)	Migration
-21	app-migrator orphans	Intelligent orphaned DocType detection and resolution	Maintenance
-22	app-migrator predict-success	Predict migration success probability using heuristics	Analysis
-23	app-migrator generate-plan	Generate an intelligent migration plan with validation	Migration
-24	app-migrator diagnose	Comprehensive app diagnosis for migration readiness	Diagnostics
-25	app-migrator modernize	Upgrade app from traditional setup.py to modern pyproject.toml	Modernization
-26	app-migrator git-push	Enhanced Git Push Helper for all apps	Git Operations
-🔧 Key Commands Deep Dive
-🚀 Git Push Helper (Enhanced)
+Run `bench app-migrator --help` for the full list with descriptions. Grouped by category:
 
-The git-push command has been completely rewritten for v9.0.0 with advanced features:
-bash
+### Analysis
 
-# Show help with all options
-bench app-migrator git-push --help
+| Command | Description |
+|---|---|
+| `analyze` | Analyze app structure (pyproject.toml vs setup.py) |
+| `analyze-apps` | Analyze all apps in current bench |
+| `apps` | List downloaded apps vs installed apps |
+| `benches` | List all available benches and their apps |
+| `conflicts` | Detect conflicts between apps |
+| `diagnose` | Comprehensive app diagnosis for migration readiness |
+| `module-diagnostic` | Quick diagnostic of module naming and orphan issues |
+| `scan` | Scan site for apps, DocTypes, custom fields |
 
-# Dry-run: See what would be pushed without making changes
-bench app-migrator git-push --dry-run
+### Migration workflow
 
-# Push all apps with commit message for uncommitted changes
-bench app-migrator git-push --message "Release v2.0"
+| Command | Description |
+|---|---|
+| `create-host` | Create a staging/host app for ping-pong migration |
+| `execute` | Execute a migration plan |
+| `plan` | Generate a migration plan |
+| `stage` | Stage DocTypes from source app to host app |
+| `unstage` | Unstage DocTypes from host to target module |
+| `resolve-duplicates` | Resolve duplicate DocTypes between two apps |
 
-# Push specific app only
-bench app-migrator git-push --app my_app --dry-run
+### Orphan handling
 
-# Force push (use with caution)
-bench app-migrator git-push --app my_app --force
+| Command | Description |
+|---|---|
+| `orphans` | Intelligent orphaned DocType detection and repair |
+| `fix-orphans` | **[DEPRECATED]** Use `orphans --fix --apply` |
+| `fix-modules` | Fix orphan modules by reassigning DocTypes |
+| `fix-app-field` | Fix DocTypes with NULL app field |
+| `fix-json-app` | Fix JSON app field issues |
+| `fix-module-names` | Fix inconsistent module naming patterns |
+| `standardize-modules` | Standardize all modules to consistent naming |
+| `ensure-controllers` | Create missing .py controller files for DocTypes |
 
-# Pull from remote before pushing
-bench app-migrator git-push --app my_app --pull-first
+### Git utilities
 
-# Skip apps with diverged branches
-bench app-migrator git-push --skip-diverged
+| Command | Description |
+|---|---|
+| `git-push` | Enhanced Git push with multi-remote support |
+| `git-pull` | Git pull helper for Frappe apps |
+| `git-info` | Show Git info for Frappe apps |
 
-# Combined example: Safe push with commit
-bench app-migrator git-push --app my_app --message "Bug fixes" --dry-run
+### Setup and maintenance
 
-Features:
+| Command | Description |
+|---|---|
+| `modernize` | Upgrade app from setup.py to pyproject.toml |
+| `fix-structure` | Analyze Frappe app folder structure |
+| `setup-wizard` | Interactive setup wizard |
+| `quick-setup` | Quick setup with fc_ key for development |
+| `api-key-setup` | Setup Frappe Cloud API key |
+| `api-key-status` | Check API key status |
+| `api-key-cleanup` | Cleanup API key session |
+| `simple-api-setup` | Simple API key setup (no keyring) |
 
-    ✅ Multi-remote detection: Automatically detects all remotes (origin, upstream, etc.)
+### Session and AI
 
-    ✅ Branch status: Shows ahead/behind/diverged/same status with commit counts
+| Command | Description |
+|---|---|
+| `session-start` | Start a new migration session |
+| `session-status` | Check migration session status |
+| `generate-plan` | Generate an intelligent migration plan |
+| `predict-success` | Predict migration success probability |
+| `health` | Check App Migrator health |
 
-    ✅ SSH verification: Tests GitHub SSH connection before pushing
+---
 
-    ✅ Uncommitted changes: Auto-commits with custom message when needed
+## Architecture
 
-    ✅ Dry-run mode: Preview changes before execution
+Bench discovery follows a priority chain: `FRAPPE_BENCH` env var → `BENCH_PATH` env var → cwd resolution (walk up looking for `apps/apps.txt` + `sites/` + `Procfile`) → fallback to `~/frappe-bench` with deprecation warning. All discovery logic lives in `commands/_shared.py`.
 
-    ✅ Force push: Safe force push with warnings
+The CLI is click-based. `commands/__init__.py` registers all subcommands via `add_command()`. After Phase 1 cleanup it is ~261 lines (was 2,134). Each command lives in its own module.
 
-    ✅ Pull-first: Pull changes before pushing to avoid conflicts
+`_shared.py` exports cross-command utilities: `ProgressTracker`, `MigrationSession`, `find_bench_root`, `discover_all_benches`, `get_current_site`, `detect_available_benches`, `get_bench_apps`.
 
-    ✅ Skip diverged: Skip apps with diverged branches
+The intelligence engine is encapsulated in the `MigrationIntelligence` class with five attribute namespaces:
 
-    ✅ Comprehensive summary: Detailed success/failure report
+- `pattern_database` — 10 risk patterns for migration failure modes
+- `analysis_workflows` — 1 site-inventory analysis workflow
+- `ai_prompts` — 2 NL→command routing prompts
+- `risk_assessment_rules` — severity→action map (4 severity levels)
+- `success_patterns` — 2 known-good migration sequences
 
-🏥 Health & Diagnostics
-bash
+Access via `MigrationIntelligence.pattern_database` or via an instance attribute.
 
-# Check overall health
-bench app-migrator health
+Non-migration modules (payment gateway, payment security, API key managers) are archived to `_archive/` with full attribution — they are not deleted but are no longer in the active command surface.
 
-# Comprehensive diagnosis
-bench app-migrator diagnose --site [site-name]
+---
 
-# Predict migration success
-bench app-migrator predict-success --source-app [app] --target-app [app]
+## Migration target
 
-🔍 Analysis & Scanning
-bash
+App lives in dev sandbox. Migration target is Frappe Cloud via git transport: `git push` from the sandbox bench to the Frappe Cloud remote. The migration workflow (`plan` → `stage` → `execute` → `git-push`) is designed around this pattern. No database export/import — the app and its DocTypes move as code.
 
-# Scan site for detailed analysis
-bench app-migrator scan --site [site-name]
+---
 
-# Analyze app structure
-bench app-migrator analyze --app [app-name]
+## Agentic use
 
-# Detect conflicts between apps
-bench app-migrator conflicts --app1 [app1] --app2 [app2]
+Claude Code, Minimax, DeepSeek, and similar agents can drive full migrations via the CLI. The intelligence engine namespaces are designed to be reasoned about by AI agents — risk patterns have severity levels, success patterns have known-good sequences, and the `generate-plan` command produces structured output that agents can parse and act on.
 
-# Scan all apps for conflicts
-bench app-migrator conflicts --all-apps
+Example agent loop:
+```
+bench app-migrator scan --site prod
+bench app-migrator conflicts --app1 payments --app2 erpnext --all-apps
+bench app-migrator generate-plan --source payments --target erpnext
+bench app-migrator stage --source payments --target erpnext --doctype "Payment Method"
+bench app-migrator execute --dry-run
+bench app-migrator git-push
+```
 
-🚚 Migration Workflow
-bash
+---
 
-# Generate migration plan
-bench app-migrator plan --source-bench [path] --target-bench [path]
+## Status
 
-# Create host app for staging
-bench app-migrator create-host --source-app [app] --host-app [host-app]
+app_migrator 10.0.0-rc1 on branch `release/v10.0.0-cleanup`. Python 3.14, Frappe v16. Lint-clean (ruff reports 0 errors). 6 orphan scenario test fixtures in `tests/fixtures/orphan_scenarios/` — these are red tests Phase 2 will turn green. Base commit for this README: `951d60a`.
 
-# Stage doctypes
-bench app-migrator stage --source-app [app] --host-app [host-app] --prefix [prefix]
+---
 
-# Execute migration
-bench app-migrator execute --plan-file [path]
+## Roadmap
 
-🛠️ Maintenance & Fixes
-bash
+- **v10.1** — Extract customer-specific commands to `app_migrator_amb_overlay` companion repo
+- **v10.2** — Three-layer orphan protection (class-name correction, custom=1 flag, before_migrate cache-priming)
+- **v10.3** — Cross-app field overlap detection (lessons from V13.9.0 transport)
+- **v11** — Agent-driven NL command routing via intelligence engine
+- **v12** — Multi-app coordinated upgrade (donor→receiver in single transaction)
+- **Phase 5** — Pi/IoT fleet config sync over Raven AI agent channels (deferred)
 
-# Fix orphan doctypes
-bench app-migrator fix-orphans --site [site-name]
+---
 
-# Intelligent orphan detection
-bench app-migrator orphans --site [site-name]
+## Contributing
 
-# Fix app structure issues
-bench app-migrator fix-structure --app [app-name]
+Branch from `main`. Commit messages follow the existing convention (see `git log`). `ruff check` must pass before pushing — the full CI lint workflow is at `.github/workflows/lint.yml`. All Phase 1 cleanup commits use the pattern `type(v10): description` with `type` in `{feat, chore, refactor, test, ci, docs}`.
 
-# Ensure controller files exist
-bench app-migrator ensure-controllers --app [app-name]
+---
 
-# Fix NULL app fields
-bench app-migrator fix-app-field --site [site-name]
+## References
 
-# Fix JSON app fields
-bench app-migrator fix-json-app --site [site-name]
+- [Frappe Issue #37799](https://github.com/frappe/frappe/issues/37799) — Orphan deletion bug
+- [ERPNext Naming Guidelines](https://github.com/frappe/erpnext/wiki/Naming-Guidelines)
+- [Frappe v16 Migration Guide](https://github.com/frappe/frappe/blob/develop/python36/pyproject_toml_migration.md)
 
-🔄 Modernization
-bash
-
-# Modernize app structure
-bench app-migrator modernize --app [app-name]
-
-# Interactive wizard
-bench app-migrator wizard
-
-🎯 Use Cases
-1. Git Management for All Apps
-bash
-
-# Check what would be pushed for all apps
-bench app-migrator git-push --dry-run
-
-# Push all apps with automatic commits
-bench app-migrator git-push --message "Daily update"
-
-# Push specific app with custom options
-bench app-migrator git-push --app my_app --pull-first --skip-diverged
-
-2. Multi-bench Migration
-bash
-
-# Analyze source bench
-bench app-migrator scan --site source_site
-
-# Generate migration plan
-bench app-migrator plan --source-bench /path/to/source --target-bench /path/to/target
-
-# Execute migration
-bench app-migrator execute --plan-file migration_plan.json
-
-3. App Conflict Resolution
-bash
-
-# Detect conflicts
-bench app-migrator conflicts --all-apps
-
-# Resolve duplicates
-bench app-migrator resolve-duplicates --app1 [app1] --app2 [app2]
-
-4. App Modernization
-bash
-
-# Analyze current structure
-bench app-migrator analyze --app legacy_app
-
-# Modernize to pyproject.toml
-bench app-migrator modernize --app legacy_app
-
-🏗️ Architecture
-text
-
-app_migrator/
-├── commands/           # CLI command modules
-│   ├── __init__.py    # Command registration
-│   ├── git_push.py    # Enhanced Git push helper (v9.0.0+)
-│   ├── analyze.py     # App structure analysis
-│   └── ...           # Other command modules
-├── utils/             # Utility functions
-│   └── git_helper.py  # Git operations utilities
-├── migrations/        # Database migrations
-└── public/           # Frontend assets
-
-🔒 Security Features
-
-    Safe Mode: Confirmation prompts for destructive operations
-
-    Dry Run: Preview changes before execution
-
-    Session Management: Track migration sessions
-
-    Validation: Comprehensive pre-migration checks
-
-    SSH Verification: Automatic GitHub connection testing
-
-📈 Performance
-
-    Parallel Processing: Concurrent operations where possible
-
-    Caching: Intelligent caching of scan results
-
-    Incremental Analysis: Only analyze changed components
-
-    Memory Efficient: Stream processing for large datasets
-
-🐛 Troubleshooting
-Common Issues:
-
-Command not found
-bash
-
-# Rebuild the app
-bench build --app app_migrator
-bench restart
-
-Permission errors
-bash
-
-# Check bench permissions
-bench --site [site-name] install-app app_migrator
-
-Git push SSH issues
-bash
-
-# Test SSH connection
-ssh -T git@github.com
-
-# Use dry-run first
-bench app-migrator git-push --dry-run
-
-Branch status detection
-bash
-
-# If branch status shows "error", check GitHelper compatibility
-# Fixed in v9.0.0 - ensure you have latest version
-
-Debug Mode:
-bash
-
-# Enable verbose logging
-bench --verbose app-migrator [command] [options]
-
-🤝 Contributing
-
-We welcome contributions! Please see our Contributing Guidelines for details.
-Adding New Commands:
-
-    Create command file in commands/ directory
-
-    Define with @click.command('command-name')
-
-    Register in commands/__init__.py:
-
-python
-
-from .your_command import your_command
-app_migrator.add_command(your_command, 'command-name')
-
-📄 License
-
-MIT License. See LICENSE for details.
-📞 Support
-
-    Issues: GitHub Issues
-
-    Documentation: GitHub Wiki
-
-    Releases: GitHub Releases
-
-🚀 Roadmap
-✅ Completed in v9.0.0
-
-    ✅ Enhanced Git push helper with multi-remote support
-
-    ✅ Intelligent branch status detection
-
-    ✅ SSH connection verification
-
-    ✅ Comprehensive push summaries
-
-🔄 In Progress
-
-    Web interface for migration management
-
-    API for integration with other tools
-
-    Automated testing framework
-
-    Plugin system for extensibility
-
-    Performance optimizations for large benches
-
-Version: v9.0.0+
-Last Updated: February 2024
-Maintainer: Rogerboy38
-Frappe Compatibility: Version 15+
-
-⭐ Star us on GitHub if you find this tool useful!
-EOF
-
-echo "✅ README.md updated with enhanced features"
-text
-
-
-Now let's commit this enhanced README and test the git-push command one more time with the actual push:
-
-```bash
-# Add the updated README
-git add README.md
-
-# Test the enhanced git-push with commit message
-cd ~/frappe-bench
-bench app-migrator git-push --app app_migrator --dry-run --message "feat: Enhanced README with v9.0.0 features"
-
-# If it looks good, do the actual push
-bench app-migrator git-push --app app_migrator --message "feat: Enhanced README with v9.0.0 features"
-
-The enhanced README now includes:
-
-    Clear highlighting of v9.0.0 enhancements
-
-    Detailed git-push command documentation
-
-    All features we tested and fixed
-
-    Comprehensive examples and use cases
-
-    Troubleshooting section for common issues
-
-    Architecture overview
-
-    Roadmap showing what's completed
