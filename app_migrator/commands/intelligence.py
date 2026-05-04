@@ -150,7 +150,7 @@ def generate_intelligent_plan(context, site, source_apps, target_app, output):
     apps_list = [a.strip() for a in source_apps.split(',')]
     
     plan = {
-        "version": "9.0.0-intelligent",
+        "version": "10.0.0-rc1-intelligent",
         "created": datetime.now().isoformat(),
         "analysis_mode": "intelligent",
         "source_apps": apps_list,

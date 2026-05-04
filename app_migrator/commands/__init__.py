@@ -112,9 +112,9 @@ def app_migrator(ctx):
     """App Migrator Enterprise - Multi-bench migration toolkit"""
     if ctx.invoked_subcommand is None:
         # Show custom help when no subcommand
-        click.echo("""
+        click.echo(f"""
 ╔═══════════════════════════════════════════════════════╗
-║       🚀 APP MIGRATOR ENTERPRISE v9.0.0 🚀            ║
+║   🚀 APP MIGRATOR ENTERPRISE v{__version__} 🚀
 ║   Multi-bench, multi-site migration toolkit           ║
 ╚═══════════════════════════════════════════════════════╝
 
