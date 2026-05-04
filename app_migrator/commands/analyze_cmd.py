@@ -144,11 +144,16 @@ def app_migrator_analyze(context, app_name):
 
     # Health score
     score = 0
-    if result["has_hooks"]: score += 30
-    if result["has_modules_txt"]: score += 20
-    if result["has_pyproject"]: score += 20
-    if result["modules"]: score += 20
-    if not result["issues"]: score += 10
+    if result["has_hooks"]:
+        score += 30
+    if result["has_modules_txt"]:
+        score += 20
+    if result["has_pyproject"]:
+        score += 20
+    if result["modules"]:
+        score += 20
+    if not result["issues"]:
+        score += 10
 
     print(f"\n💯 HEALTH SCORE: {score}%")
 

@@ -79,7 +79,7 @@ def repair_bench_apps_callback(dry_run=False):
             return
 
         if click.confirm(f"\n🚀 Apply fixes to {len(critical_apps)} apps?"):
-            for app_name, health in critical_apps:
+            for app_name, _health in critical_apps:
                 app_path = os.path.join(scanner.bench_path, 'apps', app_name)
                 analyzer = PreInstallationAnalyzer()
                 fix_results = analyzer.auto_fix_app_structure(app_path)

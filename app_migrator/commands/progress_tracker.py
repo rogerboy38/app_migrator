@@ -249,7 +249,7 @@ if __name__ == "__main__":
     # Simple progress test
     tracker = ProgressTracker("Test App", total_steps=4)
 
-    for i in range(4):
+    for _i in range(4):
         tracker.update()
         time.sleep(1)
 

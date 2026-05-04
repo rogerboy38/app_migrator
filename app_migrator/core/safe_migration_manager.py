@@ -168,7 +168,7 @@ class SafeMigrationManager(MigrationManager):
         """Check disk space"""
         try:
             import shutil
-            total, used, free = shutil.disk_usage("/")
+            total, _used, free = shutil.disk_usage("/")
             return free / total
         except Exception:
             return 0.5

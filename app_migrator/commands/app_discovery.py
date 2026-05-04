@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 class AppDiscovery:
-    def __init__(self, bench_path: str = None):
+    def __init__(self, bench_path: str | None = None):
         self.bench_path = bench_path or os.getcwd()
         self.apps_path = os.path.join(self.bench_path, "apps")
 
