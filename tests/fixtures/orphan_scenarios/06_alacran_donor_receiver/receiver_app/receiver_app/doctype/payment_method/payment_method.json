@@ -1,0 +1,9 @@
+{
+  "doctype": "DocType",
+  "name": "Payment Method",
+  "module": "Receiver App Module",
+  "app": "receiver_app",
+  "custom": 0,
+  "fields": [{"fieldname": "method_name", "fieldtype": "Data", "label": "Method Name"}, {"fieldname": "is_active", "fieldtype": "Check", "label": "Is Active"}],
+  "permissions": [{"role": "System Manager", "read": 1, "write": 1}]
+}

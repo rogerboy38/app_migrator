@@ -1,0 +1,9 @@
+{
+  "doctype": "DocType",
+  "name": "Test DocType",
+  "module": "Orphan Missing Controller Test",
+  "app": "orphan_missing_controller_test",
+  "custom": 0,
+  "fields": [{"fieldname": "test_field", "fieldtype": "Data", "label": "Test"}],
+  "permissions": [{"role": "System Manager", "read": 1, "write": 1}]
+}

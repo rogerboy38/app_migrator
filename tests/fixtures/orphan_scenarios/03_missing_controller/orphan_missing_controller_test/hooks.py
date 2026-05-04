@@ -1,0 +1,6 @@
+app_name = "orphan_missing_controller_test"
+app_title = "Orphan Test - Missing Controller"
+app_publisher = "app_migrator test fixtures"
+app_description = "Fixture for orphan scenario 03"
+app_email = "test@example.com"
+app_license = "MIT"

@@ -1,0 +1,9 @@
+{
+  "doctype": "DocType",
+  "name": "Payment Method",
+  "module": "Donor App Module",
+  "app": "donor_app",
+  "custom": 0,
+  "fields": [{"fieldname": "method_name", "fieldtype": "Data", "label": "Method Name"}],
+  "permissions": [{"role": "System Manager", "read": 1, "write": 1}]
+}

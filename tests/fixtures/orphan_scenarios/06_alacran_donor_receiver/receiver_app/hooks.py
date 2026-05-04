@@ -1,0 +1,6 @@
+app_name = "receiver_app"
+app_title = "Receiver App - Alacran Test"
+app_publisher = "app_migrator test fixtures"
+app_description = "Fixture for orphan scenario 06 - receiver"
+app_email = "test@example.com"
+app_license = "MIT"

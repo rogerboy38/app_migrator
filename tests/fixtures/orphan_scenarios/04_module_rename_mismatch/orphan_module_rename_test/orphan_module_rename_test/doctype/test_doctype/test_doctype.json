@@ -1,0 +1,9 @@
+{
+  "doctype": "DocType",
+  "name": "Test DocType",
+  "module": "Old Module Name",
+  "app": "orphan_module_rename_test",
+  "custom": 0,
+  "fields": [{"fieldname": "test_field", "fieldtype": "Data", "label": "Test"}],
+  "permissions": [{"role": "System Manager", "read": 1, "write": 1}]
+}
