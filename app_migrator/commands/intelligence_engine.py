@@ -309,6 +309,108 @@ class MigrationIntelligence:
                     'installed_apps': ['frappe.apps.get_installed_apps', 'frappe.utils.versions.get_versions'],
                 },
             },
+
+            # ===== Patterns harvested from sandbox.sysmayal.cloud v10.0.0-rc1 install =====
+
+            # First observed: 2026-05-05 — apps/amb_w_spc/app_migrator.py
+            # shadowed apps/app_migrator/app_migrator/ on
+            # sandbox.sysmayal.cloud during v10.0.0-rc1 install. Resolved
+            # via remediation A (commit dd0cc0d in amb_w_spc V14.0.0).
+            # Reason: a stray top-level .py file in app A whose stem matches
+            # the package name of app B causes Frappe's import resolver to
+            # pick the file before the package; surfaces as cryptic
+            # ModuleNotFoundError at install or migrate time. Transport's
+            # INSPECT stage should pre-flight this.
+            'module_name_collision': {
+                'triggers': [
+                    'install/migrate of an app whose name matches a stray top-level .py in another app',
+                    'two apps in the same bench expose modules with the same top-level name',
+                ],
+                'symptoms': [
+                    "ModuleNotFoundError: No module named '<app>.hooks'; '<app>' is not a package",
+                    'apps.txt order silently determines which app "wins" the import',
+                    'imports of the second app fail at install or migrate time',
+                ],
+                'prevention': 'pre_flight_stem_vs_installed_app_check_during_INSPECT',
+                'risk_score': 0.85,
+                'detection_method': 'stem_vs_installed_app_collision_scan',
+                'auto_fix_available': False,
+                # Bash quick-scan — flags duplicate basenames but has false
+                # positives (setup.py, hooks.py exist per-app)
+                'detection_bash_quick': (
+                    "find /home/frappe/frappe-bench/apps -maxdepth 2 -name '*.py' "
+                    "| awk -F'/' '{print $NF}' | sort | uniq -c | awk '$1>1'"
+                ),
+                # Precise check (no false positives) — use this for actual
+                # flagging. Catches the file-vs-package collision case where
+                # a stray .py stem matches an installed app's package name.
+                'detection_python_precise': (
+                    "from pathlib import Path\n"
+                    "apps_dir = Path('/home/frappe/frappe-bench/apps')\n"
+                    "installed = (apps_dir.parent / 'sites/apps.txt').read_text().split()\n"
+                    "collisions = [(app, p) for app in installed\n"
+                    "    for p in apps_dir.glob('*/*.py')\n"
+                    "    if p.stem == app and p.parent.name != app]"
+                ),
+                # Pre-flight grep across ALL apps (not just the owner — the
+                # dangerous case is another app importing the stray module
+                # by accident). Decides which remediation applies.
+                'cross_app_import_scan': (
+                    "grep -rn 'from <name> import\\|import <name>' "
+                    "/home/frappe/frappe-bench/apps/"
+                ),
+                'remediation_options': [
+                    'A: delete if dead code (zero imports anywhere, no setup metadata reference, no dynamic loader reference)',
+                    "B: move into the owning app's namespace package (apps/X/X/foo.py instead of apps/X/foo.py)",
+                    'C: rename to non-colliding name (apps/X/X/x_foo.py) if actively used internally',
+                ],
+            },
+
+            # First observed: 2026-05-05 — amb_print V14.0.0 commit 3c691a4
+            # (self-install Chromium for Independent PDF Generator) and
+            # amb_w_spc V14.0.0 commit 65563cf (wire batch_amb label print
+            # button to amb_print PDF API). Without amb_print's Chromium
+            # install, amb_w_spc's API call fails at runtime; without
+            # amb_w_spc's call, amb_print's API has no consumer. Together
+            # they form the v14 label-printing feature.
+            # Reason: a feature requiring synchronized commits across two
+            # or more apps in the same bench leaves the system half-broken
+            # if only one side ships. Transport's INSPECT should detect
+            # pairing in the target..source range and refuse/auto-bundle.
+            'paired_cross_repo_deliverable': {
+                'triggers': [
+                    'feature requires synchronized changes across two or more apps in the same bench',
+                    'transport command moving commits in app A that reference app B',
+                ],
+                'symptoms': [
+                    'calls to APIs that do not exist yet in the target',
+                    'renderers without consumers, fixtures referencing unavailable code',
+                    'half-broken state after deploying one app without its partner commits',
+                ],
+                'prevention': 'detect_cross_app_references_in_transport_range_and_bundle_or_refuse',
+                'risk_score': 0.8,
+                'detection_method': 'cross_app_namespace_scan_scoped_to_transport_range',
+                'auto_fix_available': False,
+                # IMPORTANT: scan target..source (commits being moved), NOT
+                # all repo history — without scoping, every scan is
+                # O(repo-lifetime) and signal-to-noise degrades.
+                'detection_commit_message_grep': (
+                    "NEW_COMMITS=$(git log target..source --format='%H')\n"
+                    "for other_app in $OTHER_INSTALLED_APPS; do\n"
+                    "    git log $NEW_COMMITS --grep \"$other_app\" -i\n"
+                    "done"
+                ),
+                # New code referencing another app's namespace (Python/JS/JSON)
+                'detection_namespace_diff': (
+                    "git diff target..source -- '*.py' '*.js' '*.json' "
+                    "| grep -nE '(import|from)\\s+<other_app>\\b'"
+                ),
+                'transport_behavior_options': [
+                    'A: refuse to transport one app without its identified partner commits, with a clear message naming the missing partner',
+                    'B: auto-discover partners via cross-reference detection and offer to bundle them into a single transport unit',
+                    'C: allow user override with --skip-pair-check and a warning',
+                ],
+            },
         }
 
     def _load_risk_assessment_rules(self) -> dict[str, Any]:
