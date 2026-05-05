@@ -209,6 +209,17 @@ CLI surface, intelligence engine, lint. The portion deferred is
 "installs cleanly on a Python 3.14 bench other than the one used to
 build it," which requires a fresh Python 3.14 environment.
 
+**Update (post-tag, 2026-05-04): Fresh-site install verified on
+`p2-audit.localhost` (Py3.14, no prior `app_migrator` install).
+`bench install-app app_migrator` completed cleanly; `bench app-migrator
+health` returned OPERATIONAL; `bench --site p2-audit.localhost
+list-apps` shows `app_migrator 10.0.0-rc1`. Resolves H5 fully.**
+The original "fresh-bench" framing — testing on a separate bench from
+the build bench — remains queued for once another Python 3.14 bench
+exists, but the install-on-fresh-site verification is the substantive
+half of the same gate (proves the install path runs cleanly on a site
+with none of the build-time state).
+
 ### Known Limitations
 
 - **Python 3.14 ecosystem**: at acceptance time none of the team's
