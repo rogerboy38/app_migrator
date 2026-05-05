@@ -425,6 +425,9 @@ class MigrationIntelligence:
                 'hardcoded_stripe_secrets',
                 # Digested from frappe-cloud helpers (T1.5b group 2)
                 'missing_frappe_cloud_credentials_in_target',
+                # Harvested from sandbox.sysmayal.cloud v10.0.0-rc1 install (transport-arc)
+                'module_name_collision',
+                'paired_cross_repo_deliverable',
             ],
             'medium_risk_factors': [
                 'apps_txt_instability',
@@ -466,6 +469,51 @@ class MigrationIntelligence:
                         'Generate API key at https://cloud.frappe.io/dashboard/settings/developer '
                         'and reproduce env var FRAPPE_CLOUD_API_KEY (or keyring entry under '
                         'service "frappe_cloud_app_migrator") in the target environment'
+                    ),
+                },
+                # Harvested from sandbox.sysmayal.cloud v10.0.0-rc1 install.
+                # See pattern_database['module_name_collision'] for detection
+                # commands (bash + python) and the A/B/C remediation tree.
+                'module_name_collision': {
+                    'severity': 'high',
+                    'category': 'Install Blocker',
+                    'impact': (
+                        'ModuleNotFoundError at install or migrate time; cryptic '
+                        '"X is not a package" error blocks the install entirely '
+                        '(no partial degradation).'
+                    ),
+                    'mitigation': (
+                        'Pre-flight stem-vs-installed-app collision scan (see '
+                        "pattern_database['module_name_collision']"
+                        "['detection_python_precise']). Three remediation options "
+                        '(A=delete/B=move/C=rename) in '
+                        "pattern_database['module_name_collision']"
+                        "['remediation_options']."
+                    ),
+                },
+                # Harvested from sandbox.sysmayal.cloud v10.0.0-rc1 install.
+                # See pattern_database['paired_cross_repo_deliverable'] for
+                # target..source-scoped detection commands (namespace diff +
+                # commit message grep) and three transport-command behavior
+                # options.
+                'paired_cross_repo_deliverable': {
+                    'severity': 'high',
+                    'category': 'Deployment Consistency',
+                    'impact': (
+                        'Half-deployed feature: runtime failures (calls to missing '
+                        'APIs, renderers without consumers, fixtures referencing '
+                        'unavailable code). Does not block install, but breaks the '
+                        'feature it is part of.'
+                    ),
+                    'mitigation': (
+                        'Pre-transport cross-app namespace scan and commit message '
+                        'scan over target..source range (see '
+                        "pattern_database['paired_cross_repo_deliverable']"
+                        "['detection_namespace_diff'] and "
+                        "['detection_commit_message_grep']). Three transport command "
+                        'behavior options (A=refuse/B=auto-bundle/C=allow) in '
+                        "pattern_database['paired_cross_repo_deliverable']"
+                        "['transport_behavior_options']."
                     ),
                 },
             },
