@@ -1,7 +1,7 @@
 """
-App Migrator Commands - Enterprise Edition
+App Migrator Commands
 Version: 10.0.0-rc1
-Merged: Original analysis + Enterprise multi-bench + Session management
+Merged: Original analysis + multi-bench + Session management
 """
 
 __version__ = "10.0.0-rc1"
@@ -39,7 +39,7 @@ except ImportError:
     FRAPPE_AVAILABLE = False
     def pass_context(f):
         return f
-# ==================== ENTERPRISE UTILITIES ====================
+# ==================== UTILITIES ====================
 # Helpers extracted to _shared.py in T1.8.1
 # ==================== FIX ORPHAN DOCTYPES [DEPRECATED] (T1.8.5 → _legacy/fix_orphans.py) ====================
 from ._legacy.fix_orphans import app_migrator_fix_orphans
@@ -57,7 +57,7 @@ from .analyze_cmd import app_migrator_analyze
 # ==================== LIST APPS (DOWNLOADED VS INSTALLED) (T1.8.2 → apps.py) ====================
 from .apps import app_migrator_apps
 
-# ==================== ENTERPRISE: LIST BENCHES (T1.8.2 → benches.py) ====================
+# ==================== LIST BENCHES (T1.8.2 → benches.py) ====================
 from .benches import app_migrator_benches
 
 # ==================== DETECT CONFLICTS COMMAND (T1.8.2 → conflicts.py) ====================
@@ -96,7 +96,7 @@ from .resolve_duplicates import app_migrator_resolve_duplicates
 # ==================== SCAN SITE COMMAND (T1.8.2 → scan.py) ====================
 from .scan import app_migrator_scan
 
-# ==================== ENTERPRISE: SESSION MANAGEMENT (T1.8.3 → session.py) ====================
+# ==================== SESSION MANAGEMENT (T1.8.3 → session.py) ====================
 from .session import app_migrator_session_start, app_migrator_session_status
 
 # ==================== STAGE COMMAND (T1.8.3 → stage.py) ====================
@@ -110,12 +110,12 @@ from .unstage import app_migrator_unstage
 @click.group('app-migrator', invoke_without_command=True)
 @click.pass_context
 def app_migrator(ctx):
-    """App Migrator Enterprise - Multi-bench migration toolkit"""
+    """App Migrator - Multi-bench migration toolkit"""
     if ctx.invoked_subcommand is None:
         # Show custom help when no subcommand
         click.echo(f"""
 ╔═══════════════════════════════════════════════════════╗
-║   🚀 APP MIGRATOR ENTERPRISE v{__version__} 🚀
+║   🚀 APP MIGRATOR v{__version__} 🚀
 ║   Multi-bench, multi-site migration toolkit           ║
 ╚═══════════════════════════════════════════════════════╝
 
@@ -153,7 +153,7 @@ FIXES & DIAGNOSTICS:
   ensure-controllers  Create missing .py files
   resolve-duplicates  Remove duplicate doctypes between apps
 
-ENTERPRISE:
+MULTI-BENCH:
   benches             List all available benches
   session-start       Start migration session
   session-status      Check session status
@@ -258,7 +258,7 @@ commands = [
     setup_wizard
     ]
 
-logger.debug("App Migrator Enterprise v%s ready", __version__)
+logger.debug("App Migrator v%s ready", __version__)
 
 # Git push command
 

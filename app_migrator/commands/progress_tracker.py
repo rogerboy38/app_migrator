@@ -15,7 +15,7 @@ from datetime import datetime
 
 class ProgressTracker:
     """
-    Enterprise progress tracking with visual feedback
+    Progress tracking with visual feedback
     Extracted and enhanced from V4
     """
 

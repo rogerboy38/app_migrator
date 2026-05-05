@@ -16,7 +16,7 @@ from . import __version__
 def app_migrator_health(context):
     """Check App Migrator health and list commands"""
     print("=" * 60)
-    print(f"🔧 App Migrator Enterprise v{__version__} - OPERATIONAL")
+    print(f"🔧 App Migrator v{__version__} - OPERATIONAL")
     print("=" * 60)
     print("\n📋 AVAILABLE COMMANDS:")
     print("  Site Analysis:")
@@ -25,7 +25,7 @@ def app_migrator_health(context):
     print("  Migration:")
     print("    app-migrator-plan --site <name>          Create migration plan")
     print("    app-migrator-execute --site <name>       Execute migration")
-    print("  Enterprise:")
+    print("  Multi-Bench:")
     print("    app-migrator-benches                     List all benches")
     print("    app-migrator-apps --site <name>          Downloaded vs installed apps")
     print("    app-migrator-session-start <name>        Start session")

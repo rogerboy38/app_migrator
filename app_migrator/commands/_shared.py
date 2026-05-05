@@ -26,7 +26,7 @@ from pathlib import Path
 # Uses carriage-return in-place updates for terminal feedback; default
 # step labels supplied if caller doesn't pass a message.
 class ProgressTracker:
-    """Enterprise progress tracking with visual feedback"""
+    """Progress tracking with visual feedback"""
 
     def __init__(self, app_name, total_steps=4):
         self.app_name = app_name

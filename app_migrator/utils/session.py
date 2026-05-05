@@ -1,5 +1,5 @@
 """
-🎯 Enterprise Session Management System
+🎯 Session Management System
 Migration session tracking, persistence, and recovery
 """
 

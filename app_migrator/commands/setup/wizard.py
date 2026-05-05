@@ -31,7 +31,7 @@ def setup_wizard(ctx, api_key, ssh_key, auto_approve, sync, test):
 
     # Banner
     click.echo("=" * 60)
-    click.echo("🚀 APP MIGRATOR ENTERPRISE - SETUP WIZARD")
+    click.echo("🚀 APP MIGRATOR - SETUP WIZARD")
     click.echo("=" * 60)
     click.echo()
 

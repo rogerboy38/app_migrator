@@ -22,7 +22,7 @@ from frappe.utils import get_sites
 
 class SessionManager:
     """
-    Enterprise session management class
+    Session management class
     Combines V2 decorator pattern with V4 structured session management
     """
 
