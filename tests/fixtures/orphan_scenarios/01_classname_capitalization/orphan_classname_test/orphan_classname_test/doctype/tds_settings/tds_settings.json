@@ -1,0 +1,13 @@
+{
+  "doctype": "DocType",
+  "name": "TDS Settings",
+  "module": "Orphan Classname Test",
+  "app": "orphan_classname_test",
+  "custom": 0,
+  "autoname": "field:company_name",
+  "fields": [
+    {"fieldname": "company_name", "fieldtype": "Link", "label": "Company", "options": "Company"},
+    {"fieldname": "tan_no", "fieldtype": "Data", "label": "TAN Number"}
+  ],
+  "permissions": [{"role": "System Manager", "read": 1, "write": 1}]
+}

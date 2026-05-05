@@ -3,7 +3,7 @@ import re
 
 file_path = "app_migrator/commands/app_setup.py"
 
-with open(file_path, 'r') as f:
+with open(file_path) as f:
     content = f.read()
 
 # Check what imports are needed
@@ -19,10 +19,10 @@ if "from cloud_api import SiteAPI" in content:
         "from cloud_api import SiteAPI",
         "from ..utils.cloud_api import SiteAPI"
     )
-    
+
     with open(file_path, 'w') as f:
         f.write(new_content)
-    
+
     print("\n✅ Changed to relative import: from ..utils.cloud_api import SiteAPI")
 elif "from app_migrator.utils.cloud_api import SiteAPI" in content:
     print("\n✅ Import already correct")

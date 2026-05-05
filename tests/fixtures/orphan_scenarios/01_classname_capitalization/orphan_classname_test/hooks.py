@@ -1,0 +1,6 @@
+app_name = "orphan_classname_test"
+app_title = "Orphan Test - Classname Capitalization"
+app_publisher = "app_migrator test fixtures"
+app_description = "Fixture for orphan scenario 01"
+app_email = "test@example.com"
+app_license = "MIT"

@@ -3,18 +3,18 @@ import os
 import sys
 
 # Read current hooks.py
-with open('hooks.py', 'r') as f:
+with open('hooks.py') as f:
     content = f.read()
 
 # Check if git_push is imported
 if 'from app_migrator.commands.git_push import git_push' not in content:
     print("Adding git_push import...")
-    
+
     # Find where imports end and add our import
     lines = content.split('\n')
     new_lines = []
     imports_added = False
-    
+
     for line in lines:
         new_lines.append(line)
         # Add import after the last import line
@@ -25,20 +25,20 @@ if 'from app_migrator.commands.git_push import git_push' not in content:
                 if 'import' not in next_line:
                     new_lines.append('from app_migrator.commands.git_push import git_push')
                     imports_added = True
-    
+
     # If we didn't add it, add at the end of imports
     if not imports_added:
         for i, line in enumerate(new_lines):
             if 'import' in line and (i == len(new_lines)-1 or 'import' not in new_lines[i+1]):
                 new_lines.insert(i+1, 'from app_migrator.commands.git_push import git_push')
                 break
-    
+
     content = '\n'.join(new_lines)
 
 # Check if git_push is in commands list
-if 'git_push' not in content or 'commands = [' in content and 'git_push' not in content.split('commands = [')[1].split(']')[0]:
+if 'git_push' not in content or ('commands = [' in content and 'git_push' not in content.split('commands = [')[1].split(']')[0]):
     print("Adding git_push to commands list...")
-    
+
     # Find commands list
     if 'commands = [' in content:
         # Simple replacement
@@ -52,7 +52,7 @@ if 'git_push' not in content or 'commands = [' in content and 'git_push' not in 
             if 'commands = [' in line:
                 # Add git_push to the list
                 new_lines[-1] = line.replace('commands = [', 'commands = [git_push, ')
-        
+
         content = '\n'.join(new_lines)
 
 # Write back

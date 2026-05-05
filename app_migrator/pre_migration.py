@@ -3,14 +3,14 @@ def before_migrate():
     import os
     bench_path = os.getenv('BENCH_PATH', '..')
     apps_file = os.path.join(bench_path, 'sites', 'apps.txt')
-    
+
     # Read current apps
     if os.path.exists(apps_file):
-        with open(apps_file, 'r') as f:
+        with open(apps_file) as f:
             apps = set(f.read().splitlines())
     else:
         apps = set()
-    
+
     # Add app_migrator if missing
     if 'app_migrator' not in apps:
         apps.add('app_migrator')

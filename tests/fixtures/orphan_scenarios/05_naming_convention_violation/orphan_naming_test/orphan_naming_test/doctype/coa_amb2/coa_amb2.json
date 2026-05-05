@@ -1,0 +1,9 @@
+{
+  "doctype": "DocType",
+  "name": "COA AMB2",
+  "module": "Orphan Naming Test",
+  "app": "orphan_naming_test",
+  "custom": 0,
+  "fields": [{"fieldname": "test_field", "fieldtype": "Data", "label": "Test"}],
+  "permissions": [{"role": "System Manager", "read": 1, "write": 1}]
+}

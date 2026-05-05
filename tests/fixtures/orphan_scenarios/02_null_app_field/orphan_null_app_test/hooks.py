@@ -1,0 +1,6 @@
+app_name = "orphan_null_app_test"
+app_title = "Orphan Test - NULL App Field"
+app_publisher = "app_migrator test fixtures"
+app_description = "Fixture for orphan scenario 02"
+app_email = "test@example.com"
+app_license = "MIT"

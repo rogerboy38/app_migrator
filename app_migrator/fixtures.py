@@ -8,7 +8,7 @@ def get_fixtures():
     """
     return [
         # "App Migrator Settings",
-        # "Migration Profile", 
+        # "Migration Profile",
         # "App Migration Log"
     ]
 

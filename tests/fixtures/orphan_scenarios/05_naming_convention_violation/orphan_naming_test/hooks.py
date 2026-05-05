@@ -1,0 +1,6 @@
+app_name = "orphan_naming_test"
+app_title = "Orphan Test - Naming Convention Violation"
+app_publisher = "app_migrator test fixtures"
+app_description = "Fixture for orphan scenario 05"
+app_email = "test@example.com"
+app_license = "MIT"
