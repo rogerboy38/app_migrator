@@ -127,7 +127,7 @@ The intelligence engine is encapsulated in the `MigrationIntelligence` class wit
 - `risk_assessment_rules` — severity→action map (4 severity levels)
 - `success_patterns` — 2 known-good migration sequences
 
-Access via `MigrationIntelligence.pattern_database` or via an instance attribute.
+Access via instance: `MigrationIntelligence().pattern_database` (and similar for the other four namespaces).
 
 Non-migration modules (payment gateway, payment security, API key managers) are archived to `_archive/` with full attribution — they are not deleted but are no longer in the active command surface.
 
