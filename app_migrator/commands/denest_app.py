@@ -83,7 +83,7 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     mode = "DRY-RUN" if dry_run else "APPLY"
 
     click.secho("\n" + "=" * 78, fg="cyan")
-    click.secho(f"  DENEST-APP v2 — {app}  →  '{to_module}'  [{mode}]",
+    click.secho(f"  DENEST-APP v4 — {app}  →  '{to_module}'  [{mode}]",
                 fg="cyan", bold=True)
     click.secho("=" * 78, fg="cyan")
 
@@ -211,21 +211,32 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     }, indent=2))
     click.secho(f"\n  📦 Snapshot: {snapshot_file}", fg="green")
 
-    # 1. Rename folder
+    # v4: rewrite imports BEFORE folder rename — paths in affected_py_files
+    # are computed pre-rename and stop resolving the moment we rename the folder.
+    # Order: rewrite (paths valid) → rename folder → update modules.txt → rest.
+
+    # 1. Rewrite imports across all affected .py files (paths still valid)
+    rewritten = 0
+    for f in affected_py_files:
+        try:
+            content = f.read_text()
+        except FileNotFoundError:
+            click.echo(f"  ⚠ skipped (gone): {f}")
+            continue
+        new_content = pattern.sub(new_pkg, content)
+        if new_content != content:
+            f.write_text(new_content)
+            rewritten += 1
+    click.secho(f"  ✓ Rewrote imports in {rewritten} of {len(affected_py_files)} file(s)", fg="green")
+
+    # 2. Rename folder (now safe — all imports rewritten under old paths)
     antipattern_folder.rename(new_folder)
     click.secho("  ✓ Renamed folder", fg="green")
 
-    # 2. Update modules.txt
+    # 3. Update modules.txt
     new_modules = [to_module if _scrub(m) == app else m for m in modules]
     modules_txt.write_text("\n".join(new_modules) + "\n")
     click.secho("  ✓ Updated modules.txt", fg="green")
-
-    # 3. Rewrite imports across all affected .py files (regex-based)
-    for f in affected_py_files:
-        content = f.read_text()
-        new_content = pattern.sub(new_pkg, content)
-        f.write_text(new_content)
-    click.secho(f"  ✓ Rewrote imports in {len(affected_py_files)} file(s)", fg="green")
 
     # 4. patches.txt rewrite
     if patches_has_old_ref:
