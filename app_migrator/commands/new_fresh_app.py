@@ -20,6 +20,7 @@ Usage:
       --app-license "MIT" \\
       --apply
 """
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -113,6 +114,30 @@ def app_migrator_new_fresh_app(context, app_name, module_name, app_title,
 
     # APPLY
     click.secho("\n┌── APPLY ──", fg="cyan")
+
+    # 0. Pre-flight: check uv (Frappe's package manager since bench 5.x)
+    # bench new-app delegates pip-install to `uv pip install -e <app>`. If uv
+    # is missing, the post-scaffold install fails non-zero, but the scaffold
+    # IS on disk — our tool still completes the rename + modules.txt steps.
+    # Pre-warning the user lets them install uv first if they want a fully
+    # clean run, or proceed with confidence that we handle the missing-uv case.
+    uv_path = shutil.which("uv")
+    if uv_path:
+        click.secho(f"  ✓ Pre-flight: uv found at {uv_path}", fg="green")
+    else:
+        click.secho("  ⚠ Pre-flight: 'uv' not found on PATH.", fg="yellow")
+        click.secho("    bench new-app's post-scaffold install step will fail",
+                    fg="yellow")
+        click.secho("    (but scaffold + denest steps still complete cleanly).",
+                    fg="yellow")
+        click.secho("    To install uv:", fg="cyan")
+        click.echo("      pip install uv")
+        click.echo("      OR  curl -LsSf https://astral.sh/uv/install.sh | sh")
+        if not click.confirm("\n  Proceed without uv? "
+                              "(tool gracefully handles the install failure)",
+                              default=True):
+            click.secho("Aborted.", fg="yellow")
+            raise click.Abort()
 
     # 1. Run bench new-app with piped answers
     # Frappe v14+ prompt order: Title, Description, Publisher, Email, License, DocType prefix

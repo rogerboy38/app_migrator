@@ -419,6 +419,49 @@ class MigrationIntelligence:
                 'auto_fix_strategy_nuclear': 'DELETE_all_tabDocField_rows_for_doctype_let_migrate_rebuild_from_JSON',
             },
 
+            # ===== Pattern harvested from amb_w_tds case-mismatch orphan (2026-05-06) =====
+            # Discovered when COA Quality Test Parameter had module='amb_w_tds'
+            # (lowercase) due to a duplicate Module Def created by some prior tooling.
+            # bench migrate failed with "Module amb_w_tds not found" because Frappe's
+            # case-sensitive lookup couldn't reconcile the lowercase variant against
+            # the canonical 'AMB TDS Core' Module Def. Now baked into denest-app v6.
+            'orphan_module_case_mismatch': {
+                'triggers': [
+                    'tabDocType.module references a Module Def with different case/spacing',
+                    'duplicate Module Def rows: one Title Case, one lowercase scrub variant',
+                    'legacy SQL or manual edits anchored DocTypes to the wrong-cased name',
+                    'denest/migrate operations that updated some rows but missed the variant',
+                ],
+                'symptoms': [
+                    'bench migrate fails: "Module X not found" (lowercase X) post-rename',
+                    'tabDocType.module = scrub(canonical_name) instead of canonical_name',
+                    'tabModule Def has duplicate rows with same scrub but different case',
+                    'doctype JSON loads via correct path but DB anchoring is broken',
+                    'orphan reference survives manual re-anchor: bench migrate reverts it',
+                ],
+                'prevention': 'always_use_canonical_module_name_in_doctype_json_and_db',
+                'risk_score': 0.55,
+                'detection_method': 'select_doctype_where_module_not_in_module_def_or_compare_scrub_variants',
+                'detection_query': (
+                    "SELECT dt.name, dt.module, dt.app FROM tabDocType dt "
+                    "LEFT JOIN `tabModule Def` md ON md.name = dt.module "
+                    "WHERE md.name IS NULL"
+                ),
+                'auto_fix_available': True,
+                'auto_fix_algorithm': 'reanchor_to_canonical_then_delete_duplicate_module_def',
+                'auto_fix_implementation': 'denest_app.py v6: WHERE module=_scrub(source_module)',
+                'related_patterns': [
+                    'custom_flag_blocks_controller_import',
+                    'fixture_extracted_custom_doctype_birth_defect',
+                ],
+                'discovery_evidence': (
+                    'amb_w_tds 2026-05-06: COA Quality Test Parameter (module=amb_w_tds, '
+                    'app=NULL) blocked bench migrate after denest. Manual UPDATE reverted '
+                    'on next migrate because doctype JSON had the lowercase value too. '
+                    'Fix: rewrite JSON module field + cascade-include scrub variants.'
+                ),
+            },
+
         }
 
     def _load_risk_assessment_rules(self) -> dict[str, Any]:
@@ -442,6 +485,8 @@ class MigrationIntelligence:
                 'webhook_url_dependencies',
                 'custom_encryption_implementation',
                 'multiple_payment_gateway_integrations',
+                # Harvested from amb_w_tds case-mismatch orphan (2026-05-06)
+                'orphan_module_case_mismatch',
             ],
             # ===== Severity → action mapping (T1.5b) =====
             # Digested from payment_security_migrator.py's _generate_risk_assessment.
@@ -449,6 +494,18 @@ class MigrationIntelligence:
             # mitigation. Used by predictive_analysis to surface actionable
             # guidance, not just a binary "risky/not".
             'severity_actions': {
+                'orphan_module_case_mismatch': {
+                    'severity': 'medium',
+                    'category': 'Module Resolution',
+                    'impact': 'bench migrate fails after rename ops; DocTypes orphaned in DB',
+                    'mitigation': (
+                        'Run denest-app or migrate-module which auto-includes the scrub '
+                        'variant in DB UPDATEs (v6+). For manual fix: '
+                        'UPDATE tabDocType SET module=<canonical>, app=<app> '
+                        'WHERE module=<scrub(canonical)>; then DELETE the duplicate '
+                        'Module Def row.'
+                    ),
+                },
                 'hardcoded_api_keys': {
                     'severity': 'high',
                     'category': 'API Keys',

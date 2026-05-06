@@ -83,7 +83,7 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     mode = "DRY-RUN" if dry_run else "APPLY"
 
     click.secho("\n" + "=" * 78, fg="cyan")
-    click.secho(f"  DENEST-APP v4 — {app}  →  '{to_module}'  [{mode}]",
+    click.secho(f"  DENEST-APP v7 — {app}  →  '{to_module}'  [{mode}]",
                 fg="cyan", bold=True)
     click.secho("=" * 78, fg="cyan")
 
@@ -233,12 +233,41 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     antipattern_folder.rename(new_folder)
     click.secho("  ✓ Renamed folder", fg="green")
 
-    # 3. Update modules.txt
+    # 3. v7: rewrite doctype JSON module fields to canonical to_module
+    # Without this, bench migrate reads the stale 'module' from each JSON and
+    # overwrites our DB UPDATE — DocTypes become orphans referencing a module
+    # name that no longer matches any tabModule Def row. Lesson from amb_w_tds
+    # cleanup (2026-05-06): this single missing step caused 27 DocTypes to be
+    # stranded for an unknown duration before manual JSON repair recovered them.
+    new_dt_dir = new_folder / "doctype"
+    json_updates = 0
+    if new_dt_dir.exists():
+        for dt_subdir in sorted(new_dt_dir.iterdir()):
+            if not dt_subdir.is_dir() or dt_subdir.name.startswith("__"):
+                continue
+            jp = dt_subdir / f"{dt_subdir.name}.json"
+            if not jp.exists():
+                continue
+            try:
+                j = json.loads(jp.read_text())
+            except Exception:
+                continue
+            if j.get("module") != to_module:
+                j["module"] = to_module
+                jp.write_text(json.dumps(j, indent=1, sort_keys=False) + "\n")
+                json_updates += 1
+    if json_updates:
+        click.secho(f"  ✓ Updated 'module' field in {json_updates} doctype JSON file(s)",
+                    fg="green")
+    else:
+        click.echo("  ○ No doctype JSON 'module' field updates needed")
+
+    # 4. Update modules.txt
     new_modules = [to_module if _scrub(m) == app else m for m in modules]
     modules_txt.write_text("\n".join(new_modules) + "\n")
     click.secho("  ✓ Updated modules.txt", fg="green")
 
-    # 4. patches.txt rewrite
+    # 5. patches.txt rewrite
     if patches_has_old_ref:
         pt_content = patches_txt.read_text()
         new_pt = pattern.sub(new_pkg, pt_content)
@@ -247,7 +276,7 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     else:
         click.echo("  ○ patches.txt: no rewrite needed")
 
-    # 5. DB updates (within SQL_SAFE_UPDATES toggle)
+    # 6. DB updates (within SQL_SAFE_UPDATES toggle)
     frappe.init(site=site)
     frappe.connect()
     frappe.db.sql("SET SQL_SAFE_UPDATES=0")
@@ -257,6 +286,46 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
                       (to_module, antipattern_module_name))
         frappe.db.sql("UPDATE tabDocType SET module=%s WHERE module=%s",
                       (to_module, antipattern_module_name))
+
+        # v6: catch case-mismatch orphans — DocTypes anchored to the lowercase
+        # scrub variant of the source module name (legacy bug; we found this on
+        # amb_w_tds where COA Quality Test Parameter had module='amb_w_tds' due
+        # to a duplicate lowercase Module Def created by some prior tooling).
+        # Re-anchor them to the canonical name and delete the duplicate Module Def.
+        src_scrubbed = _scrub(antipattern_module_name)
+        if src_scrubbed != antipattern_module_name:
+            has_dup = frappe.db.sql(
+                "SELECT 1 FROM `tabModule Def` WHERE name=%s LIMIT 1", src_scrubbed
+            )
+            if has_dup:
+                click.echo(f"  ⚠ Found case-mismatch orphan reference: "
+                           f"module='{src_scrubbed}' (lowercase variant of "
+                           f"'{antipattern_module_name}')")
+                # Re-anchor DocTypes pointing at the lowercase variant
+                frappe.db.sql(
+                    "UPDATE tabDocType SET module=%s, app=%s WHERE module=%s",
+                    (to_module, app, src_scrubbed),
+                )
+                # Cross-tables: also update module column for case-mismatch refs
+                for table_spec, has_name_col in MODULE_REF_TABLES:
+                    try:
+                        where = "WHERE module=%s"
+                        if has_name_col:
+                            where += " AND name IS NOT NULL"
+                        frappe.db.sql(
+                            f"UPDATE {table_spec} SET module=%s {where}",
+                            (to_module, src_scrubbed),
+                        )
+                    except Exception:
+                        pass
+                # Delete the duplicate lowercase Module Def
+                frappe.db.sql("DELETE FROM `tabModule Def` WHERE name=%s",
+                              src_scrubbed)
+                click.secho(
+                    "  ✓ Cleaned case-mismatch orphans + removed duplicate Module Def",
+                    fg="green",
+                )
+
         # Cross-table: 6 ancillary tables
         cross_count = 0
         for table_spec, has_name_col in MODULE_REF_TABLES:
@@ -277,19 +346,24 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     click.secho(f"  ✓ Updated DB rows ({cross_count}/{len(MODULE_REF_TABLES)} cross-tables)",
                 fg="green")
 
-    # 6. Clear __pycache__ for the app, then bench migrate (retry-once-on-fail)
+    # 7. Clear __pycache__ for the app, then bench migrate (retry-once-on-fail)
+    # v5: bench-wide pycache clear (was app-scoped — sometimes missed cached
+    # references in apps/frappe/ or apps/erpnext/ that load the renamed module
+    # at bench startup, causing false ModuleNotFoundError on the first migrate).
     cleared = 0
-    for cache_dir in bench_root.rglob(f"apps/{app}/**/__pycache__"):
+    for cache_dir in bench_root.rglob("__pycache__"):
         shutil.rmtree(cache_dir, ignore_errors=True)
         cleared += 1
     if cleared:
-        click.echo(f"  ✓ Cleared {cleared} __pycache__ dir(s)")
+        click.echo(f"  ✓ Cleared {cleared} __pycache__ dir(s) (bench-wide)")
 
     click.secho("\n  Running bench migrate...", fg="cyan")
     ret = subprocess.run(["bench", "--site", site, "migrate"],
                          capture_output=True, text=True,
                          cwd=str(bench_root))
-    if ret.returncode != 0 and "ModuleNotFoundError" in ret.stderr:
+    # v5: check both stdout and stderr — Frappe writes msgprint to stdout
+    # via _raise_exception, so a strict stderr-only check missed real cache races.
+    if ret.returncode != 0 and "ModuleNotFoundError" in (ret.stdout + ret.stderr):
         click.secho("  ⚠ First migrate failed (ModuleNotFoundError); "
                     "clearing more pycache + retrying...", fg="yellow")
         for cache_dir in bench_root.rglob("__pycache__"):

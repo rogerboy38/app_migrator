@@ -11,6 +11,7 @@ Public API:
   - get_current_site  — best-effort detection of the active site
   - detect_available_benches  — list ~/frappe-bench* directories
   - get_bench_apps    — list installed apps in a bench via `bench version`
+  - safe_append_line  — append a line to a text file with proper newline handling
 """
 
 import json
@@ -216,6 +217,57 @@ def get_bench_apps(bench_path):
 
 
 # ==================== MIGRATION SESSION ====================
+
+# ==================== TEXT FILE APPEND (DEFENSIVE) ====================
+# Discovered concretely on 2026-05-06: bench's sites/apps.txt didn't end with
+# a newline, and `echo 'X' >> apps.txt` produced `amb_w_tdsX` (concatenation,
+# one bad line) instead of two lines. This helper prevents that class of bug
+# for any command that appends to text files.
+
+def safe_append_line(path, line, dedupe=True):
+    """Append `line` to text file at `path`, ensuring proper newline handling.
+
+    Defensive against the missing-trailing-newline concatenation bug
+    (bench/sites/apps.txt and similar inconsistent files in the wild).
+
+    Behavior:
+      - If file doesn't exist, creates it with `line + "\n"`.
+      - If file exists but doesn't end with newline, prepends a newline before
+        appending so the new line lands on its own row.
+      - If `dedupe=True` (default), no-op if `line` already present as a
+        complete line (prevents duplicates on idempotent re-runs).
+      - Always ends the file with a trailing newline (POSIX convention).
+
+    Args:
+        path: Path or str. Target file path.
+        line: str. Line content (newlines should NOT be embedded).
+        dedupe: bool. If True (default), skip if `line` already in file.
+
+    Returns:
+        bool. True if a write occurred; False if no-op (dedupe hit or empty line).
+    """
+    path = Path(path)
+    line = line.rstrip("\n")
+    if not line:
+        return False
+
+    if not path.exists():
+        path.write_text(line + "\n")
+        return True
+
+    content = path.read_text()
+    if dedupe and line in content.splitlines():
+        return False
+
+    if content and not content.endswith("\n"):
+        content += "\n"
+    content += line + "\n"
+    path.write_text(content)
+    return True
+
+
+# ==================== SESSION MANAGEMENT ====================
+
 
 class MigrationSession:
     """Session metadata persistence under ~/migration_sessions/"""
