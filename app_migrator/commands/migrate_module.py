@@ -95,10 +95,12 @@ MODULE_REF_TABLES = [
 @click.option("--bench-root", default="/home/frappe/frappe-bench")
 @click.option("--snapshot-dir",
               default="/home/frappe/frappe-bench/sites/snapshots")
+@click.option("--auto-fix-orphans", is_flag=True, default=False,
+              help="Auto-collapse CASE_MISMATCH orphans found during pre-flight")
 @pass_context
 def app_migrator_migrate_module(context, site, source_app, source_module,
                                   target_app, target_module, apply,
-                                  bench_root, snapshot_dir):
+                                  bench_root, snapshot_dir, auto_fix_orphans):
     """Migrate a module from one Frappe app to another (Mode B: cross-app add)."""
     bench_root = Path(bench_root)
     target_module = target_module or source_module
@@ -169,6 +171,118 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
         click.secho(f"\n✗ '{target_module}' already exists in {tgt_modules_txt}",
                     fg="red")
         raise click.Abort()
+
+    frappe.init(site=site)
+    frappe.connect()
+    # ----- v3: orphan pre-flight (Task #27) -------------------------------
+    click.secho("\n  Pre-flight: scanning for orphan DocTypes on involved modules...", fg="cyan")
+
+    def _scrub_pf(s):
+        return (s or "").lower().replace(" ", "_").replace("-", "_")
+
+    involved = {source_module, target_module} if target_module else {source_module}
+    involved_scrubbed = {_scrub_pf(m) for m in involved}
+
+    stranded = frappe.db.sql("""
+        SELECT dt.name, dt.module, dt.app
+        FROM `tabDocType` dt
+        LEFT JOIN `tabModule Def` md ON md.name = dt.module
+        WHERE md.name IS NULL AND dt.module IN %(mods)s
+    """, {"mods": tuple(involved) or ("__none__",)}, as_dict=True)
+
+    md_rows = frappe.db.sql(
+        "SELECT name FROM `tabModule Def` WHERE name IN %(mods)s "
+        "OR LOWER(REPLACE(REPLACE(name,' ','_'),'-','_')) IN %(scrubbed)s",
+        {"mods": tuple(involved) or ("__none__",),
+         "scrubbed": tuple(involved_scrubbed) or ("__none__",)},
+        as_dict=True,
+    )
+    by_key = {}
+    for r in md_rows:
+        by_key.setdefault(_scrub_pf(r["name"]), []).append(r["name"])
+    case_mismatch = {k: v for k, v in by_key.items() if len(v) > 1}
+
+    filesystem_orphans = []
+    for mod in involved:
+        scrubbed = _scrub_pf(mod)
+        for app_check in (source_app, target_app):
+            if not app_check:
+                continue
+            cand_nested = bench_root / "apps" / app_check / app_check / scrubbed
+            cand_flat = bench_root / "apps" / app_check / scrubbed
+            if not cand_nested.exists() and not cand_flat.exists():
+                cnt = frappe.db.sql(
+                    "SELECT COUNT(*) FROM `tabDocType` WHERE module=%s AND app=%s",
+                    (mod, app_check),
+                )[0][0]
+                if cnt:
+                    filesystem_orphans.append({"module": mod, "app": app_check, "doctype_count": cnt})
+
+    has_orphans = bool(stranded or case_mismatch or filesystem_orphans)
+    if not has_orphans:
+        click.secho("  ✓ No orphans on involved modules", fg="green")
+    else:
+        click.secho("\n  ⚠ Orphan DocTypes detected on involved modules:", fg="yellow")
+        if stranded:
+            click.secho(f"    STRANDED: {len(stranded)} DocType(s) reference a missing Module Def", fg="yellow")
+            for r in stranded[:5]:
+                click.secho(f"      - {r['name']} (module={r['module']}, app={r['app']})", fg="yellow")
+        if case_mismatch:
+            click.secho(f"    CASE_MISMATCH: {len(case_mismatch)} group(s)", fg="yellow")
+            for key, names in case_mismatch.items():
+                click.secho(f"      - {key}: {names}", fg="yellow")
+        if filesystem_orphans:
+            click.secho(f"    FILESYSTEM: {len(filesystem_orphans)} module(s) in DB without source folder", fg="yellow")
+            for fo in filesystem_orphans:
+                click.secho(f"      - {fo['module']} (app={fo['app']}, doctypes={fo['doctype_count']})", fg="yellow")
+
+        if stranded or filesystem_orphans:
+            click.secho(
+                "\n  ✗ Aborting: STRANDED/FILESYSTEM orphans need human review.\n"
+                f"    Run: bench app-migrator audit-orphan-doctypes --site {site}\n"
+                "    Resolve orphans, then re-run migrate-module.",
+                fg="red",
+            )
+            if apply:
+                import sys as _sys
+                _sys.exit(1)
+            else:
+                click.secho("    (would abort in --apply mode)", fg="yellow")
+
+        if case_mismatch and not auto_fix_orphans:
+            click.secho(
+                "\n  ✗ Aborting: CASE_MISMATCH orphans found.\n"
+                f"    Run: bench app-migrator audit-orphan-doctypes --site {site}\n"
+                "    Then re-run with --auto-fix-orphans to clean inline.",
+                fg="red",
+            )
+            if apply:
+                import sys as _sys
+                _sys.exit(1)
+            else:
+                click.secho("    (would abort in --apply mode)", fg="yellow")
+
+        if case_mismatch and auto_fix_orphans and apply:
+            click.secho("\n  → --auto-fix-orphans: cleaning CASE_MISMATCH orphans...", fg="cyan")
+            for _key, names in case_mismatch.items():
+                ugly = [n for n in names if n != _scrub_pf(n)]
+                clean = [n for n in names if n == _scrub_pf(n)]
+                if not clean:
+                    keep, drop_list = names[0], names[1:]
+                else:
+                    keep, drop_list = clean[0], ugly or [n for n in names if n != clean[0]]
+                for drop_name in drop_list:
+                    click.secho(f"    collapsing '{drop_name}' → '{keep}'", fg="cyan")
+                    frappe.db.sql("UPDATE tabDocType SET module=%s WHERE module=%s", (keep, drop_name))
+                    frappe.db.sql("UPDATE `tabCustom Field` SET module=%s WHERE module=%s", (keep, drop_name))
+                    frappe.db.sql("UPDATE `tabProperty Setter` SET module=%s WHERE module=%s", (keep, drop_name))
+                    frappe.db.sql("DELETE FROM `tabModule Def` WHERE name=%s", drop_name)
+            frappe.db.commit()
+            click.secho("    ✓ CASE_MISMATCH orphans collapsed", fg="green")
+    # ----- end v3 orphan pre-flight ---------------------------------------
+
+
+
 
     # ── Build cascade plan ──
     old_pkg = f"{source_app}.{src_slug}"
@@ -290,14 +404,12 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
     click.secho(f"  ✓ Removed '{source_module}' from {source_app}/modules.txt",
                 fg="green")
 
-    new_tgt_modules = tgt_modules + [target_module]
+    new_tgt_modules = [*tgt_modules, target_module]
     tgt_modules_txt.write_text("\n".join(new_tgt_modules) + "\n")
     click.secho(f"  ✓ Added '{target_module}' to {target_app}/modules.txt",
                 fg="green")
 
     # 4. DB updates
-    frappe.init(site=site)
-    frappe.connect()
     frappe.db.sql("SET SQL_SAFE_UPDATES=0")
     try:
         # tabModule Def
@@ -335,7 +447,6 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
         frappe.db.sql("SET SQL_SAFE_UPDATES=1")
     frappe.db.commit()
     click.secho("  ✓ Updated DB rows", fg="green")
-
     # 5. v2: export-fixtures from both apps — locks in the cleanup
     # Without this, fixture files (source/fixtures/custom_field.json etc.) still
     # reference DocTypes that moved to target. The next bench migrate would
