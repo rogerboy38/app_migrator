@@ -309,6 +309,116 @@ class MigrationIntelligence:
                     'installed_apps': ['frappe.apps.get_installed_apps', 'frappe.utils.versions.get_versions'],
                 },
             },
+            # ===== Patterns harvested from custom=1 controller bug investigation =====
+            # Discovered: 2026-05-05 during amb_w_tds → amb_w_spc donor→receiver work
+            # Root cause: frappe/model/base_document.py::import_controller short-circuit
+            #     `if doctype_info.custom: return NestedSet if doctype_info.is_tree else Document`
+            # Connects 11 years of unresolved community symptom reports.
+
+            'custom_flag_blocks_controller_import': {
+                'triggers': [
+                    'tabDocType.custom = 1 in DB while controller .py file exists',
+                    'doctype JSON has "custom": 1 from fixture-export history',
+                    'site restored from backup with pre-migration custom flags',
+                ],
+                'symptoms': [
+                    'import_controller silently returns frappe.model.document.Document',
+                    'doctype_js / doctype_list_js hooks ignored',
+                    'doc_events never fire on the doctype',
+                    'controller methods (custom validate, on_update) never called',
+                    'no exception surfaces — fallback hidden in try/except',
+                ],
+                'prevention': 'never_ship_doctypes_with_custom_1_in_source_json',
+                'risk_score': 0.95,
+                'detection_method': 'compare_db_custom_flag_with_json_custom_flag_per_doctype',
+                'auto_fix_available': True,
+                'root_cause_location': 'frappe/model/base_document.py::import_controller',
+                'frappe_status': 'WONTFIX_by_design_feature_request_16328_ignored_since_2021',
+                'community_archaeology': {
+                    'first_reported': '2015 — discuss.frappe.io thread #7919',
+                    'github_issues': [
+                        'https://github.com/frappe/frappe/issues/16325',
+                        'https://github.com/frappe/frappe/issues/16328',
+                        'https://github.com/frappe/frappe/issues/38332',
+                        'https://github.com/frappe/erpnext/issues/19655',
+                        'https://github.com/frappe/frappe/issues/18516',
+                    ],
+                },
+                'auto_fix_algorithm': 'inspect_classify_integrate_clear_resync',
+            },
+
+            'fixture_extracted_custom_doctype_birth_defect': {
+                'triggers': [
+                    'doctype was UI-created (custom=1) then exported via bench export-fixtures',
+                    'fixture file split into per-doctype JSONs and committed to app',
+                ],
+                'symptoms': [
+                    '"custom": 1 literally in doctype.json source file',
+                    'fixture audit metadata in JSON: creation, idx, modified_by, owner',
+                    'every bench migrate enforces custom=1 via MD5 hash sync',
+                ],
+                'prevention': 'use_bench_export_doc_not_export_fixtures_for_doctype_definitions',
+                'risk_score': 0.9,
+                'detection_method': 'grep_doctype_jsons_for_custom_1_and_fixture_metadata_keys',
+                'auto_fix_available': True,
+                'fixture_metadata_signature': ['creation', 'idx', 'modified_by', 'owner'],
+            },
+
+            'fixtures_regenerate_drift_after_db_cleanup': {
+                'triggers': [
+                    'cleaning tabCustom Field / tabProperty Setter rows without rebuilding fixtures',
+                    'modifying source JSON without re-exporting fixtures',
+                ],
+                'symptoms': [
+                    'CF/PS rows reappear after each bench migrate despite cleanup',
+                    'apparent phantom drift that survives DB-level deletion',
+                    'verify shows clean immediately after absorb but FIX after migrate',
+                ],
+                'prevention': 'always_run_bench_export_fixtures_after_db_cleanup_before_migrate',
+                'risk_score': 0.7,
+                'detection_method': 'compare_db_state_to_fixture_files_for_custom_field_and_property_setter',
+                'auto_fix_available': True,
+                'auto_fix_workflow': [
+                    '1. clean DB rows (DELETE FROM tabCustom Field/Property Setter)',
+                    '2. bench --site export-fixtures --app <app>',
+                    '3. bench --site migrate (no regeneration — fixtures match DB)',
+                ],
+            },
+
+            'donor_receiver_layout_mismatch': {
+                'triggers': [
+                    'donor and receiver apps use different Frappe layouts',
+                    'single-module flat (<app>/<app>/<app>/doctype) vs multi-module',
+                ],
+                'symptoms': [
+                    'migration scripts fail to find doctype source files',
+                    'orphan folders with __init__.py but no .py file in donor',
+                    'shadow paths confuse Frappe scan during sync',
+                ],
+                'prevention': 'compare_modules_txt_lengths_and_layout_before_migration',
+                'risk_score': 0.6,
+                'detection_method': 'compare_donor_receiver_modules_txt_line_count_and_directory_structure',
+                'auto_fix_available': True,
+                'auto_fix': 'layout_aware_path_resolver_checks_both_flat_and_nested_conventions',
+            },
+
+            'bench_migrate_field_already_exists_after_absorb': {
+                'triggers': [
+                    'absorbed Custom Field into doctype JSON',
+                    'tabDocField row was previously auto-created from same Custom Field',
+                ],
+                'symptoms': [
+                    'ValidationError: A field with the name X already exists in <DocType>',
+                    'migrate fails immediately after absorb pipeline runs',
+                ],
+                'prevention': 'delete_orphan_tabDocField_rows_before_first_migrate_after_absorb',
+                'risk_score': 0.4,
+                'detection_method': 'cross_check_tabDocField_against_json_fields_for_duplicates',
+                'auto_fix_available': True,
+                'auto_fix_strategy_surgical': 'DELETE_orphan_tabDocField_row_by_name_then_migrate',
+                'auto_fix_strategy_nuclear': 'DELETE_all_tabDocField_rows_for_doctype_let_migrate_rebuild_from_JSON',
+            },
+
         }
 
     def _load_risk_assessment_rules(self) -> dict[str, Any]:
@@ -323,6 +433,8 @@ class MigrationIntelligence:
                 'hardcoded_stripe_secrets',
                 # Digested from frappe-cloud helpers (T1.5b group 2)
                 'missing_frappe_cloud_credentials_in_target',
+                'custom_flag_blocks_controller_import',
+                'fixture_extracted_custom_doctype_birth_defect',
             ],
             'medium_risk_factors': [
                 'apps_txt_instability',
@@ -365,6 +477,36 @@ class MigrationIntelligence:
                         'and reproduce env var FRAPPE_CLOUD_API_KEY (or keyring entry under '
                         'service "frappe_cloud_app_migrator") in the target environment'
                     ),
+                },
+                'custom_flag_blocks_controller_import': {
+                    'severity': 'critical',
+                    'category': 'Controller Resolution',
+                    'impact': 'Python controllers silently bypassed; methods, hooks, doc_events all ignored. Affects ALL features that depend on controller class.',
+                    'mitigation': 'Run app-migrator promote-custom-doctype: absorb CF/PS into doctype JSON, set custom=0, export-fixtures, migrate, verify import_controller returns proper class.',
+                },
+                'fixture_extracted_custom_doctype_birth_defect': {
+                    'severity': 'high',
+                    'category': 'Source Hygiene',
+                    'impact': 'doctype.json contains custom=1 plus fixture audit metadata (creation/idx/modified_by/owner); every migrate re-applies the broken state.',
+                    'mitigation': 'Edit doctype.json: set custom=0, strip audit metadata; run bench migrate.',
+                },
+                'fixtures_regenerate_drift_after_db_cleanup': {
+                    'severity': 'medium',
+                    'category': 'Migration Workflow',
+                    'impact': 'Drift reappears after every bench migrate, undoing manual cleanup.',
+                    'mitigation': 'Always run bench --site export-fixtures --app <app> after DB cleanup, BEFORE migrate.',
+                },
+                'donor_receiver_layout_mismatch': {
+                    'severity': 'medium',
+                    'category': 'App Layout',
+                    'impact': 'Migration tools fail to find source files in donor or receiver due to layout differences.',
+                    'mitigation': 'Use layout-aware path resolver that checks both <app>/<app>/<app>/doctype and <app>/<app>/<module>/doctype conventions.',
+                },
+                'bench_migrate_field_already_exists_after_absorb': {
+                    'severity': 'low',
+                    'category': 'Migration Workflow',
+                    'impact': 'bench migrate fails after absorb due to duplicate tabDocField rows.',
+                    'mitigation': 'Delete orphan tabDocField rows surgically (or all rows for nuclear rebuild), then migrate.',
                 },
             },
         }

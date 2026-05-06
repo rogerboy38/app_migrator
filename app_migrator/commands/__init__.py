@@ -104,6 +104,11 @@ from .stage import app_migrator_stage
 
 # ==================== UNSTAGE COMMAND (T1.8.3 → unstage.py) ====================
 from .unstage import app_migrator_unstage
+from .promote_custom_doctype import app_migrator_promote_custom_doctype
+from .scan_donor_residue import app_migrator_scan_donor_residue
+from .verify_donor_cleanup_readiness import app_migrator_verify_donor_cleanup_readiness
+from .audit_app_for_antipattern import app_migrator_audit_app_for_antipattern
+from .denest_app import app_migrator_denest_app
 
 # ==================== MAIN GROUP COMMAND ====================
 
@@ -224,6 +229,11 @@ app_migrator.add_command(setup_wizard,"setup-wizard")
 app_migrator.add_command(simple_api_setup, 'simple-api-setup')
 app_migrator.add_command(analyze_apps, 'analyze-apps')
 app_migrator.add_command(quick_setup, 'quick-setup')
+app_migrator.add_command(app_migrator_promote_custom_doctype, 'promote-custom-doctype')
+app_migrator.add_command(app_migrator_scan_donor_residue, 'scan-donor-residue')
+app_migrator.add_command(app_migrator_verify_donor_cleanup_readiness, 'verify-donor-cleanup-readiness')
+app_migrator.add_command(app_migrator_audit_app_for_antipattern, 'audit-app-for-antipattern')
+app_migrator.add_command(app_migrator_denest_app, 'denest-app')
 
 # ==================== EXPORT ALL COMMANDS ====================
 
@@ -255,7 +265,10 @@ commands = [
     diagnose_app,
     modernize_app,
 
-    setup_wizard
+    setup_wizard,
+    app_migrator_promote_custom_doctype,
+    app_migrator_scan_donor_residue,
+    app_migrator_verify_donor_cleanup_readiness,
     ]
 
 logger.debug("App Migrator v%s ready", __version__)
