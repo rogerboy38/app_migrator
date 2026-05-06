@@ -108,6 +108,7 @@ from .promote_custom_doctype import app_migrator_promote_custom_doctype
 from .scan_donor_residue import app_migrator_scan_donor_residue
 from .verify_donor_cleanup_readiness import app_migrator_verify_donor_cleanup_readiness
 from .audit_app_for_antipattern import app_migrator_audit_app_for_antipattern
+from .new_fresh_app import app_migrator_new_fresh_app
 from .denest_app import app_migrator_denest_app
 
 # ==================== MAIN GROUP COMMAND ====================
@@ -233,6 +234,7 @@ app_migrator.add_command(app_migrator_promote_custom_doctype, 'promote-custom-do
 app_migrator.add_command(app_migrator_scan_donor_residue, 'scan-donor-residue')
 app_migrator.add_command(app_migrator_verify_donor_cleanup_readiness, 'verify-donor-cleanup-readiness')
 app_migrator.add_command(app_migrator_audit_app_for_antipattern, 'audit-app-for-antipattern')
+app_migrator.add_command(app_migrator_new_fresh_app, 'new-fresh-app')
 app_migrator.add_command(app_migrator_denest_app, 'denest-app')
 
 # ==================== EXPORT ALL COMMANDS ====================
