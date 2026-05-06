@@ -36,6 +36,22 @@ def _scrub(name):
     return name.strip().lower().replace(" ", "_").replace("-", "_")
 
 
+# Path fragments to skip during cross-app file scans. archived/backup snapshots
+# routinely live alongside live apps — sweeping them rewrites byte-perfect
+# audit copies into a state that no longer reflects the snapshot's intent.
+SKIP_PATH_PATTERNS = (
+    "__pycache__",
+    ".bak",
+    "/archived/",
+    "/backup/",
+    "/backups/",
+    "/_archive/",
+    "/snapshots/",
+    "/node_modules/",
+    "/.git/",
+)
+
+
 # Tables that store a `module` column referencing tabModule Def.name
 MODULE_REF_TABLES = [
     ("tabReport",          False),
@@ -125,7 +141,8 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     # Find all files containing old_pkg references
     affected_py_files = []
     for py_file in bench_root.rglob("apps/*/**/*.py"):
-        if "__pycache__" in str(py_file) or ".bak" in str(py_file):
+        py_str = str(py_file)
+        if any(skip in py_str for skip in SKIP_PATH_PATTERNS):
             continue
         try:
             if pattern.search(py_file.read_text()):
