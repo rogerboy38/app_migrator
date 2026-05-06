@@ -143,8 +143,8 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
             pass
 
     # ── Display plan ──
-    click.secho(f"\n┌── PLAN ────", fg="cyan")
-    click.echo(f"│  1. Rename folder")
+    click.secho("\n┌── PLAN ────", fg="cyan")
+    click.echo("│  1. Rename folder")
     click.echo(f"│     {antipattern_folder.relative_to(bench_root)}")
     click.echo(f"│  → {new_folder.relative_to(bench_root)}    ({dt_count} DocType(s))")
     click.echo(f"│  2. Update modules.txt: '{antipattern_module_name}' → '{to_module}'")
@@ -152,20 +152,20 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     click.echo(f"│     in {len(affected_py_files)} .py file(s)")
     click.echo(f"│  4. patches.txt rewrite: "
                 f"{'YES' if patches_has_old_ref else 'no (file empty or no refs)'}")
-    click.echo(f"│  5. DB updates:")
+    click.echo("│  5. DB updates:")
     click.echo(f"│     • UPDATE `tabModule Def` SET name='{to_module}' "
                 f"WHERE name='{antipattern_module_name}'")
     click.echo(f"│     • UPDATE tabDocType SET module='{to_module}' "
                 f"WHERE module='{antipattern_module_name}' ({dt_count} row(s) max)")
-    click.echo(f"│     • UPDATE module col on 6 ancillary tables (Report/Page/")
-    click.echo(f"│       Dashboard/Print Format/Client Script/Server Script)")
-    click.echo(f"│  6. Clear __pycache__ for app + retry-once-on-fail bench migrate")
-    click.echo(f"└────")
+    click.echo("│     • UPDATE module col on 6 ancillary tables (Report/Page/")
+    click.echo("│       Dashboard/Print Format/Client Script/Server Script)")
+    click.echo("│  6. Clear __pycache__ for app + retry-once-on-fail bench migrate")
+    click.echo("└────")
 
     if dry_run:
-        click.secho(f"\n  This was a DRY-RUN. To apply, re-run with --apply.", fg="yellow")
+        click.secho("\n  This was a DRY-RUN. To apply, re-run with --apply.", fg="yellow")
         if affected_py_files and len(affected_py_files) <= 30:
-            click.secho(f"\n  Affected .py files:", fg="cyan")
+            click.secho("\n  Affected .py files:", fg="cyan")
             for f in affected_py_files:
                 click.echo(f"    • {f.relative_to(bench_root)}")
         elif affected_py_files:
@@ -196,12 +196,12 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
 
     # 1. Rename folder
     antipattern_folder.rename(new_folder)
-    click.secho(f"  ✓ Renamed folder", fg="green")
+    click.secho("  ✓ Renamed folder", fg="green")
 
     # 2. Update modules.txt
     new_modules = [to_module if _scrub(m) == app else m for m in modules]
     modules_txt.write_text("\n".join(new_modules) + "\n")
-    click.secho(f"  ✓ Updated modules.txt", fg="green")
+    click.secho("  ✓ Updated modules.txt", fg="green")
 
     # 3. Rewrite imports across all affected .py files (regex-based)
     for f in affected_py_files:
@@ -215,9 +215,9 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
         pt_content = patches_txt.read_text()
         new_pt = pattern.sub(new_pkg, pt_content)
         patches_txt.write_text(new_pt)
-        click.secho(f"  ✓ Updated patches.txt", fg="green")
+        click.secho("  ✓ Updated patches.txt", fg="green")
     else:
-        click.echo(f"  ○ patches.txt: no rewrite needed")
+        click.echo("  ○ patches.txt: no rewrite needed")
 
     # 5. DB updates (within SQL_SAFE_UPDATES toggle)
     frappe.init(site=site)
@@ -257,13 +257,13 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     if cleared:
         click.echo(f"  ✓ Cleared {cleared} __pycache__ dir(s)")
 
-    click.secho(f"\n  Running bench migrate...", fg="cyan")
+    click.secho("\n  Running bench migrate...", fg="cyan")
     ret = subprocess.run(["bench", "--site", site, "migrate"],
                          capture_output=True, text=True,
                          cwd=str(bench_root))
     if ret.returncode != 0 and "ModuleNotFoundError" in ret.stderr:
-        click.secho(f"  ⚠ First migrate failed (ModuleNotFoundError); "
-                    f"clearing more pycache + retrying...", fg="yellow")
+        click.secho("  ⚠ First migrate failed (ModuleNotFoundError); "
+                    "clearing more pycache + retrying...", fg="yellow")
         for cache_dir in bench_root.rglob("__pycache__"):
             shutil.rmtree(cache_dir, ignore_errors=True)
         ret = subprocess.run(["bench", "--site", site, "migrate"],
@@ -272,7 +272,7 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
 
     click.echo("\n".join(ret.stdout.splitlines()[-8:]))
     if ret.returncode != 0:
-        click.secho(f"\n  ⚠  bench migrate failed:", fg="yellow")
+        click.secho("\n  ⚠  bench migrate failed:", fg="yellow")
         click.echo(ret.stderr[-1500:])
         click.secho(f"\n  Snapshot at {snapshot_file} preserves pre-change state.",
                     fg="yellow")
@@ -281,7 +281,7 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     click.secho(f"\n{'=' * 78}", fg="green")
     click.secho(f"  ✓ DENEST COMPLETE — {app} no longer has the antipattern",
                 fg="green", bold=True)
-    click.secho(f"=" * 78, fg="green")
+    click.secho("=" * 78, fg="green")
     click.echo(f"  Module:    '{antipattern_module_name}' → '{to_module}'")
     click.echo(f"  Folder:    {app}/ → {new_slug}/")
     click.echo(f"  .py files: {len(affected_py_files)} updated")
