@@ -12,6 +12,7 @@ logger = logging.getLogger("app_migrator")
 
 # ONLY import the main class - no function imports!
 from .analysis_tools import AppAnalysis
+from .audit_app_for_antipattern import app_migrator_audit_app_for_antipattern
 
 __all__ = ["AppAnalysis"]
 
@@ -255,7 +256,8 @@ commands = [
     diagnose_app,
     modernize_app,
 
-    setup_wizard
+    setup_wizard,
+    app_migrator_audit_app_for_antipattern,
     ]
 
 logger.debug("App Migrator v%s ready", __version__)
