@@ -27,6 +27,17 @@ Usage:
     --donor <donor-app> \
     --receiver <receiver-app> \
     --apply
+
+Real-data validation (v1.0 + v1.1):
+  Tested end-to-end against rogerboy38/crm_host (donor) -> frappe/crm (receiver)
+  with 43 overlapping DocTypes (full overlap confirmed via comm -12). Planted
+  controlled stale residue: 2 dict_class entries with phantom targets, 4 fixture
+  filter values across list_item and whole_filter_line shapes. Both --dry-run
+  (correct plan output) and --apply (surgical edits + snapshot + export-fixtures
+  + bench migrate) succeeded. v1.1 post-pass additionally cleaned empty stubs
+  left by v1.0 (empty doctype_class = {}, empty ["dt", "in", []] filter rows).
+  Snapshots: clean_donor_residue_crm_host_20260506_215210.json (v1.0),
+  clean_donor_residue_crm_host_20260506_220722.json (v1.1).
 """
 import ast
 import json
@@ -363,6 +374,48 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
             raise click.Abort()
     else:
         deleted = 0
+
+    # ----- v1.1: empty container post-pass --------------------------------
+    # After the surgical removals above, top-level dict sections may now be
+    # empty (e.g. doctype_class = {}) and filter rows may have empty inner
+    # lists (e.g. ["dt", "in", []]). Remove those empty stubs entirely.
+    try:
+        tree3 = ast.parse(edited_text)
+        empty_lines = []
+
+        for n in tree3.body:
+            if not isinstance(n, ast.Assign):
+                continue
+            target_names = [t.id for t in n.targets if isinstance(t, ast.Name)]
+            section_name = target_names[0] if target_names else None
+
+            # Empty top-level dict sections (doctype_class = {} etc.)
+            if (section_name in DICT_HOOK_SECTIONS
+                and isinstance(n.value, ast.Dict) and not n.value.keys):
+                empty_lines.append((n.lineno, n.end_lineno or n.lineno))
+
+            # Empty fixture filter rows (["dt", "in", []])
+            if section_name == "fixtures" and isinstance(n.value, ast.List):
+                for entry in n.value.elts:
+                    if not isinstance(entry, ast.Dict):
+                        continue
+                    for k, v in zip(entry.keys, entry.values, strict=False):
+                        if not (isinstance(k, ast.Constant) and k.value == "filters"):
+                            continue
+                        if not isinstance(v, ast.List):
+                            continue
+                        for filter_item in v.elts:
+                            if not (isinstance(filter_item, ast.List) and len(filter_item.elts) >= 3):
+                                continue
+                            third = filter_item.elts[2]
+                            if isinstance(third, ast.List) and not third.elts:
+                                empty_lines.append((filter_item.lineno, filter_item.end_lineno or filter_item.lineno))
+
+        if empty_lines:
+            edited_text, _n_removed = _delete_lines(edited_text, empty_lines)
+            click.secho(f"  ✓ Post-pass: removed {len(empty_lines)} empty container(s)/filter row(s)", fg="cyan")
+    except SyntaxError as e:
+        click.secho(f"  ⚠ Post-pass skipped (parse failed): {e}", fg="yellow")
 
     donor_hooks_py.write_text(edited_text)
     click.secho(f"  ✓ hooks.py edited: removed {deleted} dict line(s), "

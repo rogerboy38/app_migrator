@@ -229,3 +229,22 @@ with none of the build-time state).
   a 3.14 bench exists.
 - **Customer-specific commands still in core**: see "Breaking changes"
   above. Not removed in v10; queued for v10.1.
+## v10.1.1 — 2026-05-06
+
+### clean-donor-residue v1.1 — empty container post-pass
+
+After surgical removals, the v1.0 implementation left behind empty stubs:
+- `doctype_class = {}` after all entries were removed
+- `["dt", "in", []]` filter rows after all values were stripped
+
+v1.1 adds a post-pass that re-parses the edited file via AST and removes:
+- Top-level dict assignments to known hook sections that are now empty
+- Filter rows whose value list (third element of `[col, op, val]`) is empty
+
+### Real-data validation
+
+clean-donor-residue (v1.0 + v1.1) validated end-to-end against:
+- **Donor:** rogerboy38/crm_host (43 DocTypes)
+- **Receiver:** frappe/crm (same 43 DocTypes — full overlap confirmed via `comm -12`)
+
+Test sequence: planted controlled stale residue (2 dict_class entries with phantom targets, 4 fixture filter values across both list_item and whole_filter_line shapes), ran `--dry-run` (correct plan), then `--apply` (surgical edits + snapshot + bench export-fixtures + bench migrate). v1.1 post-pass cleaned the empty stubs left by v1.0. Reverted via `git reset --hard <pre-test-tag>`. Snapshots: `clean_donor_residue_crm_host_20260506_215210.json` (v1.0), `clean_donor_residue_crm_host_20260506_220722.json` (v1.1).
