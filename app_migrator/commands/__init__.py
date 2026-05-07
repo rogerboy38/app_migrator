@@ -109,6 +109,7 @@ from .scan_donor_residue import app_migrator_scan_donor_residue
 from .verify_donor_cleanup_readiness import app_migrator_verify_donor_cleanup_readiness
 from .audit_app_for_antipattern import app_migrator_audit_app_for_antipattern
 from .audit_orphan_doctypes import app_migrator_audit_orphan_doctypes
+from .clean_donor_residue import app_migrator_clean_donor_residue
 from .new_fresh_app import app_migrator_new_fresh_app
 from .migrate_module import app_migrator_migrate_module
 from .denest_app import app_migrator_denest_app
@@ -237,6 +238,7 @@ app_migrator.add_command(app_migrator_scan_donor_residue, 'scan-donor-residue')
 app_migrator.add_command(app_migrator_verify_donor_cleanup_readiness, 'verify-donor-cleanup-readiness')
 app_migrator.add_command(app_migrator_audit_app_for_antipattern, 'audit-app-for-antipattern')
 app_migrator.add_command(app_migrator_audit_orphan_doctypes, 'audit-orphan-doctypes')
+app_migrator.add_command(app_migrator_clean_donor_residue, 'clean-donor-residue')
 app_migrator.add_command(app_migrator_new_fresh_app, 'new-fresh-app')
 app_migrator.add_command(app_migrator_migrate_module, 'migrate-module')
 app_migrator.add_command(app_migrator_denest_app, 'denest-app')
