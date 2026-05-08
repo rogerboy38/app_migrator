@@ -453,6 +453,7 @@ class MigrationIntelligence:
                 'related_patterns': [
                     'custom_flag_blocks_controller_import',
                     'fixture_extracted_custom_doctype_birth_defect',
+                    'orphan_ui_reference_after_doctype_removal',
                 ],
                 'discovery_evidence': (
                     'amb_w_tds 2026-05-06: COA Quality Test Parameter (module=amb_w_tds, '
@@ -460,6 +461,214 @@ class MigrationIntelligence:
                     'on next migrate because doctype JSON had the lowercase value too. '
                     'Fix: rewrite JSON module field + cascade-include scrub variants.'
                 ),
+            },
+
+            # ===== Patterns 1.11 / 1.11b / 1.14 — sysmayal SessionBootFailed bundle =====
+            # Discovered 2026-05-07 in prod incident at erp.sysmayal2.cloud:
+            # a tabDocType row was deleted but UI reference rows (Workspace Sidebar
+            # Item, Workspace Link, Report, …) AND Frappe's Redis bootinfo cache
+            # still pointed at it. Result: SessionBootFailed cascade on every desk
+            # page load. The 3-pattern bundle captures the cause→effect chain (1.11
+            # → 1.11b) plus the verification gap (1.14) that made the incident look
+            # "fixed" too early because curl /desk returned 200 to a login redirect.
+            #
+            # Cowork brief 2026-05-08 § "PRIMARY TASK — Step 2". Forensic refs:
+            #   /mnt/s3-backups/migration/cowork/sysmayal_sessionbootfailed_orphan_cascade_forensic_report_20260507.md
+            #   /mnt/s3-backups/migration/cowork/app_migrator_v10.2.0_intelligence_harvest_20260507.md
+
+            # Pattern 1.11
+            'orphan_ui_reference_after_doctype_removal': {
+                'triggers': [
+                    'tabDocType row removed (uninstall, manual cleanup, or migration)',
+                    (
+                        'UI reference rows still reference the removed DocType name in '
+                        'tab(Workspace Sidebar Item|Workspace Link|Workspace Shortcut|'
+                        'Workspace Quick List|Workspace Number Card|Workspace Chart|'
+                        'Report|Dashboard Chart|Number Card|Kanban Board|DocType Layout|'
+                        'Print Format|Client Script|Server Script|'
+                        'Has Role parent-by-parenttype|Custom DocPerm parent|'
+                        'DocShare share_doctype|User Permission allow|'
+                        'DocField options where fieldtype=Link|'
+                        'Custom Field options where fieldtype=Link|'
+                        'Property Setter value where property=options|'
+                        'Notification document_type)'
+                    ),
+                    (
+                        'desk load fails with frappe.DoesNotExistError on get_meta() '
+                        'during workspace permission check'
+                    ),
+                ],
+                'symptoms': [
+                    'SessionBootFailed cascade on every page load',
+                    "users can't reach desk",
+                ],
+                'prevention': (
+                    'never DELETE a tabDocType row without first cascading through '
+                    'INFORMATION_SCHEMA-discovered references'
+                ),
+                # Blocking-tier UI tables (Workspace*, Report, Notification, etc.)
+                # are 0.85; informational-tier (tabVersion, tabComment, tabError Log)
+                # don't break boot and rate 0.4. Detector should classify per-row.
+                'risk_score': 0.85,
+                'risk_score_informational_tier': 0.4,
+                'detection_method': 'INFORMATION_SCHEMA_driven_scan',
+                # Generator query: emits SELECT statements for every (table, column)
+                # pair where a Frappe link-shaped column exists. Caller substitutes
+                # <orphan_doctype_names> and runs the generated SELECTs to locate
+                # surviving references.
+                'detection_query': (
+                    "SELECT CONCAT('SELECT ''', TABLE_NAME, ''' src, ''', COLUMN_NAME, "
+                    "''' col, name, `', COLUMN_NAME, '` ref FROM `', TABLE_NAME, "
+                    "'` WHERE `', COLUMN_NAME, '` IN (<orphan_doctype_names>);') "
+                    "FROM INFORMATION_SCHEMA.COLUMNS "
+                    "WHERE TABLE_SCHEMA = DATABASE() "
+                    "AND TABLE_NAME LIKE 'tab%' "
+                    "AND COLUMN_NAME IN ('doctype','doc_type','dt','ref_doctype',"
+                    "'reference_doctype','reference_document','link_to',"
+                    "'link_doctype','document_type','target_doctype',"
+                    "'allow_doctype','child_doctype','parent_doctype',"
+                    "'share_doctype','allow','for_value','allowed_doctype',"
+                    "'source_doctype','destination_doctype','meta_doctype',"
+                    "'referenced_doctype','document_doctype',"
+                    "'number_card_name','chart_name') "
+                    "ORDER BY TABLE_NAME, COLUMN_NAME;"
+                ),
+                'auto_fix_available': True,
+                'auto_fix_algorithm': 'cascade_delete_ui_refs_before_doctype',
+                'auto_fix_steps': [
+                    '1. Take backup',
+                    '2. Run detection_query to enumerate all references',
+                    '3. Classify into blocking-tier vs informational-tier',
+                    '4. For blocking-tier: DELETE rows in single transaction',
+                    '5. For informational-tier: prompt user (default: leave intact)',
+                    (
+                        '6. THEN delete tabDocType row + child meta '
+                        '(existing fix-orphans logic)'
+                    ),
+                    "7. ALWAYS chain to Pattern 1.11b's auto_fix (cache+restart)",
+                ],
+                'related_patterns': [
+                    'cached_bootinfo_survives_doctype_removal',
+                    'browser_verified_health',
+                    'orphan_module_case_mismatch',
+                    'ghost_module_def_for_uninstalled_app',
+                ],
+                'consumed_by_command': 'audit-modules-disk-vs-db',
+                'discovery_evidence': (
+                    'erp.sysmayal2.cloud 2026-05-07: SessionBootFailed cascade in prod. '
+                    'A DocType was removed but UI reference rows across multiple tables '
+                    'still pointed at it. Every desk page load tripped get_meta() in '
+                    'workspace permission check.'
+                ),
+            },
+
+            # Pattern 1.11b
+            'cached_bootinfo_survives_doctype_removal': {
+                'triggers': [
+                    'SessionBootFailed traceback citing DocType X',
+                    (
+                        'INFORMATION_SCHEMA scan confirms DocType X is NOT live-referenced '
+                        'in any tabXxx column'
+                    ),
+                    'DocType X also NOT in tabDocType (already deleted)',
+                    (
+                        "Frappe's Redis bootinfo cache populated while X still existed "
+                        'and was never cleared after the DELETE'
+                    ),
+                ],
+                'symptoms': [
+                    'SessionBootFailed even though DB is clean',
+                    'cache outlasts DocType deletion',
+                ],
+                'prevention': (
+                    'ALWAYS run cache+restart after any DocType DELETE — mandatory '
+                    'step in the canonical 5-step DocType removal cascade'
+                ),
+                'risk_score': 0.7,
+                'detection_method': 'diff_traceback_doctype_vs_db_state',
+                # Verdict pseudo-query: PHANTOM_BOOTINFO_HIT iff (a) X not in
+                # tabDocType, (b) Pattern 1.11 INFORMATION_SCHEMA scan against
+                # X returns 0 hits. Caller wires the embedded scan from 1.11.
+                'detection_query': (
+                    "SELECT 'PHANTOM_BOOTINFO_HIT' AS verdict\n"
+                    "WHERE NOT EXISTS (SELECT 1 FROM `tabDocType` WHERE name = '<X>')\n"
+                    "  AND NOT EXISTS (\n"
+                    "    -- Pattern 1.11 INFORMATION_SCHEMA scan against X, expect 0 hits\n"
+                    "    -- (substitute the generated SELECTs from "
+                    "orphan_ui_reference_after_doctype_removal['detection_query'])\n"
+                    "  );"
+                ),
+                'auto_fix_available': True,
+                'auto_fix_algorithm': 'cache_clear_and_restart',
+                'auto_fix_steps': [
+                    '1. bench --site <site> clear-cache',
+                    '2. bench --site <site> clear-website-cache',
+                    (
+                        '3. docker compose exec redis-cache redis-cli FLUSHALL '
+                        '(DO NOT flush redis-queue — preserves enqueued jobs)'
+                    ),
+                    (
+                        '4. docker compose restart backend '
+                        '(or systemctl restart bench-supervisor)'
+                    ),
+                    '5. Wait 8s for boot',
+                    (
+                        '6. Verify desk via Pattern 1.14 '
+                        '(browser-verified health, not just curl)'
+                    ),
+                ],
+                'related_patterns': [
+                    'orphan_ui_reference_after_doctype_removal',
+                    'browser_verified_health',
+                    'phantom_module_in_sync_for',
+                ],
+                'consumed_by_command': 'audit-modules-disk-vs-db',
+            },
+
+            # Pattern 1.14
+            'browser_verified_health': {
+                'triggers': [
+                    'post-fix verification check needed',
+                    (
+                        'HTTP 200 on curl /desk follow-redirect alone is INSUFFICIENT '
+                        '(returns 200 to login redirect even when an authenticated '
+                        'session would fail)'
+                    ),
+                ],
+                'symptoms': [
+                    'false-positive "desk healthy" reports',
+                    'users still see 500s even though monitoring shows green',
+                ],
+                'prevention': (
+                    'post-fix verification phase MUST include authenticated browser '
+                    'session check, not just curl probe'
+                ),
+                'risk_score': 0.6,
+                'detection_method': 'compare_curl_anonymous_vs_authenticated_desk_render',
+                # Verification protocol — not a SQL query. Captured here for
+                # parity with sibling patterns and so verify-phase callers can
+                # reach it via the same lookup pattern as detection_query.
+                'detection_query': (
+                    "-- Verification protocol (not SQL):\n"
+                    "-- 1. curl -sIL /desk follow-redirects → expect HTTP 200 (baseline)\n"
+                    "-- 2. curl -sIL /api/method/frappe.auth.get_logged_user "
+                    "with session cookie\n"
+                    "--    → expect 200 + JSON user (proves authenticated layer works)\n"
+                    "-- 3. (optional) headless browser render → "
+                    "expect workspace sidebar visible\n"
+                    "-- All three must pass for verdict GREEN."
+                ),
+                # Verification protocol pattern — improves verify phases of OTHER
+                # commands. No standalone fix.
+                'auto_fix_available': False,
+                'auto_fix_algorithm': None,
+                'documentation_target': 'SKILL.md (canonical post-fix check)',
+                'related_patterns': [
+                    'orphan_ui_reference_after_doctype_removal',
+                    'cached_bootinfo_survives_doctype_removal',
+                    'mutation_manifest_protocol',
+                ],
+                'consumed_by_command': 'audit-modules-disk-vs-db',
             },
 
         }
