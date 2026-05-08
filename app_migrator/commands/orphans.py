@@ -27,6 +27,88 @@ from ._shared import (
 )
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# Filesystem scan filters (added 2026-05-08 after sysmayal misattribution)
+# ──────────────────────────────────────────────────────────────────────────
+# The scanner walks apps/<each-app>/ to enumerate DocType definitions on
+# disk. Without filtering it picks up sibling backup directories, archive
+# trees, test fixtures, and synthetic specimens — producing inflated FS
+# counts and misattributing real DocTypes to non-production paths
+# (observed: COA AMB2 → app_migrator.pre-v10.1.x-backup on sysmayal).
+#
+# Two layers:
+#   1. APP-LEVEL  — sites/apps.txt is authoritative. Only listed apps are
+#                   walked. Sibling dirs are skipped regardless of name.
+#   2. PATH-LEVEL — inside each accepted app, prune directory components
+#                   that are never source-of-truth (tests, fixtures,
+#                   _archive, build, .venv, __pycache__, .git, …).
+
+# Used only as a fallback when sites/apps.txt is unavailable.
+NON_APP_NAME_PATTERNS = (
+    "backup", "archive", ".bak", "_bak",
+    "snapshot", ".old", "_old", ".pre-",
+)
+
+SKIP_WALK_COMPONENTS = frozenset({
+    "__pycache__", ".git", ".github", ".hg", ".svn",
+    "node_modules", ".venv", "venv", "env",
+    "tests", "test", "fixtures", "fixture",
+    "_archive", "archive",
+    "docs", "doc", "build", "dist",
+    ".pytest_cache", ".ruff_cache", ".mypy_cache", ".tox",
+})
+
+SKIP_WALK_NAME_PATTERNS = ("backup", "archive", "_bak", ".bak", "snapshot")
+
+
+def _load_apps_txt(apps_path):
+    """Set of apps from <bench>/sites/apps.txt, or None if unavailable.
+
+    apps.txt is authoritative for "what counts as a real app on this bench."
+    Returning None makes _should_skip_app_dir() fall back to looser pattern
+    matching — the caller should warn in that case."""
+    apps_txt = os.path.join(os.path.dirname(apps_path), "sites", "apps.txt")
+    if not os.path.exists(apps_txt):
+        return None
+    with open(apps_txt) as f:
+        return {ln.strip() for ln in f if ln.strip()}
+
+
+def _should_skip_app_dir(app_name, apps_txt_set):
+    """Decide whether a top-level dir under apps/ is a real app.
+
+    Returns (skip: bool, reason: str). Layer 1 of the filter."""
+    if app_name.startswith(".") or app_name.startswith("_"):
+        return True, "hidden/private prefix"
+    if apps_txt_set is not None:
+        if app_name not in apps_txt_set:
+            return True, "not listed in sites/apps.txt"
+        # apps.txt is authoritative — if listed, accept even if the name
+        # happens to contain a blocklist substring.
+        return False, ""
+    # No apps.txt available — fall back to pattern-based rejection.
+    lower = app_name.lower()
+    for pat in NON_APP_NAME_PATTERNS:
+        if pat in lower:
+            return True, f"name matches non-app pattern {pat!r} (apps.txt unavailable)"
+    return False, ""
+
+
+def _should_prune_walk(name):
+    """Whether to drop this directory component from os.walk recursion.
+
+    Layer 2 of the filter — applied to dirs[:] inside each accepted app."""
+    if name.startswith(".") or name.startswith("_"):
+        return True
+    if name in SKIP_WALK_COMPONENTS:
+        return True
+    lower = name.lower()
+    for pat in SKIP_WALK_NAME_PATTERNS:
+        if pat in lower:
+            return True
+    return False
+
+
 @click.command('app-migrator-orphans')
 @click.option('--site', default=None, help='Site name (uses current site if not specified)')
 @click.option('--fix', 'fix_mode', is_flag=True, help='Auto-fix by matching to filesystem apps')
@@ -77,42 +159,62 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
         if md.app_name:
             module_to_app[md.name] = md.app_name
 
-    # Scan filesystem for DocType definitions
+    # Scan filesystem for DocType definitions, skipping non-production paths.
+    # See module-level NON_APP_NAME_PATTERNS / SKIP_WALK_COMPONENTS comments.
     apps_path = os.path.dirname(os.path.dirname(frappe.get_app_path('frappe')))
-    filesystem_doctypes = {}  # dt_name -> app_name
+    apps_txt_set = _load_apps_txt(apps_path)
+    filesystem_doctypes = {}        # dt_name -> {app, module, path, py_path, has_controller}
+    skipped_app_dirs = []           # [(name, reason)]
+    fs_collisions = []              # [(dt_name, kept_app, also_in_app)]
 
-    for app_name in os.listdir(apps_path):
+    # sorted() makes collision tie-breaking deterministic — first hit wins.
+    for app_name in sorted(os.listdir(apps_path)):
         app_dir = os.path.join(apps_path, app_name)
-        if not os.path.isdir(app_dir) or app_name.startswith('.'):
+        if not os.path.isdir(app_dir):
+            continue
+        skip, reason = _should_skip_app_dir(app_name, apps_txt_set)
+        if skip:
+            skipped_app_dirs.append((app_name, reason))
             continue
 
-        for root, _dirs, files in os.walk(app_dir):
-            if '/doctype/' in root or '\\doctype\\' in root:
-                for f in files:
-                    if f.endswith('.json') and not f.startswith('_'):
-                        json_path = os.path.join(root, f)
-                        try:
-                            with open(json_path) as jf:
-                                data = json.load(jf)
-                                if data.get('doctype') == 'DocType':
-                                    dt_name = data.get('name')
-                                    dt_module = data.get('module')
-                                    if dt_name:
-                                        # Check if .py controller exists
-                                        dt_folder = os.path.dirname(json_path)
-                                        dt_folder_name = os.path.basename(dt_folder)
-                                        py_file = os.path.join(dt_folder, f"{dt_folder_name}.py")
-                                        has_controller = os.path.exists(py_file)
+        for root, dirs, files in os.walk(app_dir):
+            # In-place prune so os.walk does not descend into excluded subtrees.
+            dirs[:] = [d for d in dirs if not _should_prune_walk(d)]
+            if '/doctype/' not in root and '\\doctype\\' not in root:
+                continue
+            for f in files:
+                if not f.endswith('.json') or f.startswith('_'):
+                    continue
+                json_path = os.path.join(root, f)
+                try:
+                    with open(json_path) as jf:
+                        data = json.load(jf)
+                except Exception:
+                    continue
+                if data.get('doctype') != 'DocType':
+                    continue
+                dt_name = data.get('name')
+                if not dt_name:
+                    continue
+                dt_folder = os.path.dirname(json_path)
+                dt_folder_name = os.path.basename(dt_folder)
+                py_file = os.path.join(dt_folder, f"{dt_folder_name}.py")
+                record = {
+                    'app': app_name,
+                    'module': data.get('module'),
+                    'path': json_path,
+                    'py_path': py_file,
+                    'has_controller': os.path.exists(py_file),
+                }
+                existing = filesystem_doctypes.get(dt_name)
+                if existing is not None:
+                    if existing['app'] != app_name:
+                        fs_collisions.append((dt_name, existing['app'], app_name))
+                    continue  # keep first hit; never overwrite
+                filesystem_doctypes[dt_name] = record
 
-                                        filesystem_doctypes[dt_name] = {
-                                            'app': app_name,
-                                            'module': dt_module,
-                                            'path': json_path,
-                                            'py_path': py_file,
-                                            'has_controller': has_controller
-                                        }
-                        except Exception:
-                            pass
+    if apps_txt_set is None:
+        print("   ⚠ sites/apps.txt missing — using pattern-based app filtering only")
 
     # Get all DocTypes from database
     all_doctypes = frappe.get_all("DocType",
@@ -193,6 +295,23 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
     print(f"   📌 Wrong 'app' field: {len(orphans['wrong_app'])}")
     print(f"   🔴 Missing .py controller (WILL ORPHAN!): {len(orphans['no_controller'])}")
     print(f"   ⚠️  No JSON definition: {len(orphans['no_json'])}")
+
+    # Scan-filter visibility — surface what was excluded so unexpected counts
+    # are explainable without re-reading the source.
+    if skipped_app_dirs or fs_collisions:
+        print("\n🔎 SCAN FILTERS:")
+        if skipped_app_dirs:
+            print(f"   Skipped app-level dirs: {len(skipped_app_dirs)}")
+            for name, reason in skipped_app_dirs[:10]:
+                print(f"     • apps/{name}/ — {reason}")
+            if len(skipped_app_dirs) > 10:
+                print(f"     ... and {len(skipped_app_dirs) - 10} more")
+        if fs_collisions:
+            print(f"   ⚠ FS collisions (same DocType in multiple apps): {len(fs_collisions)}")
+            for dt, kept, also in fs_collisions[:10]:
+                print(f"     • {dt}: kept apps/{kept}/, also in apps/{also}/")
+            if len(fs_collisions) > 10:
+                print(f"     ... and {len(fs_collisions) - 10} more")
 
     # Show details
     if orphans['no_app_field']:
