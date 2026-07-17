@@ -245,6 +245,11 @@ app_migrator.add_command(app_migrator_denest_app, 'denest-app')
 
 # ==================== EXPORT ALL COMMANDS ====================
 
+# MIGCH P1-7 (2026-07-16): S4 permanent collision guard — see collision_scan.py
+from .collision_scan import collision_scan as _collision_scan
+if _collision_scan is not None:
+    app_migrator.add_command(_collision_scan)
+
 commands = [
     app_migrator,  # Main group command
     app_migrator_health,
