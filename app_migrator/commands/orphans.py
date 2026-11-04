@@ -18,6 +18,7 @@ try:
 except ImportError:
     def pass_context(f):
         return f
+from ._naming import controller_class_name
 from ._shared import (
     MigrationSession,
     ProgressTracker,
@@ -262,9 +263,9 @@ def app_migrator_orphans(context, site, fix_mode, delete_mode, reassign, dry_run
                     py_path = o['py_path']
                     dt_name = o['name']
 
-                    # Convert doctype name to class name (Title Case -> PascalCase)
-                    # e.g., "TDS Settings" -> "TdsSettings"
-                    class_name = ''.join(word.capitalize() for word in dt_name.replace('-', ' ').split())
+                    # Frappe's convention: DocType name minus spaces/hyphens, case preserved
+                    # e.g., "TDS Settings" -> "TDSSettings" (NOT "TdsSettings")
+                    class_name = controller_class_name(dt_name)
 
                     controller_content = f'''import frappe
 from frappe.model.document import Document

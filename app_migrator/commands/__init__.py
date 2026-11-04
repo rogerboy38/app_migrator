@@ -12,7 +12,15 @@ logger = logging.getLogger("app_migrator")
 
 # ONLY import the main class - no function imports!
 from .analysis_tools import AppAnalysis
-from .audit_app_for_antipattern import app_migrator_audit_app_for_antipattern
+
+try:
+    from .audit_app_for_antipattern import app_migrator_audit_app_for_antipattern
+except ModuleNotFoundError as _e:
+    # audit_app_for_antipattern.py is not in the repository (a3c297b imported it without adding it).
+    # Without this guard the missing module aborts the whole package and blocks every `bench app-migrator` command.
+    if _e.name != f"{__package__}.audit_app_for_antipattern":
+        raise
+    app_migrator_audit_app_for_antipattern = None
 
 __all__ = ["AppAnalysis"]
 
@@ -257,8 +265,10 @@ commands = [
     modernize_app,
 
     setup_wizard,
-    app_migrator_audit_app_for_antipattern,
     ]
+
+if app_migrator_audit_app_for_antipattern is not None:
+    commands.append(app_migrator_audit_app_for_antipattern)
 
 logger.debug("App Migrator v%s ready", __version__)
 

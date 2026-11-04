@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- `commands/__init__.py` imported `.audit_app_for_antipattern`, a module that is not in the repository
+  (added to the import in `a3c297b` without the file). The package could not load, which blocks every
+  `bench app-migrator` command. The import is now guarded (only for that exact missing module; any other
+  import error still raises) and the command is added to `commands` only when present.
+- `orphans --fix --apply` and `ensure-controllers` generated controller classes by title-casing words
+  (`TDS Settings` -> `TdsSettings`), producing the very class-name mismatch orphan scenario 01 describes.
+  They now use Frappe's convention (`TDSSettings`) via the new `commands/_naming.py`;
+  `ensure-controllers` reads the real DocType name from the `.json`.
+
+### Added
+- `tests/test_loadable_and_naming.py` - bench-free tests (frappe stubbed): package loads and registers
+  its commands; class-name convention; `ensure_controller_files` end to end on a temp app.
+  Run: `python -m unittest discover -s tests -p 'test_*.py'`.
+
 ## [10.0.0-rc1] — 2026-05-04
 
 Phase 1 cleanup of `app_migrator` to make the codebase mutable for

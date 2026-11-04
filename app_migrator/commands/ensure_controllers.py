@@ -12,6 +12,7 @@ from pathlib import Path
 
 import click
 
+from ._naming import controller_class_name, doctype_name_from_json
 from ._shared import find_bench_root
 
 try:
@@ -83,9 +84,9 @@ def ensure_controller_files(app_name, module_name=None, dry_run=True):
 
             # Only create .py if .json exists but .py doesn't
             if os.path.exists(json_file) and not os.path.exists(py_file):
-                # Convert doctype_name to PascalCase class name
-                # e.g., 'third_party_api' -> 'ThirdPartyApi'
-                class_name = ''.join(word.capitalize() for word in doctype_name.split('_'))
+                # Class name follows Frappe's convention from the DocType's real name in its .json
+                # (e.g. 'tds_settings' -> "TDS Settings" -> 'TDSSettings'); falls back to the folder name.
+                class_name = controller_class_name(doctype_name_from_json(json_file, doctype_name))
 
                 controller_content = f'''import frappe
 from frappe.model.document import Document
