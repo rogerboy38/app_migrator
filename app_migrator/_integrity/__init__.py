@@ -17,7 +17,13 @@ from .base import (
     CheckSpec,
     Finding,
 )
-from .context import DEFAULT_APPS_ROOT, AppInfo, HookInfo, Inventory
+from .context import (
+    DEFAULT_APPS_ROOT,
+    AppInfo,
+    HookInfo,
+    Inventory,
+    discover_apps_root,
+)
 
 __all__ = [
     "AppInfo",
@@ -29,6 +35,7 @@ __all__ = [
     "HookInfo",
     "Inventory",
     "SEVERITY_RANK",
+    "discover_apps_root",
     "get_checks",
 ]
 

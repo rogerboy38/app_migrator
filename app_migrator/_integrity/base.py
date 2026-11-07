@@ -13,8 +13,9 @@ agent uses to tell "the same problem again" from "a new problem".
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .context import Inventory
@@ -44,12 +45,12 @@ class Finding:
     title: str
     severity: str
     description: str
-    app: Optional[str] = None
-    evidence: Dict[str, Any] = field(default_factory=dict)
+    app: str | None = None
+    evidence: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Envelope-shaped dict: ``id`` / ``title`` / ``severity`` / ``description``."""
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "id": self.id,
             "title": self.title,
             "severity": self.severity,
@@ -67,8 +68,8 @@ class CheckResult:
     """Outcome of one check."""
 
     check_id: str
-    findings: List[Finding] = field(default_factory=list)
-    stats: Dict[str, Any] = field(default_factory=dict)
+    findings: list[Finding] = field(default_factory=list)
+    stats: dict[str, Any] = field(default_factory=dict)
 
     @property
     def worst_severity(self) -> str:
@@ -80,7 +81,7 @@ class CheckResult:
             key=lambda s: SEVERITY_RANK.get(s, 99),
         )
 
-    def ordered_findings(self, limit: int = DEFAULT_FINDING_LIMIT) -> List[Finding]:
+    def ordered_findings(self, limit: int = DEFAULT_FINDING_LIMIT) -> list[Finding]:
         """Findings sorted worst-first then by id, truncated to ``limit``."""
         ordered = sorted(
             self.findings,
@@ -88,7 +89,7 @@ class CheckResult:
         )
         return ordered[:limit]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "check_id": self.check_id,
             "findings": [f.to_dict() for f in self.findings],

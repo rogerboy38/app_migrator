@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 
@@ -52,13 +52,13 @@ class FakeApp:
     """
 
     name: str
-    doctypes: Dict[str, List[str]] = field(default_factory=dict)
-    custom_fields: List[Dict[str, Any]] = field(default_factory=list)
-    property_setters: List[Dict[str, Any]] = field(default_factory=list)
+    doctypes: dict[str, list[str]] = field(default_factory=dict)
+    custom_fields: list[dict[str, Any]] = field(default_factory=list)
+    property_setters: list[dict[str, Any]] = field(default_factory=list)
     hooks: str = "app_name = '{name}'\n"
-    python_files: Dict[str, str] = field(default_factory=dict)
-    js_files: Dict[str, str] = field(default_factory=dict)
-    fixtures: Dict[str, List[Any]] = field(default_factory=dict)
+    python_files: dict[str, str] = field(default_factory=dict)
+    js_files: dict[str, str] = field(default_factory=dict)
+    fixtures: dict[str, list[Any]] = field(default_factory=dict)
 
 
 def _write(path: str, content: str) -> None:
@@ -114,7 +114,7 @@ def materialise_app(root: str, app: FakeApp) -> str:
     return app_root
 
 
-def build_apps_root(root: str, apps: List[FakeApp]) -> str:
+def build_apps_root(root: str, apps: list[FakeApp]) -> str:
     """Materialise a whole bench ``apps/`` directory and write ``apps.txt``."""
     for app in apps:
         materialise_app(root, app)
@@ -127,7 +127,7 @@ def apps_root(tmp_path):
     """Factory fixture: ``apps_root([FakeApp(...), ...])`` -> directory path."""
     counter = {"n": 0}
 
-    def _build(apps: List[FakeApp]) -> str:
+    def _build(apps: list[FakeApp]) -> str:
         counter["n"] += 1
         root = tmp_path / f"bench_{counter['n']}"
         root.mkdir(parents=True, exist_ok=True)
@@ -165,6 +165,6 @@ def run_check(check_id: str, inv):
     return find_check(check_id).run(inv)
 
 
-def finding_ids(result) -> List[str]:
+def finding_ids(result) -> list[str]:
     """All finding ids of a check result."""
     return [f.id for f in result.findings]

@@ -29,7 +29,7 @@ rather than an active defect.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 from ..base import CheckResult, CheckSpec, Finding
 from ..context import Inventory, app_pair_key, comparable_record
@@ -40,9 +40,9 @@ CHECK_ID = "shared-fixture-ownership"
 _IGNORED_KEYS = ("modified", "creation", "owner", "idx", "field_order")
 
 
-def _collect(inventory: Inventory, kind: str) -> Dict[str, Dict[str, Any]]:
+def _collect(inventory: Inventory, kind: str) -> dict[str, dict[str, Any]]:
     """Map record key -> {app: record} for every app that ships one."""
-    owners: Dict[str, Dict[str, Any]] = {}
+    owners: dict[str, dict[str, Any]] = {}
     for app in inventory.apps:
         records = (
             app.custom_fields() if kind == "custom_field" else app.property_setters()
@@ -55,21 +55,21 @@ def _collect(inventory: Inventory, kind: str) -> Dict[str, Dict[str, Any]]:
     return owners
 
 
-def _records_differ(a: Dict[str, Any], b: Dict[str, Any]) -> bool:
+def _records_differ(a: dict[str, Any], b: dict[str, Any]) -> bool:
     """True when two copies of the same record are not byte-equivalent."""
     return comparable_record(a, _IGNORED_KEYS) != comparable_record(b, _IGNORED_KEYS)
 
 
-def scan_shared_fixtures(inventory: Inventory) -> Dict[str, Any]:
+def scan_shared_fixtures(inventory: Inventory) -> dict[str, Any]:
     """Return the shared Custom Field / Property Setter records.
 
     Returns a dict with ``custom_fields`` and ``property_setters`` maps of
     record key -> {app, identical, copies}, plus scan counters.
     """
-    result: Dict[str, Any] = {"custom_fields": {}, "property_setters": {}, "_stats": {}}
+    result: dict[str, Any] = {"custom_fields": {}, "property_setters": {}, "_stats": {}}
     for kind, bucket in (("custom_field", "custom_fields"), ("property_setter", "property_setters")):
         owners = _collect(inventory, kind)
-        shared: Dict[str, Any] = {}
+        shared: dict[str, Any] = {}
         for key, by_app in owners.items():
             if len(by_app) < 2:
                 continue
@@ -90,9 +90,9 @@ def scan_shared_fixtures(inventory: Inventory) -> Dict[str, Any]:
     return result
 
 
-def build_findings(scan: Dict[str, Any]) -> List[Finding]:
+def build_findings(scan: dict[str, Any]) -> list[Finding]:
     """Turn the shared-fixture scan into envelope findings."""
-    findings: List[Finding] = []
+    findings: list[Finding] = []
     for kind, label in (("custom_fields", "Custom Field"), ("property_setters", "Property Setter")):
         for key, info in sorted(scan.get(kind, {}).items()):
             apps = info["apps"]

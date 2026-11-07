@@ -61,8 +61,10 @@ def test_override_whitelisted_target_that_does_not_exist_is_high(apps_root, inve
 def test_has_website_permission_without_a_module_is_medium(apps_root, inventory):
     """A website permission that points at a missing module is medium.
 
-    Frappe only calls this hook on a website request, so the failure is
-    quieter than a broken migrate-time hook.
+    This is the **list** shape of the hook (a plain list of handler paths),
+    which some Frappe versions accept. Frappe only calls this hook on a
+    website request, so the failure is quieter than a broken migrate-time
+    hook.
     """
     root = apps_root([
         FakeApp(
@@ -79,10 +81,155 @@ def test_has_website_permission_without_a_module_is_medium(apps_root, inventory)
     assert finding.severity == "medium", finding.severity
     assert finding.evidence["kind"] == "website-permission"
     assert "does not exist" in finding.evidence["reason"], finding.evidence["reason"]
+    # The list shape names no owner, so no DocType evidence is invented.
+    assert "doctypes" not in finding.evidence
     assert finding.id == (
         "integrity-dead-hook-target-rnd_warehouse_management-website-permission-"
         "permissions-warehouse-query"
     )
+
+
+def test_has_website_permission_dict_shape_is_reported(apps_root, inventory):
+    """The REAL shape: a dict keyed by DocType.
+
+    ``rnd_warehouse_management`` writes (audit 2026-11-05, hooks.py L24)::
+
+        has_website_permission = {
+            "Warehouse": "rnd_warehouse_management.permissions.warehouse_query",
+            "Stock Entry": "rnd_warehouse_management.permissions.stock_entry_query",
+        }
+
+    The app ships no ``permissions`` module at all, so both targets are dead.
+    A scanner that only reads the list shape sees nothing here and reports
+    nothing — which is how this defect shipped.
+    """
+    root = apps_root([
+        FakeApp(
+            name="rnd_warehouse_management",
+            hooks=(
+                "has_website_permission = {{\n"
+                '    "Warehouse": '
+                '"rnd_warehouse_management.permissions.warehouse_query",\n'
+                '    "Stock Entry": '
+                '"rnd_warehouse_management.permissions.stock_entry_query"\n'
+                "}}\n"
+            ),
+        ),
+    ])
+    result = run_check(CHECK_ID, inventory(root))
+    assert len(result.findings) == 2, finding_ids(result)
+
+    warehouse_id = (
+        "integrity-dead-hook-target-rnd_warehouse_management-website-permission-"
+        "permissions-warehouse-query"
+    )
+    stock_entry_id = (
+        "integrity-dead-hook-target-rnd_warehouse_management-website-permission-"
+        "permissions-stock-entry-query"
+    )
+    findings = {f.id: f for f in result.findings}
+    assert set(findings) == {warehouse_id, stock_entry_id}
+
+    warehouse = findings[warehouse_id]
+    assert warehouse.severity == "medium", warehouse.severity
+    assert warehouse.evidence["kind"] == "website-permission"
+    assert warehouse.evidence["hook"] == "has_website_permission"
+    assert (
+        warehouse.evidence["value"]
+        == "rnd_warehouse_management.permissions.warehouse_query"
+    )
+    assert "does not exist" in warehouse.evidence["reason"], warehouse.evidence["reason"]
+    # The owning DocType is the evidence the dict shape carries.
+    assert warehouse.evidence["doctypes"] == ["Warehouse"]
+    assert warehouse.evidence["doctype"] == "Warehouse"
+
+    stock_entry = findings[stock_entry_id]
+    assert stock_entry.severity == "medium", stock_entry.severity
+    assert stock_entry.evidence["doctypes"] == ["Stock Entry"]
+    assert stock_entry.evidence["doctype"] == "Stock Entry"
+
+    # The counter must count the dict targets too, not only the list ones.
+    assert result.stats["hooks_scanned"] == 2
+    assert result.stats["targets_missing"] == 2
+
+
+def test_has_website_permission_dict_finding_ids_are_stable(apps_root, inventory):
+    """The id is the diff key an agent uses; it must not drift."""
+    root = apps_root([
+        FakeApp(
+            name="rnd_warehouse_management",
+            hooks=(
+                "has_website_permission = {{\n"
+                '    "Warehouse": '
+                '"rnd_warehouse_management.permissions.warehouse_query",\n'
+                '    "Stock Entry": '
+                '"rnd_warehouse_management.permissions.stock_entry_query"\n'
+                "}}\n"
+            ),
+        ),
+    ])
+    first = finding_ids(run_check(CHECK_ID, inventory(root)))
+    second = finding_ids(run_check(CHECK_ID, inventory(root)))
+    assert first == second
+    assert first == [
+        "integrity-dead-hook-target-rnd_warehouse_management-website-permission-"
+        "permissions-stock-entry-query",
+        "integrity-dead-hook-target-rnd_warehouse_management-website-permission-"
+        "permissions-warehouse-query",
+    ]
+
+
+def test_has_website_permission_dict_that_resolves_is_not_reported(apps_root, inventory):
+    """A dict hook whose target exists must not produce a finding.
+
+    The fix must not turn the check into a noise machine: only the targets
+    that resolve nowhere are reported.
+    """
+    root = apps_root([
+        FakeApp(
+            name="app_a",
+            hooks=(
+                "has_website_permission = {{\n"
+                '    "Warehouse": "app_a.permissions.warehouse_query",\n'
+                "}}\n"
+            ),
+            python_files={
+                "permissions.py": "def warehouse_query(doc):\n    return True\n",
+            },
+        ),
+    ])
+    result = run_check(CHECK_ID, inventory(root))
+    assert result.findings == [], finding_ids(result)
+    assert result.stats["targets_missing"] == 0
+    assert result.stats["hooks_scanned"] == 1
+
+
+def test_has_website_permission_skips_non_string_entries(apps_root, inventory):
+    """A mixed shape is skipped — not crashed on, and not invented from."""
+    root = apps_root([
+        FakeApp(
+            name="app_a",
+            hooks=(
+                "has_website_permission = {{\n"
+                '    "Warehouse": 42,\n'
+                '    "Stock Entry": "app_a.permissions.stock_entry_query",\n'
+                "}}\n"
+            ),
+        ),
+        FakeApp(
+            name="app_b",
+            hooks=(
+                "has_website_permission = "
+                "['app_b.permissions.warehouse_query', 42]\n"
+            ),
+        ),
+    ])
+    result = run_check(CHECK_ID, inventory(root))
+    assert len(result.findings) == 2, finding_ids(result)
+    by_app = {f.evidence["app"]: f for f in result.findings}
+    assert by_app["app_a"].evidence["doctypes"] == ["Stock Entry"]
+    assert by_app["app_b"].evidence["value"] == "app_b.permissions.warehouse_query"
+    assert "doctypes" not in by_app["app_b"].evidence
 
 
 def test_doc_events_handler_that_only_passes_is_medium(apps_root, inventory):

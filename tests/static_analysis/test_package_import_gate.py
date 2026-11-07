@@ -28,7 +28,7 @@ def _install_stub():
 def test_package_imports_without_a_bench():
     """The whole package must import with no Frappe and no ``bench`` CLI."""
     _install_stub()
-    import app_migrator.commands  # noqa: F401
+    import app_migrator.commands
 
     assert app_migrator.commands is not None
 

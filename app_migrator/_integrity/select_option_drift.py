@@ -35,7 +35,8 @@ even when the target holds no records at all).
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Iterable, List, Optional
+from collections.abc import Iterable
+from typing import Any
 
 from .base import DEFAULT_FINDING_LIMIT, SEVERITY_RANK, Finding
 
@@ -72,7 +73,7 @@ def _normalise(value: Any) -> str:
     return str(value).strip()
 
 
-def compare_select_options(records: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+def compare_select_options(records: Iterable[dict[str, Any]]) -> dict[str, Any]:
     """Compare stored values against the options each field currently allows.
 
     Args:
@@ -99,8 +100,8 @@ def compare_select_options(records: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
         save), ``medium`` when the doctype is empty (latent drift: nothing
         breaks until the first document is saved).
     """
-    drift: List[Dict[str, Any]] = []
-    stats: Dict[str, Any] = {
+    drift: list[dict[str, Any]] = []
+    stats: dict[str, Any] = {
         "records_scanned": 0,
         "fields_scanned": 0,
         "fields_unconstrained": 0,
@@ -132,7 +133,7 @@ def compare_select_options(records: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
             continue
 
         allowed = set(options)
-        offending: List[str] = []
+        offending: list[str] = []
         for value in record.get("stored_values") or []:
             normalised = _normalise(value)
             if not normalised:
@@ -167,16 +168,16 @@ def compare_select_options(records: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 def build_findings(
-    drift: Iterable[Dict[str, Any]],
+    drift: Iterable[dict[str, Any]],
     limit: int = DEFAULT_FINDING_LIMIT,
-) -> List[Finding]:
+) -> list[Finding]:
     """Turn drift entries into findings with stable ids.
 
     The findings are ordered worst-first, then by id, and truncated to
     ``limit`` (the true count stays available in the scan stats, so
     truncation never hides a number).
     """
-    findings: List[Finding] = []
+    findings: list[Finding] = []
     for entry in drift or []:
         doctype = str(entry.get("doctype") or "")
         fieldname = str(entry.get("fieldname") or "")
@@ -246,7 +247,7 @@ def build_findings(
     return findings[:limit]
 
 
-def _candidate_doctypes(inventory: Any, collector: Any, doctype_filter: Optional[str]) -> List[str]:
+def _candidate_doctypes(inventory: Any, collector: Any, doctype_filter: str | None) -> list[str]:
     """DocTypes to scan: the explicit filter, else the site's list, else the inventory's."""
     if doctype_filter:
         return [doctype_filter]
@@ -267,7 +268,7 @@ def _candidate_doctypes(inventory: Any, collector: Any, doctype_filter: Optional
     return []
 
 
-def _app_map(inventory: Any) -> Dict[str, str]:
+def _app_map(inventory: Any) -> dict[str, str]:
     """DocType (lower-cased) -> owning app, read from the inventory once."""
     shipped = getattr(inventory, "all_shipped_doctypes", None)
     if not callable(shipped):
@@ -276,7 +277,7 @@ def _app_map(inventory: Any) -> Dict[str, str]:
         doctypes = shipped() or {}
     except Exception:
         return {}
-    mapping: Dict[str, str] = {}
+    mapping: dict[str, str] = {}
     for doctype, owners in doctypes.items():
         if not owners:
             continue
@@ -287,9 +288,9 @@ def _app_map(inventory: Any) -> Dict[str, str]:
 def scan_select_options(
     inventory: Any,
     collector: Any,
-    doctype_filter: Optional[str] = None,
-    field_filter: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    doctype_filter: str | None = None,
+    field_filter: str | None = None,
+) -> list[dict[str, Any]]:
     """Collect one record per (DocType, constrained field) from a live site.
 
     The site is reached **only** through the injected collector, so this
@@ -315,7 +316,7 @@ def scan_select_options(
     Returns:
         The records consumed by :func:`compare_select_options`.
     """
-    records: List[Dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
     app_map = _app_map(inventory)
 
     for doctype in _candidate_doctypes(inventory, collector, doctype_filter):

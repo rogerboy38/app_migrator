@@ -27,8 +27,15 @@ One finding per (app, target DocType) pair — not per field — with every
 affected field listed in the evidence, because "13 fields point at
 ``Batch AMB``" is one defect, not thirteen:
 
-- the target DocType is shipped by **no** installed app -> ``high``
-  (the link can never work);
+- the target DocType is a **standard** Frappe / ERPNext DocType -> nothing
+  is reported at all. A scan root that does not contain ``frappe`` /
+  ``erpnext`` cannot ship ``Customer`` or ``Item``, so "no app ships it"
+  says nothing about those DocTypes;
+- the target DocType is shipped by **no** installed app and is not standard
+  -> ``high`` when the scan root does contain ``frappe`` / ``erpnext`` (the
+  link can never work), and ``info`` when it does not (the scan root is
+  incomplete, so the target may be a standard DocType that is simply not
+  in the tree);
 - the target DocType is shipped by another app that is **not** in the
   consuming app's ``required_apps`` -> ``medium`` (the dependency is
   implicit and breaks when that app is not installed).
@@ -36,11 +43,35 @@ affected field listed in the evidence, because "13 fields point at
 Targets the app ships itself are ignored: that is the normal case. When
 ``required_apps`` is built at runtime it cannot be judged statically, so the
 app is left alone rather than reported.
+
+Why the standard list matters
+-----------------------------
+The audited scan tree (``amb_w_tds`` + ``amb_w_spc`` +
+``rnd_warehouse_management``, no ``frappe`` / ``erpnext``) reported **67**
+"no installed app ships DocType 'X'" findings across **45** distinct target
+names. **41** of those 45 were standard core DocTypes — ``Item``,
+``Customer``, ``Batch``, ``Workflow`` … — so the check was reporting the
+*absence of the framework* as 67 defects.
+
+The other 4 were not core, and each needed a different answer:
+
+- ``spc_batch_record``, ``spc_deviation`` and ``spc_electronic_signature``
+  **are** shipped — by ``amb_w_spc``, at ``fda_compliance/doctype/<slug>/``.
+  A Link field's ``options`` carries the folder slug while the DocType's
+  JSON carries the display name (``SPC Deviation``), so the inventory has
+  to match on the slug as well; that was a second, separate defect.
+- ``AMB Cost Factors`` is genuinely not shipped by any app in the tree.
+  ``amb_w_tds`` links to it *and* ships fixtures for it, so it is a real
+  lead — but the scan root has no ``frappe`` / ``erpnext``, so it cannot be
+  called a defect. It is reported as ``info``.
+
+What remains after both fixes are the **8** real ``medium`` findings: the
+cross-app dependencies that neither app declares.
 """
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, List
+from typing import Any
 
 from ..base import CheckResult, CheckSpec, Finding
 from ..context import AppInfo, Inventory, read_json
@@ -56,6 +87,167 @@ _DECLARED = "declared"      # the owner app is declared in required_apps
 _UNDECLARED = "undeclared"  # the owner app is NOT declared in required_apps
 _MISSING = "missing"        # no installed app ships the target
 _UNKNOWN = "unknown"        # required_apps is built at runtime — cannot judge
+_STANDARD = "standard"      # the target is a standard frappe/erpnext DocType
+
+# The apps that ship the standard DocTypes. When neither of them is in the
+# scan root, the scan root is incomplete: an unresolved target may simply be
+# a core DocType that is not in the tree, so it cannot be called a defect.
+CORE_APP_NAMES = frozenset({"frappe", "erpnext"})
+
+# --------------------------------------------------------------------------
+# Standard Frappe / ERPNext DocTypes.
+#
+# VERSIONED / APPROXIMATE — read this before editing the list.
+#
+# This is a hand-maintained snapshot of the DocType names that ``frappe`` and
+# ``erpnext`` ship (roughly the Frappe v14 / ERPNext v14 era). It is **not**
+# authoritative and it **will drift**:
+#
+# - the framework adds and renames DocTypes between releases, so a name that
+#   is missing here produces a finding that is not a defect;
+# - conversely, a name that is present here silences a finding even if a
+#   custom app happens to ship a DocType with the same name — a custom app
+#   shadowing a core DocType name is a separate (rare) defect that this
+#   check deliberately does not report.
+#
+# It is a *suppression* list, so it is deliberately generous: the cost of a
+# name in the list is one suppressed finding, the cost of a name outside it
+# is one noisy finding. When in doubt, prefer adding the name.
+#
+# Seeded from the 2026-11-05 audit of the ``amb_w_tds`` scan tree (the 45
+# distinct DocTypes that produced 67 bogus "no installed app ships DocType"
+# findings) plus the obvious core Frappe / ERPNext DocTypes.
+# --------------------------------------------------------------------------
+STANDARD_DOCTYPES = frozenset({
+    # -- Frappe core ------------------------------------------------------
+    "Access Log",
+    "Audit Log",
+    "Comment",
+    "Communication",
+    "Custom Field",
+    "Dashboard Chart",
+    "DocPerm",
+    "DocType",
+    "Error Log",
+    "File",
+    "Has Role",
+    "Module Def",
+    "Note",
+    "Notification",
+    "Patch Log",
+    "Personal Note",
+    "Personal Tag",
+    "Print Format",
+    "Property Setter",
+    "Report",
+    "Role",
+    "Scheduled Job Log",
+    "Server Script",
+    "Session Default",
+    "Tag",
+    "ToDo",
+    "User",
+    "Version",
+    "Web Form",
+    "Workspace",
+    "Client Script",
+    # -- ERPNext core -----------------------------------------------------
+    "Address",
+    "Bank Account",
+    "Batch",
+    "Bin",
+    "BOM",
+    "BOM Item",
+    "Brand",
+    "Company",
+    "Contact",
+    "Cost Center",
+    "Country",
+    "Currency",
+    "Customer",
+    "Customer Group",
+    "Delivery Note",
+    "Delivery Note Item",
+    "Department",
+    "Employee",
+    "Equipment",
+    "Item",
+    "Item Attribute",
+    "Item Attribute Value",
+    "Item Group",
+    "Item Price",
+    "Item Quality Inspection Parameter",
+    "Item Tax",
+    "Journal Entry",
+    "Language",
+    "Location",
+    "Material Issue",
+    "Material Issue Item",
+    "Material Receipt",
+    "Material Receipt Item",
+    "Material Request",
+    "Material Request Item",
+    "Mode of Payment",
+    "Operation",
+    "Payment Entry",
+    "Payment Entry Reference",
+    "Payment Terms Template",
+    "Price List",
+    "Production Line",
+    "Production Plan",
+    "Project",
+    "Purchase Invoice",
+    "Purchase Invoice Item",
+    "Purchase Receipt",
+    "Purchase Receipt Item",
+    "Purchase Taxes and Charges",
+    "Quality Inspection",
+    "Quality Inspection Method",
+    "Quality Inspection Parameter",
+    "Quality Inspection Parameter Group",
+    "Quality Procedure",
+    "Quotation",
+    "Quotation Item",
+    "Routing",
+    "Sales Invoice",
+    "Sales Invoice Item",
+    "Sales Order",
+    "Sales Order Item",
+    "Sales Partner",
+    "Sales Person",
+    "Sales Taxes and Charges",
+    "Serial No",
+    "Stock Entry",
+    "Stock Entry Detail",
+    "Supplier",
+    "Supplier Quotation",
+    "Supplier Quotation Item",
+    "Tax Category",
+    "Territory",
+    "Terms",
+    "UOM",
+    "UOM Conversion Detail",
+    "Warehouse",
+    "Work Order",
+    "Workflow",
+    "Workflow Action Master",
+    "Workflow State",
+    "Workstation",
+})
+
+# Case-insensitive lookup of the list above: MariaDB's default collation is
+# case-insensitive, so "item group" and "Item Group" are the same DocType.
+_STANDARD_LOOKUP = frozenset(name.lower() for name in STANDARD_DOCTYPES)
+
+
+def is_standard_doctype(name: str) -> bool:
+    """True when ``name`` is a standard Frappe / ERPNext DocType."""
+    return (name or "").strip().lower() in _STANDARD_LOOKUP
+
+
+def core_apps_present(inventory: Inventory) -> bool:
+    """True when the scan root contains ``frappe`` or ``erpnext``."""
+    return any(app.name.strip().lower() in CORE_APP_NAMES for app in inventory.apps)
 
 
 def _slugify(value: str) -> str:
@@ -64,14 +256,14 @@ def _slugify(value: str) -> str:
     return slug.strip("-")
 
 
-def _link_fields(app: AppInfo) -> Dict[str, List[Dict[str, str]]]:
+def _link_fields(app: AppInfo) -> dict[str, list[dict[str, str]]]:
     """Map target DocType -> the fields of ``app`` that point at it.
 
     Only ``Link`` and ``Table`` fields are considered: both name a DocType in
     their ``options``. The declaring DocType is kept in the evidence so a
     reviewer can find the field in the app's own schema.
     """
-    targets: Dict[str, List[Dict[str, str]]] = {}
+    targets: dict[str, list[dict[str, str]]] = {}
     for doctype, path in sorted(app.doctype_json_paths().items()):
         data = read_json(path)
         if not isinstance(data, dict):
@@ -95,17 +287,20 @@ def _link_fields(app: AppInfo) -> Dict[str, List[Dict[str, str]]]:
     return targets
 
 
-def scan_undeclared_dependencies(inventory: Inventory) -> Dict[str, Any]:
+def scan_undeclared_dependencies(inventory: Inventory) -> dict[str, Any]:
     """Return the undeclared cross-app DocType dependencies.
 
     Returns a dict with an ``apps`` map (app name -> {required_apps, targets})
     plus scan counters under ``_stats``.
     """
-    apps: Dict[str, Any] = {}
+    apps: dict[str, Any] = {}
     link_fields = 0
     unresolved = 0
     undeclared = 0
     dynamic = 0
+    standard = 0
+    has_core = core_apps_present(inventory)
+    unresolved_without_core = 0
 
     for app in inventory.apps:
         declared = app.required_apps()
@@ -122,7 +317,7 @@ def scan_undeclared_dependencies(inventory: Inventory) -> Dict[str, Any]:
         targets = _link_fields(app)
         link_fields += sum(len(fields) for fields in targets.values())
 
-        entries: Dict[str, Any] = {}
+        entries: dict[str, Any] = {}
         for target, fields in sorted(targets.items()):
             # MariaDB's default collation is case-insensitive, so the
             # inventory resolves the target the way the database would.
@@ -130,6 +325,13 @@ def scan_undeclared_dependencies(inventory: Inventory) -> Dict[str, Any]:
             owner_app = None
             if app.name in owners:
                 status = _OWN
+            elif is_standard_doctype(target):
+                # A standard Frappe / ERPNext DocType is shipped by the
+                # framework, not by an app. Its absence from the scan tree
+                # says something about the scan root, not about this app:
+                # nothing is reported at all.
+                status = _STANDARD
+                standard += 1
             elif not owners:
                 status = _MISSING
                 unresolved += 1
@@ -156,19 +358,23 @@ def scan_undeclared_dependencies(inventory: Inventory) -> Dict[str, Any]:
 
     return {
         "apps": apps,
+        "core_apps_present": has_core,
         "_stats": {
             "apps_scanned": len(inventory.apps),
             "link_fields_scanned": link_fields,
             "unresolved_targets": unresolved,
+            "standard_targets": standard,
             "undeclared_targets": undeclared,
             "dynamic_required_apps": dynamic,
+            "core_apps_present": has_core,
         },
     }
 
 
-def build_findings(scan: Dict[str, Any]) -> List[Finding]:
+def build_findings(scan: dict[str, Any]) -> list[Finding]:
     """Turn the undeclared-dependency scan into envelope findings."""
-    findings: List[Finding] = []
+    findings: list[Finding] = []
+    core_apps_present = bool(scan.get("core_apps_present"))
     for app_name, info in sorted(scan.get("apps", {}).items()):
         required = list(info.get("required_apps") or [])
         declared_text = ", ".join(required) if required else "(none)"
@@ -180,7 +386,7 @@ def build_findings(scan: Dict[str, Any]) -> List[Finding]:
             if not fields:
                 continue
             first = fields[0]
-            evidence: Dict[str, Any] = {
+            evidence: dict[str, Any] = {
                 "app": app_name,
                 "doctype": target,
                 "fieldname": first.get("fieldname", ""),
@@ -189,15 +395,26 @@ def build_findings(scan: Dict[str, Any]) -> List[Finding]:
                 "required_apps": required,
             }
             if status == _MISSING:
-                severity = "high"
                 evidence["owner_apps"] = []
-                title = f"No installed app ships DocType '{target}'"
-                description = (
-                    f"App '{app_name}' points {len(fields)} field(s) at DocType "
-                    f"'{target}', but no installed app ships that DocType. The link "
-                    f"can never resolve: installing '{app_name}' alone leaves "
-                    f"'{first.get('fieldname')}' pointing at nothing."
-                )
+                if core_apps_present:
+                    severity = "high"
+                    title = f"No installed app ships DocType '{target}'"
+                    description = (
+                        f"App '{app_name}' points {len(fields)} field(s) at DocType "
+                        f"'{target}', but no installed app ships that DocType. The link "
+                        f"can never resolve: installing '{app_name}' alone leaves "
+                        f"'{first.get('fieldname')}' pointing at nothing."
+                    )
+                else:
+                    severity = "info"
+                    title = f"DocType '{target}' is not in the scanned tree"
+                    description = (
+                        f"App '{app_name}' points {len(fields)} field(s) at DocType "
+                        f"'{target}', and no app in the scanned tree ships it. The scan "
+                        f"root does not contain frappe / erpnext, so the target may be "
+                        f"shipped by an app outside the tree. Reported for review, not "
+                        f"as a confirmed defect."
+                    )
             else:
                 severity = "medium"
                 owner_app = entry.get("owner_app")

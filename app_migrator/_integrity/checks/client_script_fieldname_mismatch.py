@@ -41,7 +41,8 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from collections.abc import Iterable
+from typing import Any
 
 from ..base import CheckResult, CheckSpec, Finding
 from ..context import AppInfo, Inventory, read_text
@@ -49,7 +50,7 @@ from ..context import AppInfo, Inventory, read_text
 CHECK_ID = "client-script-fieldname-mismatch"
 
 # The reference forms a client script uses to touch a field by name.
-_REFERENCE_PATTERNS: Tuple[Tuple[str, "re.Pattern[str]"], ...] = (
+_REFERENCE_PATTERNS: tuple[tuple[str, "re.Pattern[str]"], ...] = (
     ("frm.fields", re.compile(r"\bfrm\.fields\.([A-Za-z_][A-Za-z0-9_]*)")),
     ("frm.doc", re.compile(r"\bfrm\.doc\.([A-Za-z_][A-Za-z0-9_]*)")),
     ("frm.set_value", re.compile(r"\bfrm\.set_value\(\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]")),
@@ -63,7 +64,7 @@ _REFERENCE_PATTERNS: Tuple[Tuple[str, "re.Pattern[str]"], ...] = (
 
 # Pseudo-fields that exist on a document in the browser but are not DocType
 # fields. They must never be reported.
-JS_ONLY_FIELDS: Set[str] = {
+JS_ONLY_FIELDS: set[str] = {
     "doctype",
     "name",
     "owner",
@@ -85,7 +86,7 @@ JS_ONLY_FIELDS: Set[str] = {
 # app ships, but a site can carry more than that (a Custom Field added by
 # another app, a patch, a site-level Customize Form). Naming a standard field
 # is therefore not, by itself, a defect.
-STANDARD_FIELDS: Set[str] = {
+STANDARD_FIELDS: set[str] = {
     # -- core document columns --------------------------------------------
     "doctype",
     "name",
@@ -176,7 +177,7 @@ STANDARD_FIELDS: Set[str] = {
 
 # The Document / BaseDocument API surface, as seen from the browser. These are
 # methods on ``frm.doc``, not fields, so they are never reported.
-DOCUMENT_API: Set[str] = {
+DOCUMENT_API: set[str] = {
     "save",
     "insert",
     "delete",
@@ -302,9 +303,9 @@ def _distance(left: str, right: str) -> int:
     return min(direct, stripped)
 
 
-def _suggestions(reference: str, known: Iterable[str]) -> List[str]:
+def _suggestions(reference: str, known: Iterable[str]) -> list[str]:
     """Known fieldnames within edit distance 3 of ``reference``, closest first."""
-    scored: List[Tuple[int, str]] = []
+    scored: list[tuple[int, str]] = []
     for candidate in known:
         distance = _distance(reference, candidate)
         if distance <= SUGGESTION_DISTANCE:
@@ -313,14 +314,14 @@ def _suggestions(reference: str, known: Iterable[str]) -> List[str]:
     return [name for _distance, name in scored[:MAX_SUGGESTIONS]]
 
 
-def _js_files(app: AppInfo) -> List[str]:
+def _js_files(app: AppInfo) -> list[str]:
     """Every ``.js`` file under the app's ``public/js`` tree.
 
     Frappe apps ship client scripts either inside the Python package
     (``<app>/<app>/public/js/`` — what all three audited apps do) or at the
     app root (``<app>/public/js/``). Both are scanned.
     """
-    found: List[str] = []
+    found: list[str] = []
     for base in (app.package, app.root):
         root = os.path.join(base, "public", "js")
         if not os.path.isdir(root):
@@ -331,7 +332,7 @@ def _js_files(app: AppInfo) -> List[str]:
                 if filename.endswith(".js"):
                     found.append(os.path.join(dirpath, filename))
     # The same file can be reachable through both bases in a nested layout.
-    unique: List[str] = []
+    unique: list[str] = []
     seen = set()
     for path in sorted(found):
         real = os.path.abspath(path)
@@ -342,7 +343,7 @@ def _js_files(app: AppInfo) -> List[str]:
     return unique
 
 
-def _js_relative_parts(app: AppInfo, path: str) -> List[str]:
+def _js_relative_parts(app: AppInfo, path: str) -> list[str]:
     """Path of a JS file relative to the ``public/js`` tree that holds it.
 
     The tree may live inside the Python package (``<app>/<app>/public/js/``)
@@ -356,7 +357,7 @@ def _js_relative_parts(app: AppInfo, path: str) -> List[str]:
     return []
 
 
-def _doctype_for_slug(app: AppInfo, slug: str) -> Optional[str]:
+def _doctype_for_slug(app: AppInfo, slug: str) -> str | None:
     """The DocType a ``public/js/<slug>/`` folder belongs to.
 
     The slug is matched against the DocTypes the app ships: exactly, then
@@ -384,9 +385,9 @@ def _slug_for_doctype(app: AppInfo, doctype: str) -> str:
     return _scrub(doctype)
 
 
-def _references(source: str) -> List[Tuple[str, str, int]]:
+def _references(source: str) -> list[tuple[str, str, int]]:
     """``(reference form, fieldname, line)`` for every field reference found."""
-    found: List[Tuple[str, str, int]] = []
+    found: list[tuple[str, str, int]] = []
     for form, pattern in _REFERENCE_PATTERNS:
         for match in pattern.finditer(source):
             line = source.count("\n", 0, match.start()) + 1
@@ -394,14 +395,14 @@ def _references(source: str) -> List[Tuple[str, str, int]]:
     return found
 
 
-def _custom_fields_for_doctype(inventory: Inventory, doctype: str) -> Set[str]:
+def _custom_fields_for_doctype(inventory: Inventory, doctype: str) -> set[str]:
     """Custom Field names shipped by *any* app for ``doctype``.
 
     A field another app adds to this DocType exists at runtime, so a script
     referring to it is correct. Judging only against the owning app would
     report it as a mismatch -- a false positive.
     """
-    names: Set[str] = set()
+    names: set[str] = set()
     lowered = doctype.lower()
     for app in inventory.apps:
         for record in app.custom_fields():
@@ -412,19 +413,19 @@ def _custom_fields_for_doctype(inventory: Inventory, doctype: str) -> Set[str]:
     return names
 
 
-def scan_client_script_mismatches(inventory: Inventory) -> Dict[str, Any]:
+def scan_client_script_mismatches(inventory: Inventory) -> dict[str, Any]:
     """Find every client-script field reference the DocType does not have.
 
     Returns a dict with a ``mismatches`` map keyed by
     ``<app>|<doctype>|<fieldname>`` and a ``_stats`` counter block.
     """
-    mismatches: Dict[str, Dict[str, Any]] = {}
+    mismatches: dict[str, dict[str, Any]] = {}
     js_files_scanned = 0
     files_skipped = 0
     references_scanned = 0
 
     for app in inventory.apps:
-        known_cache: Dict[str, Set[str]] = {}
+        known_cache: dict[str, set[str]] = {}
         for path in _js_files(app):
             js_files_scanned += 1
             parts = _js_relative_parts(app, path)
@@ -491,9 +492,9 @@ def scan_client_script_mismatches(inventory: Inventory) -> Dict[str, Any]:
     return {"mismatches": mismatches, "_stats": stats}
 
 
-def build_findings(scan: Dict[str, Any]) -> List[Finding]:
+def build_findings(scan: dict[str, Any]) -> list[Finding]:
     """Turn the client-script scan into envelope findings."""
-    findings: List[Finding] = []
+    findings: list[Finding] = []
     for _key, info in sorted(scan.get("mismatches", {}).items()):
         locations = info["locations"]
         where = ", ".join(f"{loc['file']}:{loc['line']}" for loc in locations)

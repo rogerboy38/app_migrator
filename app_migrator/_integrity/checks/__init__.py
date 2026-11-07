@@ -13,13 +13,12 @@ from __future__ import annotations
 import importlib
 import logging
 import pkgutil
-from typing import List
 
 from ..base import CheckSpec
 
 logger = logging.getLogger("app_migrator")
 
-CHECKS: List[CheckSpec] = []
+CHECKS: list[CheckSpec] = []
 
 
 def _register_module(module_name: str) -> None:

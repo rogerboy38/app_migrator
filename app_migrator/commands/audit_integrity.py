@@ -8,7 +8,7 @@ about itself:
 - ``shared-fixture-ownership`` — do two apps ship the same Custom Field or
   Property Setter, so migrate order decides the surviving definition?
 - (further checks are registered as separate modules under
-  ``app_migrator/commands/_integrity/checks/``)
+  ``app_migrator/_integrity/checks/``)
 
 The detection cores are **import-safe and bench-free** so they can be
 unit-tested in-process; only this click wrapper touches the envelope/exit
@@ -17,7 +17,7 @@ path. That split is inherited from ``module_conflicts.py`` (W2(d)).
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 import click
 
@@ -27,14 +27,19 @@ except ImportError:  # pragma: no cover - bench-free import path
     def pass_context(f):
         return f
 
-from ._envelope import EXIT_CODE_MAPPING, emit_envelope, make_envelope
-from .._integrity import DEFAULT_APPS_ROOT, DEFAULT_FINDING_LIMIT, SEVERITY_RANK, Inventory
+from .._integrity import (
+    DEFAULT_FINDING_LIMIT,
+    SEVERITY_RANK,
+    Inventory,
+    discover_apps_root,
+)
 from .._integrity.checks import CHECKS
+from ._envelope import EXIT_CODE_MAPPING, emit_envelope, make_envelope
 
 COMMAND_NAME = "audit-integrity"
 
 
-def _selected_checks(check_names: List[str]):
+def _selected_checks(check_names: list[str]):
     """Resolve the requested check ids to specs.
 
     An empty request means "all checks". An unknown id is an error — silently
@@ -65,20 +70,26 @@ def _min_severity_rank(severity: str) -> int:
 
 def run_checks(
     inventory: Inventory,
-    check_names: List[str],
+    check_names: list[str],
     severity: str = "info",
     limit: int = DEFAULT_FINDING_LIMIT,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run the selected checks and return an aggregated result.
 
-    Returns a dict with ``findings`` (list of envelope-shaped finding dicts),
-    ``per_check`` (stats per check) and ``total`` (true finding count, before
-    truncation).
+    Returns a dict with ``findings`` (the findings carried in the envelope,
+    worst first, truncated to ``limit`` **across all checks**), ``per_check``
+    (stats per check), ``total`` (the true finding count before truncation) and
+    ``status`` (the envelope status implied by the findings that were found).
+
+    The limit is an envelope-wide limit, not a per-check limit: ``--limit 50``
+    carries at most 50 findings in total. The status is computed from **all**
+    findings, before truncation, so a limit can never hide a high-severity
+    finding from the exit code.
     """
     specs = _selected_checks(check_names)
     cutoff = _min_severity_rank(severity)
-    all_findings: List[Dict[str, Any]] = []
-    per_check: Dict[str, Any] = {}
+    kept_all: list[Any] = []
+    per_check: dict[str, Any] = {}
     total = 0
 
     for spec in specs:
@@ -87,33 +98,51 @@ def run_checks(
             f for f in result.findings
             if SEVERITY_RANK.get(f.severity, 99) <= cutoff
         ]
-        ordered = result.ordered_findings(limit=limit)
-        # ordered is already truncated to `limit`; re-apply the severity filter
-        # in the same worst-first order.
-        ordered = [
-            f for f in ordered
-            if SEVERITY_RANK.get(f.severity, 99) <= cutoff
-        ]
         total += len(kept)
         per_check[spec.check_id] = {
             "title": spec.title,
             "findings": len(kept),
             "stats": result.stats,
         }
-        all_findings.extend(f.to_dict() for f in ordered)
+        kept_all.extend(kept)
+
+    # Worst first across every check, so the envelope carries the findings a
+    # human should look at first.
+    kept_all.sort(key=lambda f: (SEVERITY_RANK.get(f.severity, 99), f.id))
 
     return {
-        "findings": all_findings,
+        "findings": [f.to_dict() for f in kept_all[:limit]],
         "per_check": per_check,
         "total": total,
+        "status": _status_for(kept_all),
         "checks_run": [spec.check_id for spec in specs],
     }
+
+
+def _status_for(findings: list[Any]) -> str:
+    """Map the worst reported finding severity onto the envelope status.
+
+    - no findings -> ``ok`` (rc 0)
+    - any ``high`` -> ``blocked`` (rc 20): something here should stop a
+      migrate until a human looks at it
+    - anything else -> ``warn`` (rc 10)
+
+    A gate can therefore distinguish "high" from "medium" by exit code alone.
+    """
+    if not findings:
+        return "ok"
+    severities = {getattr(f, "severity", None) for f in findings}
+    if "high" in severities:
+        return "blocked"
+    return "warn"
 
 
 @click.command('app-migrator-audit-integrity')
 @click.option('--site', default=None, help='Site name (informational; not required)')
 @click.option('--json', 'as_json', is_flag=True, help='Emit v0.5 envelope JSON')
-@click.option('--apps-root', default=None, help='bench apps/ directory to scan')
+@click.option('--apps-root', default=None,
+              help='bench apps/ directory to scan. Default: discovered from '
+                   'FRAPPE_BENCH / BENCH_PATH / the current directory.')
 @click.option('--check', 'check_names', multiple=True,
               help='Only run this check (repeatable, or comma-separated). Default: all.')
 @click.option('--severity', default='info',
@@ -126,7 +155,7 @@ def app_migrator_audit_integrity(context, site, as_json, apps_root, check_names,
     """Cross-app integrity checks derived from the amb_w_tds / rnd_warehouse_management audits."""
     start = time.time()
 
-    resolved_root = apps_root or DEFAULT_APPS_ROOT
+    resolved_root = apps_root or discover_apps_root()
     inventory = Inventory(apps_root=resolved_root)
 
     try:
@@ -152,7 +181,7 @@ def app_migrator_audit_integrity(context, site, as_json, apps_root, check_names,
     truncated = total - len(findings)
 
     if as_json:
-        status = "warn" if total else "ok"
+        status = outcome["status"]
         summary = (
             f"audit-integrity: {total} finding(s) across "
             f"{len(outcome['checks_run'])} check(s) on {len(inventory.apps)} app(s)"
@@ -179,7 +208,7 @@ def app_migrator_audit_integrity(context, site, as_json, apps_root, check_names,
                     "description": "Re-run the full integrity sweep and diff the finding ids.",
                 },
                 {
-                    "command": "bench app-migrator audit-app-integrity --check shared-fixture-ownership",
+                    "command": "bench app-migrator audit-integrity --check shared-fixture-ownership",
                     "approval_required": True,
                     "description": (
                         "Decide a single owner for each shared fixture record before "
@@ -211,5 +240,7 @@ def app_migrator_audit_integrity(context, site, as_json, apps_root, check_names,
     click.echo("Use --json for v0.5 envelope output.")
 
     # Same status -> exit-code mapping in both modes, so CI gates work
-    # regardless of whether --json was passed.
-    raise SystemExit(EXIT_CODE_MAPPING.get("warn" if total else "ok", 0))
+    # regardless of whether --json was passed. The status comes from the
+    # worst severity that was actually found, so a gate can tell "high"
+    # (blocked, rc 20) from "medium" (warn, rc 10) by exit code alone.
+    raise SystemExit(EXIT_CODE_MAPPING.get(outcome["status"], 0))

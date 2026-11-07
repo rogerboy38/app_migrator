@@ -13,17 +13,15 @@ from __future__ import annotations
 
 import json
 import os
-from typing import List, Tuple
-
 from conftest import FakeApp, finding_ids, run_check
 
 CHECK_ID = "undeclared-app-dependency"
 
 # (fieldname, fieldtype, options)
-Field = Tuple[str, str, str]
+Field = tuple[str, str, str]
 
 
-def _write_doctype(root: str, app: str, doctype: str, fields: List[Field]) -> None:
+def _write_doctype(root: str, app: str, doctype: str, fields: list[Field]) -> None:
     """Write a DocType JSON that carries real fieldtypes.
 
     The shared ``FakeApp`` builder only emits ``Data`` fields; the check
@@ -78,9 +76,37 @@ def test_link_to_another_apps_doctype_is_reported_as_medium(apps_root, inventory
     assert finding.id == "integrity-undeclared-app-dependency-amb_w_tds-batch-amb"
 
 
-def test_link_to_a_doctype_nobody_ships_is_high(apps_root, inventory):
-    """A target no installed app ships can never resolve: high."""
+def test_link_to_a_doctype_nobody_ships_is_info_without_the_framework(apps_root, inventory):
+    """A target no app ships, in a scan root that has no frappe / erpnext.
+
+    The scan root is incomplete, so the target may well be shipped by an app
+    that is not in the tree. Reporting that as a defect would be the same
+    mistake as reporting every core DocType as missing: the audited tree
+    produced 67 such findings, all of them the absence of the framework.
+    """
     root = apps_root([
+        FakeApp(name="amb_w_tds"),
+    ])
+    _write_doctype(root, "amb_w_tds", "TDS Batch", [
+        _link("SPC Batch Parameter", "spc_batch_parameter"),
+        _table("SPC Specification", "spec_rows"),
+    ])
+    result = run_check(CHECK_ID, inventory(root))
+    assert len(result.findings) == 2, finding_ids(result)
+    severities = {f.evidence["doctype"]: f.severity for f in result.findings}
+    assert severities == {
+        "SPC Batch Parameter": "info",
+        "SPC Specification": "info",
+    }
+    finding = result.findings[0]
+    assert finding.evidence["owner_apps"] == []
+    assert finding.evidence["targets"][0]["doctype"] == "TDS Batch"
+
+
+def test_link_to_a_doctype_nobody_ships_is_high_when_the_framework_is_present(apps_root, inventory):
+    """With frappe in the tree the scan root is complete: the link is broken."""
+    root = apps_root([
+        FakeApp(name="frappe"),
         FakeApp(name="amb_w_tds"),
     ])
     _write_doctype(root, "amb_w_tds", "TDS Batch", [
@@ -94,9 +120,52 @@ def test_link_to_a_doctype_nobody_ships_is_high(apps_root, inventory):
         "SPC Batch Parameter": "high",
         "SPC Specification": "high",
     }
+
+
+def test_a_core_doctype_is_never_reported_as_missing(apps_root, inventory):
+    """A standard Frappe / ERPNext DocType is the framework's, not an app's.
+
+    The audited scan tree reported 67 "no installed app ships DocType 'X'"
+    findings; every core name among them (``Item``, ``Customer``, ``Batch``,
+    ``Workflow`` ...) was the absence of frappe / erpnext, not a defect.
+    """
+    root = apps_root([
+        FakeApp(name="amb_w_tds"),
+    ])
+    _write_doctype(root, "amb_w_tds", "TDS Batch", [
+        _link("Item", "item_ref"),
+        _link("Customer", "customer_ref"),
+        _link("Workflow", "workflow_ref"),
+    ])
+    result = run_check(CHECK_ID, inventory(root))
+    assert result.findings == [], finding_ids(result)
+
+
+def test_a_doctype_shipped_under_its_folder_slug_is_found(apps_root, inventory):
+    """Frappe derives a DocType's folder from its name.
+
+    ``amb_w_spc`` ships ``fda_compliance/doctype/spc_deviation/`` — folder
+    ``spc_deviation``, display name ``SPC Deviation`` — and a Link field's
+    ``options`` carries the folder slug. Matching on the name alone reported
+    an app as *not shipping* a DocType it ships.
+    """
+    root = apps_root([
+        FakeApp(name="amb_w_spc"),
+        FakeApp(name="amb_w_tds"),
+    ])
+    _write_doctype(root, "amb_w_spc", "SPC Deviation", [("name", "Data", "")])
+    _write_doctype(root, "amb_w_tds", "TDS Batch", [
+        _link("spc_deviation", "deviation_ref"),
+    ])
+    result = run_check(CHECK_ID, inventory(root))
+    # Not "nobody ships it" any more: the owning app is found through the
+    # folder slug, so what remains is the genuine undeclared-dependency
+    # finding.
+    assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
-    assert finding.evidence["owner_apps"] == []
-    assert finding.evidence["targets"][0]["doctype"] == "TDS Batch"
+    assert finding.severity == "medium"
+    assert finding.evidence["owner_app"] == "amb_w_spc"
+    assert finding.evidence["doctype"] == "spc_deviation"
 
 
 def test_declared_dependency_is_not_reported(apps_root, inventory):

@@ -35,7 +35,7 @@ touches the envelope / exit path.
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import click
 
@@ -51,8 +51,7 @@ except ImportError:  # pragma: no cover - bench-free import path
         return f
 
 
-from ._envelope import EXIT_CODE_MAPPING, emit_envelope, make_envelope
-from .._integrity import DEFAULT_APPS_ROOT, DEFAULT_FINDING_LIMIT, Inventory
+from .._integrity import DEFAULT_FINDING_LIMIT, Inventory, discover_apps_root
 from .._integrity.select_option_drift import (
     CHECK_ID,
     CONSTRAINED_FIELDTYPES,
@@ -60,6 +59,7 @@ from .._integrity.select_option_drift import (
     compare_select_options,
     scan_select_options,
 )
+from ._envelope import EXIT_CODE_MAPPING, emit_envelope, make_envelope
 
 COMMAND_NAME = "select-option-drift"
 
@@ -81,12 +81,12 @@ class SiteSelectCollector:
         self.max_doctypes = max_doctypes
         self.doctypes_seen = 0
         self.doctypes_skipped = 0
-        self.errors: List[str] = []
-        self._meta_cache: Dict[str, Any] = {}
-        self._stored_cache: Dict[Any, List[str]] = {}
+        self.errors: list[str] = []
+        self._meta_cache: dict[str, Any] = {}
+        self._stored_cache: dict[Any, list[str]] = {}
 
     # -- collector protocol ------------------------------------------------
-    def doctypes(self) -> List[str]:
+    def doctypes(self) -> list[str]:
         """Every DocType on the site."""
         try:
             names = frappe.get_all("DocType", pluck="name", limit_page_length=0)
@@ -95,12 +95,12 @@ class SiteSelectCollector:
             return []
         return [str(n) for n in names or []]
 
-    def fields(self, doctype: str) -> List[Dict[str, Any]]:
+    def fields(self, doctype: str) -> list[dict[str, Any]]:
         """Descriptors of the constrained (Select / Link) fields of a DocType."""
         meta = self._meta(doctype)
         if meta is None:
             return []
-        descriptors: List[Dict[str, Any]] = []
+        descriptors: list[dict[str, Any]] = []
         for df in getattr(meta, "fields", None) or []:
             fieldtype = getattr(df, "fieldtype", "") or ""
             if fieldtype not in CONSTRAINED_FIELDTYPES:
@@ -111,7 +111,7 @@ class SiteSelectCollector:
             descriptors.append({"fieldname": fieldname, "fieldtype": fieldtype})
         return descriptors
 
-    def stored_values(self, doctype: str, fieldname: str) -> List[str]:
+    def stored_values(self, doctype: str, fieldname: str) -> list[str]:
         """The distinct values actually stored in a column."""
         key = (doctype, fieldname)
         if key in self._stored_cache:
@@ -127,7 +127,7 @@ class SiteSelectCollector:
         self._stored_cache[key] = values
         return values
 
-    def options(self, doctype: str, fieldname: str) -> List[str]:
+    def options(self, doctype: str, fieldname: str) -> list[str]:
         """The values the field currently allows.
 
         For a ``Select`` that is the field's own option list. For a ``Link``
@@ -189,7 +189,7 @@ class SiteSelectCollector:
         return None
 
 
-def _resolve_site(site: Optional[str]) -> Optional[str]:
+def _resolve_site(site: str | None) -> str | None:
     """The site to scan: the explicit one, else the site's current one."""
     if site:
         return site
@@ -212,7 +212,7 @@ def app_migrator_select_option_drift(context, site, as_json, doctype, field, lim
     """Find stored values a Select field no longer allows. Report-only."""
     start = time.time()
 
-    def _fail(summary: str, evidence: List[Dict[str, Any]]) -> None:
+    def _fail(summary: str, evidence: list[dict[str, Any]]) -> None:
         """Emit an error envelope (or a plain message) and exit non-zero."""
         envelope = make_envelope(
             command=COMMAND_NAME,
@@ -256,7 +256,7 @@ def app_migrator_select_option_drift(context, site, as_json, doctype, field, lim
 
     collector = SiteSelectCollector()
     try:
-        inventory = Inventory(apps_root=DEFAULT_APPS_ROOT)
+        inventory = Inventory(apps_root=discover_apps_root())
     except Exception:
         inventory = None
 

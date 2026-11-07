@@ -14,14 +14,13 @@ outside the auto-discovered ``checks/`` registry).
 from __future__ import annotations
 
 import re
-from pathlib import Path
-
 from app_migrator._integrity.select_option_drift import (
     CHECK_ID,
     build_findings,
     compare_select_options,
     scan_select_options,
 )
+from pathlib import Path
 
 STOCK_ENTRY = "Stock Entry"
 

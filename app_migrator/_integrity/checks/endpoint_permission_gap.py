@@ -7,8 +7,21 @@ Audited evidence (both audits, 2026-11-05):
 - ``amb_w_tds`` publishes ``cleanup_test_data`` — a whitelisted endpoint that
   deletes rows — plus two FoxPro migration helpers, also whitelisted. A
   migration helper reachable over HTTP is no longer a migration helper.
-- Neither audited app shipped a single ``allow_guest=True`` endpoint, so a
-  guest endpoint is a defect rather than a house style.
+- Neither ``amb_w_tds`` nor ``rnd_warehouse_management`` shipped a single
+  ``allow_guest=True`` endpoint, so a guest endpoint is a defect rather
+  than a house style. ``amb_w_spc`` ships two: ``receive_weight_event``
+  (guest-writable — a real defect) and ``bot_authenticate`` (a **login**
+  endpoint, where guest access is the point).
+
+Guest access is not the same thing as a permission bypass
+-------------------------------------------------------
+An endpoint that both accepts guests and hands out a credential is an
+**authentication** endpoint. Calling it "a guest permission bypass" says
+something false: establishing the session is its job. It is still reported
+— a credential-minting endpoint that anyone can reach is exactly what a
+human should look at — but under its own framing, and at ``medium``: the
+question is not "why is there no permission check" but "is the credential
+check sound".
 
 Why it matters
 --------------
@@ -24,7 +37,9 @@ One finding per endpoint that is whitelisted, reaches the database through a
 permission-bypassing API and carries no guard of its own. Write-capable
 endpoints are ``high``; read-only ones are ``medium``. A whitelisted function
 defined in a test or migration module is always ``high``, because such a
-function is reachable over HTTP whether or not it touches the database.
+function is reachable over HTTP whether or not it touches the database. A
+guest endpoint that returns a credential is reported as an authentication
+endpoint at ``medium``.
 
 The check is a pure AST + filesystem read: it never imports ``frappe`` and
 never touches a bench, a database or the network.
@@ -34,7 +49,8 @@ from __future__ import annotations
 import ast
 import os
 import re
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple
+from collections.abc import Iterator
+from typing import Any
 
 from ..base import CheckResult, CheckSpec, Finding
 from ..context import Inventory, iter_python_files, parse_python, read_text
@@ -70,6 +86,23 @@ GUARD_TOKENS = (
     "permissionerror",
     "roles",
 )
+
+#: Keys that mark a returned dict as handing out a credential. A guest
+#: endpoint that returns one of these is an **authentication** endpoint, not
+#: a permission bypass: it is supposed to be reachable without a session,
+#: because establishing the session is its job.
+CREDENTIAL_KEYS = frozenset({
+    "access_token",
+    "api_key",
+    "api_token",
+    "auth_token",
+    "id_token",
+    "jwt",
+    "refresh_token",
+    "secret",
+    "session_token",
+    "token",
+})
 
 #: SQL leading keywords that mean "this statement changes data".
 WRITE_SQL_KEYWORDS = frozenset({
@@ -112,7 +145,7 @@ def _module_kind(rel_path: str) -> str:
     return "application"
 
 
-def _literal_str(node: ast.AST) -> Optional[str]:
+def _literal_str(node: ast.AST) -> str | None:
     """Return the string value of a literal node, else ``None``."""
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
@@ -137,8 +170,8 @@ class _Resolver:
     """
 
     def __init__(self, tree: ast.Module) -> None:
-        self.aliases: Dict[str, str] = {}
-        self.constants: Dict[str, str] = {}
+        self.aliases: dict[str, str] = {}
+        self.constants: dict[str, str] = {}
         for node in tree.body:
             if isinstance(node, ast.Import):
                 for alias in node.names:
@@ -161,7 +194,7 @@ class _Resolver:
                     elif literal is not None:
                         self.constants[target.id] = literal
 
-    def resolve(self, node: ast.AST) -> Optional[str]:
+    def resolve(self, node: ast.AST) -> str | None:
         """Canonical dotted path of ``node``, or ``None`` when unknown."""
         if isinstance(node, ast.Name):
             if node.id in self.aliases:
@@ -182,13 +215,13 @@ class _Resolver:
 # --------------------------------------------------------------------------
 # AST walking
 # --------------------------------------------------------------------------
-def _iter_scope_nodes(stmts: List[ast.stmt]) -> Iterator[ast.AST]:
+def _iter_scope_nodes(stmts: list[ast.stmt]) -> Iterator[ast.AST]:
     """Yield every node of ``stmts`` without descending into nested scopes.
 
     A nested ``def`` / ``class`` gets its own analysis; attributing its calls
     to the enclosing endpoint as well would double-count the same bypass.
     """
-    stack: List[ast.AST] = list(stmts)
+    stack: list[ast.AST] = list(stmts)
     while stack:
         node = stack.pop()
         yield node
@@ -197,9 +230,9 @@ def _iter_scope_nodes(stmts: List[ast.stmt]) -> Iterator[ast.AST]:
         stack.extend(ast.iter_child_nodes(node))
 
 
-def _iter_functions(tree: ast.Module) -> Iterator[Tuple[str, ast.AST]]:
+def _iter_functions(tree: ast.Module) -> Iterator[tuple[str, ast.AST]]:
     """Yield ``(qualified_name, function_node)`` for every function."""
-    stack: List[Tuple[List[ast.stmt], str]] = [(tree.body, "")]
+    stack: list[tuple[list[ast.stmt], str]] = [(tree.body, "")]
     while stack:
         stmts, prefix = stack.pop()
         for node in reversed(stmts):
@@ -255,7 +288,7 @@ def _allow_guest(decorator: ast.AST) -> bool:
     return False
 
 
-def _static_text(node: ast.AST, resolver: _Resolver) -> Optional[str]:
+def _static_text(node: ast.AST, resolver: _Resolver) -> str | None:
     """Recover the static text of an expression, as far as possible.
 
     Literals, f-string prefixes, string concatenations and module-level
@@ -265,7 +298,7 @@ def _static_text(node: ast.AST, resolver: _Resolver) -> Optional[str]:
     if literal is not None:
         return literal
     if isinstance(node, ast.JoinedStr):
-        parts: List[str] = []
+        parts: list[str] = []
         for value in node.values:
             text = _literal_str(value)
             parts.append(text if text is not None else " ")
@@ -281,7 +314,7 @@ def _static_text(node: ast.AST, resolver: _Resolver) -> Optional[str]:
     return None
 
 
-def _sql_verdict(call: ast.Call, resolver: _Resolver) -> Optional[bool]:
+def _sql_verdict(call: ast.Call, resolver: _Resolver) -> bool | None:
     """``True`` for writing SQL, ``False`` for reading SQL, ``None`` unknown."""
     if not call.args:
         return None
@@ -312,13 +345,13 @@ def _has_ignore_permissions(call: ast.Call) -> bool:
     return False
 
 
-def _collect_apis(func: ast.AST, resolver: _Resolver) -> Tuple[Set[str], bool]:
+def _collect_apis(func: ast.AST, resolver: _Resolver) -> tuple[set[str], bool]:
     """Return ``(bypass_apis, write_capable)`` for one function.
 
     ``frappe.db.commit`` only counts as a bypass when the function also
     writes — a commit on its own proves nothing.
     """
-    apis: Set[str] = set()
+    apis: set[str] = set()
     write_capable = False
     has_commit = False
     for node in _iter_scope_nodes(func.body):
@@ -362,6 +395,28 @@ def _has_guard(func: ast.AST) -> bool:
     return False
 
 
+def _issues_credential(func: ast.AST) -> bool:
+    """True when the function returns a dict that carries a credential.
+
+    A ``return {"session_token": ...}`` (or any other credential-bearing key)
+    is what makes a guest endpoint an authentication endpoint rather than a
+    permission bypass. The key set is explicit on purpose: a heuristic on the
+    function name alone would misclassify an endpoint that merely *mentions*
+    "auth" in its name.
+    """
+    for node in ast.walk(func):
+        if not isinstance(node, ast.Dict):
+            continue
+        for key in node.keys:
+            if (
+                isinstance(key, ast.Constant)
+                and isinstance(key.value, str)
+                and key.value.strip().lower() in CREDENTIAL_KEYS
+            ):
+                return True
+    return False
+
+
 def _finding_id(app_name: str, rel_path: str, qualname: str) -> str:
     """Stable finding id: no line numbers, so ids survive line shifts."""
     stem = os.path.splitext(rel_path)[0]
@@ -372,14 +427,14 @@ def _finding_id(app_name: str, rel_path: str, qualname: str) -> str:
 # --------------------------------------------------------------------------
 # Check
 # --------------------------------------------------------------------------
-def scan_endpoints(inventory: Inventory) -> Dict[str, Any]:
+def scan_endpoints(inventory: Inventory) -> dict[str, Any]:
     """Scan every app for whitelisted endpoints that bypass permissions.
 
     Returns a dict with an ``endpoints`` map of finding id -> endpoint facts,
     plus scan counters under ``_stats``.
     """
-    endpoints: Dict[str, Any] = {}
-    stats: Dict[str, Any] = {
+    endpoints: dict[str, Any] = {}
+    stats: dict[str, Any] = {
         "apps_scanned": len(inventory.apps),
         "files_scanned": 0,
         "parse_errors": 0,
@@ -434,23 +489,43 @@ def scan_endpoints(inventory: Inventory) -> Dict[str, Any]:
                     "write_capable": write_capable,
                     "module_kind": module_kind,
                     "allow_guest": allow_guest,
+                    "is_auth_endpoint": allow_guest and _issues_credential(func),
                 }
     stats["unprotected_endpoints"] = len(endpoints)
     return {"endpoints": endpoints, "_stats": stats}
 
 
-def build_findings(scan: Dict[str, Any]) -> List[Finding]:
+def build_findings(scan: dict[str, Any]) -> list[Finding]:
     """Turn the endpoint scan into envelope findings."""
-    findings: List[Finding] = []
+    findings: list[Finding] = []
     for finding_id in sorted(scan.get("endpoints", {})):
         info = scan["endpoints"][finding_id]
         function = info["function"]
         apis = info["apis"]
         in_test_module = info["module_kind"] == "test_or_migration"
+        is_auth_endpoint = bool(info.get("is_auth_endpoint"))
         severity = "high" if (info["write_capable"] or in_test_module) else "medium"
 
         prefix = "GUEST-accessible " if info["allow_guest"] else ""
-        if in_test_module:
+        if is_auth_endpoint:
+            # A login endpoint is *supposed* to be reachable without a
+            # session: establishing the session is its job. Reporting it as
+            # a permission bypass says something false. It is still reported
+            # — a guest credential-minting endpoint is exactly what a human
+            # needs to look at — but with the right framing and severity.
+            severity = "medium"
+            title = f"{prefix}Authentication endpoint '{function}' is reachable without a session"
+            detail = (
+                f"'{function}' is published as an HTTP endpoint with allow_guest=True and "
+                f"returns a credential. Guest access is expected for an authentication "
+                f"endpoint, so this is not a permission bypass — but it is reachable by "
+                f"anyone at all, with no session. The review focus is the credential "
+                f"check itself: how the presented key is compared, whether repeated "
+                f"attempts are rate-limited, and what an unauthenticated caller learns "
+                f"from the response."
+            )
+        elif in_test_module:
+            severity = "high"
             title = f"{prefix}Whitelisted endpoint '{function}' lives in a test/migration module"
             detail = (
                 f"'{function}' is published as an HTTP endpoint via @frappe.whitelist() but "
@@ -458,17 +533,23 @@ def build_findings(scan: Dict[str, Any]) -> List[Finding]:
                 "function is reachable over HTTP even when it is only meant to run "
                 "inside a test run or a migration."
             )
+            if info["allow_guest"]:
+                detail += (
+                    " The decorator asks for allow_guest=True, so the endpoint needs no "
+                    "session at all — it is reachable by anyone."
+                )
         else:
+            severity = "high" if info["write_capable"] else "medium"
+            caller = (
+                "anyone at all — no session is required"
+                if info["allow_guest"]
+                else "any logged-in user"
+            )
             title = f"{prefix}Whitelisted endpoint '{function}' bypasses the permission model"
             detail = (
                 f"'{function}' is published as an HTTP endpoint via @frappe.whitelist() and "
                 f"reaches the database through {', '.join(apis)} without a permission guard "
-                "of its own, so any logged-in user can call it."
-            )
-        if info["allow_guest"]:
-            detail += (
-                " The decorator asks for allow_guest=True, so the endpoint needs no "
-                "session at all — it is reachable by anyone."
+                f"of its own, so {caller} can call it."
             )
         findings.append(
             Finding(
@@ -485,6 +566,7 @@ def build_findings(scan: Dict[str, Any]) -> List[Finding]:
                     "write_capable": info["write_capable"],
                     "module_kind": info["module_kind"],
                     "allow_guest": info["allow_guest"],
+                    "is_auth_endpoint": is_auth_endpoint,
                 },
             )
         )

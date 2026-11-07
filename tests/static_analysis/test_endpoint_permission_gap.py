@@ -12,9 +12,8 @@ CLI, which is the point of placing them outside ``app_migrator/commands/``.
 from __future__ import annotations
 
 import re
-from pathlib import Path
-
 from conftest import FakeApp, finding_ids, run_check
+from pathlib import Path
 
 CHECK_ID = "endpoint-permission-gap"
 
@@ -248,3 +247,94 @@ def test_check_module_never_imports_frappe():
     source = Path(module.__file__).read_text(encoding="utf-8")
     assert not re.search(r"^\s*import\s+frappe\b", source, re.M)
     assert not re.search(r"^\s*from\s+frappe\b", source, re.M)
+
+
+GUEST_LOGIN_ENDPOINT = """
+import frappe
+
+
+@frappe.whitelist(allow_guest=True)
+def bot_authenticate(api_key, bot_type):
+    cfg = frappe.get_all("Bot Config", filters={"api_key": api_key}, fields=["name"])
+    if not cfg:
+        frappe.throw("Invalid")
+    return {"status": "authenticated", "session_token": "abc123"}
+"""
+
+GUEST_WRITE_ENDPOINT = """
+import frappe
+
+
+@frappe.whitelist(allow_guest=True)
+def receive_weight_event(**kwargs):
+    doc = frappe.get_doc({"doctype": "Weight Event"})
+    doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return {"status": "success"}
+"""
+
+
+def test_a_guest_login_endpoint_is_not_reported_as_a_permission_bypass(apps_root, inventory):
+    """An endpoint that hands out a credential is an *authentication* endpoint.
+
+    ``amb_w_spc`` ships ``bot_authenticate`` with ``allow_guest=True``.
+    Calling it "a guest permission bypass" says something false: guest
+    access is the point -- establishing the session is its job. It is still
+    reported, because a credential-minting endpoint that anyone can reach
+    is worth a human's attention, but under its own framing.
+    """
+    root = apps_root([
+        FakeApp(
+            name="amb_w_spc",
+            python_files={"scripts/automation_scripts.py": GUEST_LOGIN_ENDPOINT},
+        ),
+    ])
+    result = run_check(CHECK_ID, inventory(root))
+    assert len(result.findings) == 1, finding_ids(result)
+    finding = result.findings[0]
+    assert finding.severity == "medium", finding.severity
+    assert "Authentication endpoint" in finding.title, finding.title
+    assert "permission bypass" not in finding.title, finding.title
+    assert finding.evidence["is_auth_endpoint"] is True
+    assert finding.evidence["allow_guest"] is True
+
+
+def test_a_guest_write_endpoint_is_still_a_permission_bypass(apps_root, inventory):
+    """Guest access is only excusable when the endpoint is a login endpoint.
+
+    ``receive_weight_event`` accepts guests *and* writes with
+    ``ignore_permissions=True``. That is the real defect, and it keeps the
+    high severity.
+    """
+    root = apps_root([
+        FakeApp(
+            name="amb_w_spc",
+            python_files={
+                "system_integration/doctype/weight_event/weight_event.py":
+                    GUEST_WRITE_ENDPOINT
+            },
+        ),
+    ])
+    result = run_check(CHECK_ID, inventory(root))
+    assert len(result.findings) == 1, finding_ids(result)
+    finding = result.findings[0]
+    assert finding.severity == "high", finding.severity
+    assert "bypasses the permission model" in finding.title, finding.title
+    assert finding.evidence["is_auth_endpoint"] is False
+
+
+def test_the_guest_wording_does_not_say_logged_in_users(apps_root, inventory):
+    """A guest endpoint is reachable by anyone at all, not only by logged-in users."""
+    root = apps_root([
+        FakeApp(
+            name="amb_w_spc",
+            python_files={
+                "system_integration/doctype/weight_event/weight_event.py":
+                    GUEST_WRITE_ENDPOINT
+            },
+        ),
+    ])
+    result = run_check(CHECK_ID, inventory(root))
+    description = result.findings[0].description
+    assert "any logged-in user" not in description, description
+    assert "anyone at all" in description, description

@@ -39,7 +39,8 @@ written, the resolved file / line when the target does exist, and the reason:
 - ``override_whitelisted_methods`` target missing -> ``high``;
 - ``override_doctype_class`` target missing -> ``high``; target exists but
   the claimed DocType ships in another app -> ``medium`` (ownership drift);
-- ``has_website_permission`` handler missing -> ``medium``;
+- ``has_website_permission`` handler missing -> ``medium`` (read from both
+  shapes Frappe accepts: a dict keyed by DocType, and a plain list);
 - a module-level class inheriting ``Document`` that is never registered or
   referenced anywhere in the app -> ``high``.
 
@@ -51,8 +52,9 @@ from __future__ import annotations
 import ast
 import os
 import re
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Any
 
 from ..base import CheckResult, CheckSpec, Finding
 from ..context import AppInfo, Inventory, iter_python_files, parse_python
@@ -93,7 +95,7 @@ def _rel(app: AppInfo, path: str) -> str:
 # --------------------------------------------------------------------------
 # Dotted-path resolution
 # --------------------------------------------------------------------------
-def _module_candidates(app: AppInfo, module_parts: Sequence[str]) -> List[str]:
+def _module_candidates(app: AppInfo, module_parts: Sequence[str]) -> list[str]:
     """Package-relative files that could hold ``module_parts``.
 
     A hook path normally starts with the app name
@@ -109,7 +111,7 @@ def _module_candidates(app: AppInfo, module_parts: Sequence[str]) -> List[str]:
     return [f"{rel}.py", f"{rel}/__init__.py"]
 
 
-def _module_exists(app: AppInfo, module_parts: Sequence[str]) -> Optional[str]:
+def _module_exists(app: AppInfo, module_parts: Sequence[str]) -> str | None:
     """The file that holds ``module_parts``, when there is one."""
     for rel in _module_candidates(app, module_parts):
         path = os.path.join(app.package, *rel.split("/"))
@@ -118,7 +120,7 @@ def _module_exists(app: AppInfo, module_parts: Sequence[str]) -> Optional[str]:
     return None
 
 
-def _lookup(tree: ast.Module, name: str) -> Tuple[Optional[ast.AST], Optional[str]]:
+def _lookup(tree: ast.Module, name: str) -> tuple[ast.AST | None, str | None]:
     """Find a module-level definition called ``name``."""
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
@@ -140,7 +142,7 @@ def _lookup(tree: ast.Module, name: str) -> Tuple[Optional[ast.AST], Optional[st
 
 def _resolve_attr(
     tree: ast.Module, attr_parts: Sequence[str]
-) -> Tuple[Optional[ast.AST], Optional[str]]:
+) -> tuple[ast.AST | None, str | None]:
     """Resolve an attribute path inside one module.
 
     Supports ``name`` and ``Class.name`` (a method of a module-level class).
@@ -185,13 +187,13 @@ class _Resolution:
     """Outcome of resolving one dotted hook target."""
 
     ok: bool
-    file: Optional[str] = None
-    line: Optional[int] = None
-    kind: Optional[str] = None
+    file: str | None = None
+    line: int | None = None
+    kind: str | None = None
     noop: bool = False
-    module_file: Optional[str] = None
-    module_dotted: Optional[str] = None
-    attr: Optional[str] = None
+    module_file: str | None = None
+    module_dotted: str | None = None
+    attr: str | None = None
 
 
 class _AppResolver:
@@ -206,7 +208,7 @@ class _AppResolver:
         if len(parts) < 2:
             return _Resolution(ok=False, attr=parts[-1] if parts else None)
 
-        existing: List[Tuple[int, str, str]] = []
+        existing: list[tuple[int, str, str]] = []
         for k in range(len(parts) - 1, 0, -1):
             mod_parts = parts[:k]
             attr_parts = parts[k:]
@@ -304,7 +306,7 @@ def _handler_slug(handler: str, app: AppInfo) -> str:
 # --------------------------------------------------------------------------
 # App source analysis (classes and references)
 # --------------------------------------------------------------------------
-def _app_python_files(app: AppInfo) -> List[str]:
+def _app_python_files(app: AppInfo) -> list[str]:
     """Every python file of the app, including its ``hooks.py``."""
     files = list(iter_python_files(app.package))
     hooks_path = app.hooks.path
@@ -313,7 +315,7 @@ def _app_python_files(app: AppInfo) -> List[str]:
     return sorted(files)
 
 
-def _iter_references(tree: ast.Module) -> Iterable[Tuple[str, int, str]]:
+def _iter_references(tree: ast.Module) -> Iterable[tuple[str, int, str]]:
     """Yield every name an AST tree mentions: ``(name, line, kind)``."""
     for node in ast.walk(tree):
         if isinstance(node, ast.Name):
@@ -338,9 +340,9 @@ class _AppSource:
     """The app's python source, indexed for class / reference questions."""
 
     app: AppInfo
-    files: List[str] = field(default_factory=list)
-    classes: Dict[str, Tuple[ast.ClassDef, str]] = field(default_factory=dict)
-    references: Dict[str, List[Tuple[str, int, str]]] = field(default_factory=dict)
+    files: list[str] = field(default_factory=list)
+    classes: dict[str, tuple[ast.ClassDef, str]] = field(default_factory=dict)
+    references: dict[str, list[tuple[str, int, str]]] = field(default_factory=dict)
 
     @classmethod
     def build(cls, app: AppInfo) -> "_AppSource":
@@ -357,7 +359,7 @@ class _AppSource:
                 source.references.setdefault(name, []).append((path, lineno, kind))
         return source
 
-    def references_to(self, name: str, exclude: Optional[Tuple[str, int]] = None) -> int:
+    def references_to(self, name: str, exclude: tuple[str, int] | None = None) -> int:
         """How often ``name`` is mentioned, ignoring its own definition."""
         count = 0
         for path, lineno, kind in self.references.get(name, []):
@@ -367,9 +369,9 @@ class _AppSource:
         return count
 
 
-def _base_names(node: ast.ClassDef) -> List[str]:
+def _base_names(node: ast.ClassDef) -> list[str]:
     """Names of the classes a class definition inherits from."""
-    names: List[str] = []
+    names: list[str] = []
     for base in node.bases:
         if isinstance(base, ast.Name):
             names.append(base.id)
@@ -386,8 +388,8 @@ def _base_names(node: ast.ClassDef) -> List[str]:
 
 def _is_document_class(
     node: ast.ClassDef,
-    classes: Dict[str, Tuple[ast.ClassDef, str]],
-    seen: Optional[Set[str]] = None,
+    classes: dict[str, tuple[ast.ClassDef, str]],
+    seen: set[str] | None = None,
 ) -> bool:
     """True when the class inherits ``Document`` (directly or via a base)."""
     seen = set() if seen is None else seen
@@ -420,13 +422,13 @@ def _is_convention_path(app: AppInfo, path: str) -> bool:
 # --------------------------------------------------------------------------
 # Hook scanners
 # --------------------------------------------------------------------------
-def _hook_dict(app: AppInfo, name: str) -> Dict[str, Any]:
+def _hook_dict(app: AppInfo, name: str) -> dict[str, Any]:
     """A hook value, but only when it is a literal dict."""
     value = app.hooks.get(name)
     return value if isinstance(value, dict) else {}
 
 
-def _iter_handlers(value: Any) -> Iterable[Tuple[Optional[str], str]]:
+def _iter_handlers(value: Any) -> Iterable[tuple[str | None, str]]:
     """Yield ``(event, handler)`` pairs from a hook value.
 
     ``doc_events`` is written either as ``{doctype: [handler, ...]}`` or as
@@ -457,8 +459,8 @@ def _entry(
     severity: str,
     title: str,
     description: str,
-    evidence: Dict[str, Any],
-) -> Dict[str, Any]:
+    evidence: dict[str, Any],
+) -> dict[str, Any]:
     """One raw finding entry (the app name is added when building)."""
     return {
         "kind": kind,
@@ -477,8 +479,8 @@ def _missing_entry(
     hook: str,
     value: str,
     resolution: _Resolution,
-    evidence_extra: Dict[str, Any],
-) -> Dict[str, Any]:
+    evidence_extra: dict[str, Any],
+) -> dict[str, Any]:
     """Entry for a hook target that does not resolve."""
     evidence = {
         "kind": kind,
@@ -509,8 +511,8 @@ def _noop_entry(
     value: str,
     resolution: _Resolution,
     app: AppInfo,
-    evidence_extra: Dict[str, Any],
-) -> Dict[str, Any]:
+    evidence_extra: dict[str, Any],
+) -> dict[str, Any]:
     """Entry for a hook handler that exists but does nothing."""
     evidence = {
         "kind": kind,
@@ -536,9 +538,9 @@ def _noop_entry(
     )
 
 
-def _scan_doc_events(app: AppInfo, inventory: Inventory) -> List[Dict[str, Any]]:
+def _scan_doc_events(app: AppInfo, inventory: Inventory) -> list[dict[str, Any]]:
     """``doc_events`` handlers that are missing or do nothing."""
-    collected: Dict[str, Dict[str, Any]] = {}
+    collected: dict[str, dict[str, Any]] = {}
     for doctype, value in sorted(_hook_dict(app, "doc_events").items()):
         for event, handler in _iter_handlers(value):
             handler = handler.strip()
@@ -550,7 +552,7 @@ def _scan_doc_events(app: AppInfo, inventory: Inventory) -> List[Dict[str, Any]]
             if event and event not in entry["events"]:
                 entry["events"].append(event)
 
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     for handler, entry in sorted(collected.items()):
         resolution = _resolve_target(inventory, app, handler)
         extra = {"doctypes": entry["doctypes"], "events": entry["events"]}
@@ -566,9 +568,9 @@ def _scan_doc_events(app: AppInfo, inventory: Inventory) -> List[Dict[str, Any]]
     return results
 
 
-def _scan_scheduler_events(app: AppInfo, inventory: Inventory) -> List[Dict[str, Any]]:
+def _scan_scheduler_events(app: AppInfo, inventory: Inventory) -> list[dict[str, Any]]:
     """``scheduler_events`` handlers that are missing or do nothing."""
-    collected: Dict[str, Dict[str, Any]] = {}
+    collected: dict[str, dict[str, Any]] = {}
     for event, value in sorted(_hook_dict(app, "scheduler_events").items()):
         for _, handler in _iter_handlers(value):
             handler = handler.strip()
@@ -578,7 +580,7 @@ def _scan_scheduler_events(app: AppInfo, inventory: Inventory) -> List[Dict[str,
             if event not in entry["events"]:
                 entry["events"].append(event)
 
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     for handler, entry in sorted(collected.items()):
         resolution = _resolve_target(inventory, app, handler)
         extra = {"events": entry["events"]}
@@ -598,16 +600,16 @@ def _scan_scheduler_events(app: AppInfo, inventory: Inventory) -> List[Dict[str,
     return results
 
 
-def _scan_override_whitelisted(app: AppInfo, inventory: Inventory) -> List[Dict[str, Any]]:
+def _scan_override_whitelisted(app: AppInfo, inventory: Inventory) -> list[dict[str, Any]]:
     """``override_whitelisted_methods`` targets that do not resolve."""
-    collected: Dict[str, List[str]] = {}
+    collected: dict[str, list[str]] = {}
     for original, target in sorted(_hook_dict(app, "override_whitelisted_methods").items()):
         if not isinstance(target, str) or not target.strip():
             continue
         target = target.strip()
         collected.setdefault(target, []).append(str(original))
 
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     for target, originals in sorted(collected.items()):
         resolution = _resolve_target(inventory, app, target)
         if resolution.ok:
@@ -625,24 +627,61 @@ def _scan_override_whitelisted(app: AppInfo, inventory: Inventory) -> List[Dict[
     return results
 
 
-def _scan_website_permission(app: AppInfo, inventory: Inventory) -> List[Dict[str, Any]]:
-    """``has_website_permission`` handlers that do not resolve."""
-    value = app.hooks.get("has_website_permission")
-    if not isinstance(value, (list, tuple)):
-        return []
+def _website_permission_handlers(app: AppInfo) -> list[tuple[str, list[str]]]:
+    """``has_website_permission`` handlers and the DocTypes that own them.
 
-    results: List[Dict[str, Any]] = []
-    seen: Set[str] = set()
-    for handler in value:
+    Frappe accepts two shapes for this hook:
+
+    - a **dict** keyed by DocType -> handler path. This is the shape every
+      audited app uses: ``rnd_warehouse_management`` keys it by
+      ``"Warehouse"`` and ``"Stock Entry"``. A scanner that only understands
+      a plain list sees *no* targets at all and reports nothing;
+    - a **plain list** of handler paths, accepted by some Frappe versions.
+
+    Returns ``(handler, doctypes)`` pairs sorted by handler. The doctype list
+    is empty for the list shape (there is no owner to name). Entries that are
+    not strings are skipped.
+    """
+    value = app.hooks.get("has_website_permission")
+    collected: dict[str, list[str]] = {}
+
+    def _add(handler: Any, doctype: str | None) -> None:
         if not isinstance(handler, str):
-            continue
+            return
         handler = handler.strip()
-        if not handler or handler in seen:
-            continue
-        seen.add(handler)
+        if not handler:
+            return
+        owners = collected.setdefault(handler, [])
+        if doctype and doctype not in owners:
+            owners.append(doctype)
+
+    if isinstance(value, dict):
+        for doctype, handler in value.items():
+            _add(handler, str(doctype))
+    elif isinstance(value, (list, tuple)):
+        for handler in value:
+            _add(handler, None)
+
+    return [(handler, collected[handler]) for handler in sorted(collected)]
+
+
+def _scan_website_permission(app: AppInfo, inventory: Inventory) -> list[dict[str, Any]]:
+    """``has_website_permission`` handlers that do not resolve.
+
+    The dict shape carries the owning DocType as evidence: ``doctypes`` lists
+    every DocType that maps to the handler, ``doctype`` names the owner when
+    there is exactly one.
+    """
+    results: list[dict[str, Any]] = []
+    for handler, doctypes in _website_permission_handlers(app):
         resolution = _resolve_target(inventory, app, handler)
         if resolution.ok:
             continue
+        extra: dict[str, Any] = {}
+        if doctypes:
+            extra["doctypes"] = doctypes
+            if len(doctypes) == 1:
+                extra["doctype"] = doctypes[0]
         results.append(
             _missing_entry(
                 "website-permission",
@@ -650,13 +689,13 @@ def _scan_website_permission(app: AppInfo, inventory: Inventory) -> List[Dict[st
                 "has_website_permission",
                 handler,
                 resolution,
-                {},
+                extra,
             )
         )
     return results
 
 
-def _shipped_name(inventory: Inventory, doctype: str) -> Optional[str]:
+def _shipped_name(inventory: Inventory, doctype: str) -> str | None:
     """The name a DocType is actually shipped under (casing may differ)."""
     for name in inventory.all_shipped_doctypes():
         if name.lower() == (doctype or "").lower():
@@ -664,9 +703,9 @@ def _shipped_name(inventory: Inventory, doctype: str) -> Optional[str]:
     return None
 
 
-def _scan_override_doctype_class(app: AppInfo, inventory: Inventory) -> List[Dict[str, Any]]:
+def _scan_override_doctype_class(app: AppInfo, inventory: Inventory) -> list[dict[str, Any]]:
     """``override_doctype_class`` targets that do not resolve, or claim drift."""
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     for doctype, target in sorted(_hook_dict(app, "override_doctype_class").items()):
         if not isinstance(target, str) or not target.strip():
             continue
@@ -760,16 +799,14 @@ def _count_hook_targets(app: AppInfo) -> int:
     for value in _hook_dict(app, "scheduler_events").values():
         total += sum(1 for _ in _iter_handlers(value))
     total += len(_hook_dict(app, "override_whitelisted_methods"))
-    website = app.hooks.get("has_website_permission")
-    if isinstance(website, (list, tuple)):
-        total += len(website)
+    total += len(_website_permission_handlers(app))
     total += len(_hook_dict(app, "override_doctype_class"))
     return total
 
 
-def _scan_unregistered_classes(app: AppInfo, source: _AppSource) -> List[Dict[str, Any]]:
+def _scan_unregistered_classes(app: AppInfo, source: _AppSource) -> list[dict[str, Any]]:
     """``Document`` subclasses that nothing in the app ever references."""
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     for name, (node, path) in sorted(source.classes.items()):
         if not _is_document_class(node, source.classes):
             continue
@@ -808,13 +845,13 @@ def _scan_unregistered_classes(app: AppInfo, source: _AppSource) -> List[Dict[st
 # --------------------------------------------------------------------------
 # Check entry points
 # --------------------------------------------------------------------------
-def scan_dead_hook_targets(inventory: Inventory) -> Dict[str, Any]:
+def scan_dead_hook_targets(inventory: Inventory) -> dict[str, Any]:
     """Return the dead hook targets of every app.
 
     Returns a dict with an ``apps`` map (app name -> list of raw entries)
     plus scan counters under ``_stats``.
     """
-    apps: Dict[str, Any] = {}
+    apps: dict[str, Any] = {}
     hooks_scanned = 0
     targets_missing = 0
     targets_noop = 0
@@ -826,7 +863,7 @@ def scan_dead_hook_targets(inventory: Inventory) -> Dict[str, Any]:
         source = _AppSource.build(app)
         classes_scanned += len(source.classes)
         hooks_scanned += _count_hook_targets(app)
-        entries: List[Dict[str, Any]] = []
+        entries: list[dict[str, Any]] = []
         entries += _scan_doc_events(app, inventory)
         entries += _scan_scheduler_events(app, inventory)
         entries += _scan_override_whitelisted(app, inventory)
@@ -859,9 +896,9 @@ def scan_dead_hook_targets(inventory: Inventory) -> Dict[str, Any]:
     }
 
 
-def build_findings(scan: Dict[str, Any]) -> List[Finding]:
+def build_findings(scan: dict[str, Any]) -> list[Finding]:
     """Turn the dead-hook scan into envelope findings."""
-    findings: List[Finding] = []
+    findings: list[Finding] = []
     for app_name, entries in sorted(scan.get("apps", {}).items()):
         for entry in entries:
             evidence = dict(entry["evidence"])
