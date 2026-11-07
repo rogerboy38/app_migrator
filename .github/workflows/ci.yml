@@ -19,6 +19,36 @@ env:
 
 jobs:
   # ============================================
+  # JOB 0: FAST GATE - import + bench-free integrity tests
+  # ============================================
+  # Why this job exists: commit a3c297b (2026-05-07) added an import for a
+  # module that was not in the tree, so every `bench app-migrator` command
+  # died with ModuleNotFoundError. The lint job still PASSED, because ruff
+  # never imports the package. This job imports it and runs the
+  # audit-derived integrity suite in seconds, with no bench and no Frappe.
+  fast-gate:
+    name: Fast Gate - Import + Integrity Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install test dependencies
+        # The real module-level third-party imports of app_migrator.
+        run: pip install pytest click pyyaml requests keyring cryptography
+
+      - name: Import gate - the package must load
+        run: python -m pytest tests/static_analysis/test_package_import_gate.py -v
+
+      - name: Bench-free integrity check suite
+        run: python -m pytest tests/static_analysis -v
+
+  # ============================================
   # JOB 1: LINT - Code Quality Checks
   # ============================================
   lint:

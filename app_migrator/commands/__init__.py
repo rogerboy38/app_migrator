@@ -64,6 +64,8 @@ from .benches import app_migrator_benches
 from .conflicts import app_migrator_conflicts
 from .module_conflicts import app_migrator_module_conflicts  # v0.5-alpha W1 (Coder 2026-06-24)
 from .planner import app_migrator_planner  # v0.5-alpha W1 (Coder 2026-06-24)
+from .audit_integrity import app_migrator_audit_integrity  # audit-derived integrity checks (2026-11-05)
+from .select_option_drift import app_migrator_select_option_drift  # audit-derived integrity checks (2026-11-05)
 from .verifier import app_migrator_verifier  # v0.5-alpha W1 (Coder 2026-06-24)
 from .sessions import app_migrator_sessions  # v0.5-alpha W1 (Coder 2026-06-24)
 
@@ -200,6 +202,8 @@ app_migrator.add_command(app_migrator_health, 'health')
 app_migrator.add_command(app_migrator_scan, 'scan')
 app_migrator.add_command(app_migrator_conflicts, 'conflicts')
 app_migrator.add_command(app_migrator_module_conflicts, 'module-conflicts')  # v0.5-alpha W1 (Coder 2026-06-24)
+app_migrator.add_command(app_migrator_audit_integrity, 'audit-integrity')  # audit-derived integrity checks (2026-11-05)
+app_migrator.add_command(app_migrator_select_option_drift, 'select-option-drift')  # audit-derived integrity checks (2026-11-05)
 app_migrator.add_command(app_migrator_planner, 'planner')  # v0.5-alpha W1 (Coder 2026-06-24)
 app_migrator.add_command(app_migrator_verifier, 'verifier')  # v0.5-alpha W1 (Coder 2026-06-24)
 app_migrator.add_command(app_migrator_sessions, 'sessions')  # v0.5-alpha W1 (Coder 2026-06-24)
@@ -278,6 +282,8 @@ commands = [
     app_migrator_orphans,
     app_migrator_resolve_duplicates,
     app_migrator_module_conflicts,  # v0.5-alpha W1 (Coder 2026-06-24)
+    app_migrator_audit_integrity,  # audit-derived integrity checks (2026-11-05)
+    app_migrator_select_option_drift,  # audit-derived integrity checks (2026-11-05)
     app_migrator_planner,  # v0.5-alpha W1 (Coder 2026-06-24)
     app_migrator_verifier,  # v0.5-alpha W1 (Coder 2026-06-24)
     app_migrator_sessions,  # v0.5-alpha W1 (Coder 2026-06-24)
