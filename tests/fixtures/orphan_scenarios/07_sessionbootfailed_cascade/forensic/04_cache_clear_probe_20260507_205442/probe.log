@@ -1,0 +1,17 @@
+=== Step 1: bench clear-cache + clear-website-cache ===
+
+=== Step 2: redis-cache FLUSHALL (queue preserved) ===
+OK
+(redis-queue intentionally NOT flushed — preserves enqueued jobs)
+
+=== Step 3: restart backend service ===
+ Container erpnext-backend-1 Restarting 
+ Container erpnext-backend-1 Started 
+
+=== Step 4: curl /desk follow-redirects ===
+HTTP 200  url=https://erp.sysmayal2.cloud/login?redirect-to=%2Fdesk  bytes=0
+
+=== Step 5: error-marker scan ===
+0
+
+=== Step 6: backend logs since restart ===

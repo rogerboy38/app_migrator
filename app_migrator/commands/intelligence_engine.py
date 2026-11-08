@@ -411,6 +411,468 @@ class MigrationIntelligence:
                     'C: allow user override with --skip-pair-check and a warning',
                 ],
             },
+
+            # ===== Patterns harvested from custom=1 controller bug investigation =====
+            # Discovered: 2026-05-05 during amb_w_tds → amb_w_spc donor→receiver work
+            # Root cause: frappe/model/base_document.py::import_controller short-circuit
+            #     `if doctype_info.custom: return NestedSet if doctype_info.is_tree else Document`
+            # Connects 11 years of unresolved community symptom reports.
+
+            'custom_flag_blocks_controller_import': {
+                'triggers': [
+                    'tabDocType.custom = 1 in DB while controller .py file exists',
+                    'doctype JSON has "custom": 1 from fixture-export history',
+                    'site restored from backup with pre-migration custom flags',
+                ],
+                'symptoms': [
+                    'import_controller silently returns frappe.model.document.Document',
+                    'doctype_js / doctype_list_js hooks ignored',
+                    'doc_events never fire on the doctype',
+                    'controller methods (custom validate, on_update) never called',
+                    'no exception surfaces — fallback hidden in try/except',
+                ],
+                'prevention': 'never_ship_doctypes_with_custom_1_in_source_json',
+                'risk_score': 0.95,
+                'detection_method': 'compare_db_custom_flag_with_json_custom_flag_per_doctype',
+                'auto_fix_available': True,
+                'root_cause_location': 'frappe/model/base_document.py::import_controller',
+                'frappe_status': 'WONTFIX_by_design_feature_request_16328_ignored_since_2021',
+                'community_archaeology': {
+                    'first_reported': '2015 — discuss.frappe.io thread #7919',
+                    'github_issues': [
+                        'https://github.com/frappe/frappe/issues/16325',
+                        'https://github.com/frappe/frappe/issues/16328',
+                        'https://github.com/frappe/frappe/issues/38332',
+                        'https://github.com/frappe/erpnext/issues/19655',
+                        'https://github.com/frappe/frappe/issues/18516',
+                    ],
+                },
+                'auto_fix_algorithm': 'inspect_classify_integrate_clear_resync',
+            },
+
+            'fixture_extracted_custom_doctype_birth_defect': {
+                'triggers': [
+                    'doctype was UI-created (custom=1) then exported via bench export-fixtures',
+                    'fixture file split into per-doctype JSONs and committed to app',
+                ],
+                'symptoms': [
+                    '"custom": 1 literally in doctype.json source file',
+                    'fixture audit metadata in JSON: creation, idx, modified_by, owner',
+                    'every bench migrate enforces custom=1 via MD5 hash sync',
+                ],
+                'prevention': 'use_bench_export_doc_not_export_fixtures_for_doctype_definitions',
+                'risk_score': 0.9,
+                'detection_method': 'grep_doctype_jsons_for_custom_1_and_fixture_metadata_keys',
+                'auto_fix_available': True,
+                'fixture_metadata_signature': ['creation', 'idx', 'modified_by', 'owner'],
+            },
+
+            'fixtures_regenerate_drift_after_db_cleanup': {
+                'triggers': [
+                    'cleaning tabCustom Field / tabProperty Setter rows without rebuilding fixtures',
+                    'modifying source JSON without re-exporting fixtures',
+                ],
+                'symptoms': [
+                    'CF/PS rows reappear after each bench migrate despite cleanup',
+                    'apparent phantom drift that survives DB-level deletion',
+                    'verify shows clean immediately after absorb but FIX after migrate',
+                ],
+                'prevention': 'always_run_bench_export_fixtures_after_db_cleanup_before_migrate',
+                'risk_score': 0.7,
+                'detection_method': 'compare_db_state_to_fixture_files_for_custom_field_and_property_setter',
+                'auto_fix_available': True,
+                'auto_fix_workflow': [
+                    '1. clean DB rows (DELETE FROM tabCustom Field/Property Setter)',
+                    '2. bench --site export-fixtures --app <app>',
+                    '3. bench --site migrate (no regeneration — fixtures match DB)',
+                ],
+            },
+
+            'donor_receiver_layout_mismatch': {
+                'triggers': [
+                    'donor and receiver apps use different Frappe layouts',
+                    'single-module flat (<app>/<app>/<app>/doctype) vs multi-module',
+                ],
+                'symptoms': [
+                    'migration scripts fail to find doctype source files',
+                    'orphan folders with __init__.py but no .py file in donor',
+                    'shadow paths confuse Frappe scan during sync',
+                ],
+                'prevention': 'compare_modules_txt_lengths_and_layout_before_migration',
+                'risk_score': 0.6,
+                'detection_method': 'compare_donor_receiver_modules_txt_line_count_and_directory_structure',
+                'auto_fix_available': True,
+                'auto_fix': 'layout_aware_path_resolver_checks_both_flat_and_nested_conventions',
+            },
+
+            'bench_migrate_field_already_exists_after_absorb': {
+                'triggers': [
+                    'absorbed Custom Field into doctype JSON',
+                    'tabDocField row was previously auto-created from same Custom Field',
+                ],
+                'symptoms': [
+                    'ValidationError: A field with the name X already exists in <DocType>',
+                    'migrate fails immediately after absorb pipeline runs',
+                ],
+                'prevention': 'delete_orphan_tabDocField_rows_before_first_migrate_after_absorb',
+                'risk_score': 0.4,
+                'detection_method': 'cross_check_tabDocField_against_json_fields_for_duplicates',
+                'auto_fix_available': True,
+                'auto_fix_strategy_surgical': 'DELETE_orphan_tabDocField_row_by_name_then_migrate',
+                'auto_fix_strategy_nuclear': 'DELETE_all_tabDocField_rows_for_doctype_let_migrate_rebuild_from_JSON',
+            },
+
+            # ===== Pattern harvested from amb_w_tds case-mismatch orphan (2026-05-06) =====
+            # Discovered when COA Quality Test Parameter had module='amb_w_tds'
+            # (lowercase) due to a duplicate Module Def created by some prior tooling.
+            # bench migrate failed with "Module amb_w_tds not found" because Frappe's
+            # case-sensitive lookup couldn't reconcile the lowercase variant against
+            # the canonical 'AMB TDS Core' Module Def. Now baked into denest-app v6.
+            'orphan_module_case_mismatch': {
+                'triggers': [
+                    'tabDocType.module references a Module Def with different case/spacing',
+                    'duplicate Module Def rows: one Title Case, one lowercase scrub variant',
+                    'legacy SQL or manual edits anchored DocTypes to the wrong-cased name',
+                    'denest/migrate operations that updated some rows but missed the variant',
+                ],
+                'symptoms': [
+                    'bench migrate fails: "Module X not found" (lowercase X) post-rename',
+                    'tabDocType.module = scrub(canonical_name) instead of canonical_name',
+                    'tabModule Def has duplicate rows with same scrub but different case',
+                    'doctype JSON loads via correct path but DB anchoring is broken',
+                    'orphan reference survives manual re-anchor: bench migrate reverts it',
+                ],
+                'prevention': 'always_use_canonical_module_name_in_doctype_json_and_db',
+                'risk_score': 0.55,
+                'detection_method': 'select_doctype_where_module_not_in_module_def_or_compare_scrub_variants',
+                'detection_query': (
+                    "SELECT dt.name, dt.module, dt.app FROM tabDocType dt "
+                    "LEFT JOIN `tabModule Def` md ON md.name = dt.module "
+                    "WHERE md.name IS NULL"
+                ),
+                'auto_fix_available': True,
+                'auto_fix_algorithm': 'reanchor_to_canonical_then_delete_duplicate_module_def',
+                'auto_fix_implementation': 'denest_app.py v6: WHERE module=_scrub(source_module)',
+                'related_patterns': [
+                    'custom_flag_blocks_controller_import',
+                    'fixture_extracted_custom_doctype_birth_defect',
+                    'orphan_ui_reference_after_doctype_removal',
+                ],
+                'discovery_evidence': (
+                    'amb_w_tds 2026-05-06: COA Quality Test Parameter (module=amb_w_tds, '
+                    'app=NULL) blocked bench migrate after denest. Manual UPDATE reverted '
+                    'on next migrate because doctype JSON had the lowercase value too. '
+                    'Fix: rewrite JSON module field + cascade-include scrub variants.'
+                ),
+            },
+
+            # ===== Patterns 1.11 / 1.11b / 1.14 — sysmayal SessionBootFailed bundle =====
+            # Discovered 2026-05-07 in prod incident at erp.sysmayal2.cloud:
+            # a tabDocType row was deleted but UI reference rows (Workspace Sidebar
+            # Item, Workspace Link, Report, …) AND Frappe's Redis bootinfo cache
+            # still pointed at it. Result: SessionBootFailed cascade on every desk
+            # page load. The 3-pattern bundle captures the cause→effect chain (1.11
+            # → 1.11b) plus the verification gap (1.14) that made the incident look
+            # "fixed" too early because curl /desk returned 200 to a login redirect.
+            #
+            # Cowork brief 2026-05-08 § "PRIMARY TASK — Step 2". Forensic refs:
+            #   /mnt/s3-backups/migration/cowork/sysmayal_sessionbootfailed_orphan_cascade_forensic_report_20260507.md
+            #   /mnt/s3-backups/migration/cowork/app_migrator_v10.2.0_intelligence_harvest_20260507.md
+
+            # Pattern 1.11
+            'orphan_ui_reference_after_doctype_removal': {
+                'triggers': [
+                    'tabDocType row removed (uninstall, manual cleanup, or migration)',
+                    (
+                        'UI reference rows still reference the removed DocType name in '
+                        'tab(Workspace Sidebar Item|Workspace Link|Workspace Shortcut|'
+                        'Workspace Quick List|Workspace Number Card|Workspace Chart|'
+                        'Report|Dashboard Chart|Number Card|Kanban Board|DocType Layout|'
+                        'Print Format|Client Script|Server Script|'
+                        'Has Role parent-by-parenttype|Custom DocPerm parent|'
+                        'DocShare share_doctype|User Permission allow|'
+                        'DocField options where fieldtype=Link|'
+                        'Custom Field options where fieldtype=Link|'
+                        'Property Setter value where property=options|'
+                        'Notification document_type)'
+                    ),
+                    (
+                        'desk load fails with frappe.DoesNotExistError on get_meta() '
+                        'during workspace permission check'
+                    ),
+                ],
+                'symptoms': [
+                    'SessionBootFailed cascade on every page load',
+                    "users can't reach desk",
+                ],
+                'prevention': (
+                    'never DELETE a tabDocType row without first cascading through '
+                    'INFORMATION_SCHEMA-discovered references'
+                ),
+                # Blocking-tier UI tables (Workspace*, Report, Notification, etc.)
+                # are 0.85; informational-tier (tabVersion, tabComment, tabError Log)
+                # don't break boot and rate 0.4. Detector should classify per-row.
+                'risk_score': 0.85,
+                'risk_score_informational_tier': 0.4,
+                'detection_method': 'INFORMATION_SCHEMA_driven_scan',
+                # Generator query: emits SELECT statements for every (table, column)
+                # pair where a Frappe link-shaped column exists. Caller substitutes
+                # <orphan_doctype_names> and runs the generated SELECTs to locate
+                # surviving references.
+                'detection_query': (
+                    "SELECT CONCAT('SELECT ''', TABLE_NAME, ''' src, ''', COLUMN_NAME, "
+                    "''' col, name, `', COLUMN_NAME, '` ref FROM `', TABLE_NAME, "
+                    "'` WHERE `', COLUMN_NAME, '` IN (<orphan_doctype_names>);') "
+                    "FROM INFORMATION_SCHEMA.COLUMNS "
+                    "WHERE TABLE_SCHEMA = DATABASE() "
+                    "AND TABLE_NAME LIKE 'tab%' "
+                    "AND COLUMN_NAME IN ('doctype','doc_type','dt','ref_doctype',"
+                    "'reference_doctype','reference_document','link_to',"
+                    "'link_doctype','document_type','target_doctype',"
+                    "'allow_doctype','child_doctype','parent_doctype',"
+                    "'share_doctype','allow','for_value','allowed_doctype',"
+                    "'source_doctype','destination_doctype','meta_doctype',"
+                    "'referenced_doctype','document_doctype',"
+                    "'number_card_name','chart_name') "
+                    "ORDER BY TABLE_NAME, COLUMN_NAME;"
+                ),
+                'auto_fix_available': True,
+                'auto_fix_algorithm': 'cascade_delete_ui_refs_before_doctype',
+                'auto_fix_steps': [
+                    '1. Take backup',
+                    '2. Run detection_query to enumerate all references',
+                    '3. Classify into blocking-tier vs informational-tier',
+                    '4. For blocking-tier: DELETE rows in single transaction',
+                    '5. For informational-tier: prompt user (default: leave intact)',
+                    (
+                        '6. THEN delete tabDocType row + child meta '
+                        '(existing fix-orphans logic)'
+                    ),
+                    "7. ALWAYS chain to Pattern 1.11b's auto_fix (cache+restart)",
+                ],
+                'related_patterns': [
+                    'cached_bootinfo_survives_doctype_removal',
+                    'browser_verified_health',
+                    'orphan_module_case_mismatch',
+                    'ghost_module_def_for_uninstalled_app',
+                ],
+                'consumed_by_command': 'audit-modules-disk-vs-db',
+                'discovery_evidence': (
+                    'erp.sysmayal2.cloud 2026-05-07: SessionBootFailed cascade in prod. '
+                    'A DocType was removed but UI reference rows across multiple tables '
+                    'still pointed at it. Every desk page load tripped get_meta() in '
+                    'workspace permission check.'
+                ),
+            },
+
+            # Pattern 1.11b
+            'cached_bootinfo_survives_doctype_removal': {
+                'triggers': [
+                    'SessionBootFailed traceback citing DocType X',
+                    (
+                        'INFORMATION_SCHEMA scan confirms DocType X is NOT live-referenced '
+                        'in any tabXxx column'
+                    ),
+                    'DocType X also NOT in tabDocType (already deleted)',
+                    (
+                        "Frappe's Redis bootinfo cache populated while X still existed "
+                        'and was never cleared after the DELETE'
+                    ),
+                ],
+                'symptoms': [
+                    'SessionBootFailed even though DB is clean',
+                    'cache outlasts DocType deletion',
+                ],
+                'prevention': (
+                    'ALWAYS run cache+restart after any DocType DELETE — mandatory '
+                    'step in the canonical 5-step DocType removal cascade'
+                ),
+                'risk_score': 0.7,
+                'detection_method': 'diff_traceback_doctype_vs_db_state',
+                # Verdict pseudo-query: PHANTOM_BOOTINFO_HIT iff (a) X not in
+                # tabDocType, (b) Pattern 1.11 INFORMATION_SCHEMA scan against
+                # X returns 0 hits. Caller wires the embedded scan from 1.11.
+                'detection_query': (
+                    "SELECT 'PHANTOM_BOOTINFO_HIT' AS verdict\n"
+                    "WHERE NOT EXISTS (SELECT 1 FROM `tabDocType` WHERE name = '<X>')\n"
+                    "  AND NOT EXISTS (\n"
+                    "    -- Pattern 1.11 INFORMATION_SCHEMA scan against X, expect 0 hits\n"
+                    "    -- (substitute the generated SELECTs from "
+                    "orphan_ui_reference_after_doctype_removal['detection_query'])\n"
+                    "  );"
+                ),
+                'auto_fix_available': True,
+                'auto_fix_algorithm': 'cache_clear_and_restart',
+                'auto_fix_steps': [
+                    '1. bench --site <site> clear-cache',
+                    '2. bench --site <site> clear-website-cache',
+                    (
+                        '3. docker compose exec redis-cache redis-cli FLUSHALL '
+                        '(DO NOT flush redis-queue — preserves enqueued jobs)'
+                    ),
+                    (
+                        '4. docker compose restart backend '
+                        '(or systemctl restart bench-supervisor)'
+                    ),
+                    '5. Wait 8s for boot',
+                    (
+                        '6. Verify desk via Pattern 1.14 '
+                        '(browser-verified health, not just curl)'
+                    ),
+                ],
+                'related_patterns': [
+                    'orphan_ui_reference_after_doctype_removal',
+                    'browser_verified_health',
+                    'phantom_module_in_sync_for',
+                ],
+                'consumed_by_command': 'audit-modules-disk-vs-db',
+            },
+
+            # Pattern 1.14
+            'browser_verified_health': {
+                'triggers': [
+                    'post-fix verification check needed',
+                    (
+                        'HTTP 200 on curl /desk follow-redirect alone is INSUFFICIENT '
+                        '(returns 200 to login redirect even when an authenticated '
+                        'session would fail)'
+                    ),
+                ],
+                'symptoms': [
+                    'false-positive "desk healthy" reports',
+                    'users still see 500s even though monitoring shows green',
+                ],
+                'prevention': (
+                    'post-fix verification phase MUST include authenticated browser '
+                    'session check, not just curl probe'
+                ),
+                'risk_score': 0.6,
+                'detection_method': 'compare_curl_anonymous_vs_authenticated_desk_render',
+                # Verification protocol — not a SQL query. Captured here for
+                # parity with sibling patterns and so verify-phase callers can
+                # reach it via the same lookup pattern as detection_query.
+                'detection_query': (
+                    "-- Verification protocol (not SQL):\n"
+                    "-- 1. curl -sIL /desk follow-redirects → expect HTTP 200 (baseline)\n"
+                    "-- 2. curl -sIL /api/method/frappe.auth.get_logged_user "
+                    "with session cookie\n"
+                    "--    → expect 200 + JSON user (proves authenticated layer works)\n"
+                    "-- 3. (optional) headless browser render → "
+                    "expect workspace sidebar visible\n"
+                    "-- All three must pass for verdict GREEN."
+                ),
+                # Verification protocol pattern — improves verify phases of OTHER
+                # commands. No standalone fix.
+                'auto_fix_available': False,
+                'auto_fix_algorithm': None,
+                'documentation_target': 'SKILL.md (canonical post-fix check)',
+                'related_patterns': [
+                    'orphan_ui_reference_after_doctype_removal',
+                    'cached_bootinfo_survives_doctype_removal',
+                    'mutation_manifest_protocol',
+                ],
+                'consumed_by_command': 'audit-modules-disk-vs-db',
+            },
+
+            # Pattern 1.13 — forensic-fixture-capture convention
+            # Documents the protocol for preserving real-prod incident chains
+            # as bit-exact replay material in tests/fixtures/orphan_scenarios/.
+            # First instance wired 2026-05-10: scenario 07_sessionbootfailed_cascade
+            # captures the same incident that produced 1.11 / 1.11b / 1.14.
+            'forensic_fixture_capture': {
+                'triggers': [
+                    'live prod incident produces a captured chain in /audit/ + /FIXED/',
+                    (
+                        'incident corresponds to one or more newly-harvested patterns '
+                        'whose detection/fix logic needs regression coverage'
+                    ),
+                ],
+                'symptoms': [
+                    (
+                        'patterns ship without test coverage; regressions are caught '
+                        'only on the next production incident'
+                    ),
+                    (
+                        'synthetic fixtures (scenarios 01-06) cover individual '
+                        'failure modes but not multi-step cascades or '
+                        'false-positive-discrimination decisions'
+                    ),
+                ],
+                'prevention': (
+                    'every prod incident that produces a /FIXED/ resolution should '
+                    'also produce a numbered scenario dir under '
+                    'tests/fixtures/orphan_scenarios/ with bit-exact captured '
+                    'artifacts and a replay test file under tests/orphan_scenarios/'
+                ),
+                'risk_score': 0.5,
+                'detection_method': 'manual_curation_during_post_incident_review',
+                # Capture-and-replay protocol — no detection SQL, but sibling
+                # patterns expect this field for parity.
+                'detection_query': (
+                    "-- Capture protocol (manual, post-incident):\n"
+                    "-- 1. Identify the chain: every audit/* + FIXED/* dir from\n"
+                    "--    the same incident timeline.\n"
+                    "-- 2. Pull verbatim via `aws --profile frappe-backups s3 cp\n"
+                    "--    --recursive` into tests/fixtures/orphan_scenarios/<NN>_<slug>/\n"
+                    "--    forensic/<MM>_<chain_name>/. Number chains chronologically.\n"
+                    "-- 3. Do NOT reformat captured files — they are evidence.\n"
+                    "-- 4. Write README.md (narrative), expected_outcome.md (what\n"
+                    "--    the scanner+fix should produce on replay), and a test\n"
+                    "--    file under tests/orphan_scenarios/ with at minimum:\n"
+                    "--    a) presence assertions for each chain dir\n"
+                    "--    b) negative assertions for the false-positive boundary\n"
+                    "--       (what the fix should NOT delete)\n"
+                    "--    c) byte-equality assertions where chain redundancy is\n"
+                    "--       part of the diagnostic (e.g. paired cache-clear probes)\n"
+                    "--    d) a heavy replay test gated on APP_MIGRATOR_INTEGRATION\n"
+                    "--    e) a fixture-immutability hash watermark.\n"
+                    "-- 5. Register the scenario in this pattern's `instances` field."
+                ),
+                'auto_fix_available': False,
+                'auto_fix_algorithm': None,
+                'documentation_target': (
+                    'tests/fixtures/orphan_scenarios/<NN>_<slug>/README.md '
+                    '+ tests/orphan_scenarios/test_<NN>_<slug>.py'
+                ),
+                'related_patterns': [
+                    'orphan_ui_reference_after_doctype_removal',
+                    'cached_bootinfo_survives_doctype_removal',
+                    'browser_verified_health',
+                ],
+                'consumed_by_command': 'audit-modules-disk-vs-db',
+                'instances': [
+                    {
+                        'scenario': '07_sessionbootfailed_cascade',
+                        'incident_date': '2026-05-07',
+                        'site': 'erp.sysmayal2.cloud',
+                        'chains_captured': 5,
+                        'fixture_path': (
+                            'tests/fixtures/orphan_scenarios/'
+                            '07_sessionbootfailed_cascade/forensic/'
+                        ),
+                        'test_path': (
+                            'tests/orphan_scenarios/'
+                            'test_07_sessionbootfailed_cascade.py'
+                        ),
+                        'patterns_exercised': [
+                            'orphan_ui_reference_after_doctype_removal',
+                            'cached_bootinfo_survives_doctype_removal',
+                            'browser_verified_health',
+                        ],
+                        'wired_in_commit': 'release/v10.2.0 (post-f7aa606)',
+                    },
+                ],
+                'discovery_evidence': (
+                    'erp.sysmayal2.cloud 2026-05-07 SessionBootFailed cascade. '
+                    'Five captured chains (4 audit/, 1 FIXED/) provided ground '
+                    'truth for the false-positive discriminator that distinguishes '
+                    'boot-blocking refs (Workspace Sidebar Item) from informational-tier '
+                    'refs (tabVersion). A naive scanner-driven fix would have '
+                    'corrupted audit history; the captured chain proves the '
+                    'correct discrimination is part of the pattern, not an '
+                    'implementation detail.'
+                ),
+            },
         }
 
     def _load_risk_assessment_rules(self) -> dict[str, Any]:
@@ -428,6 +890,8 @@ class MigrationIntelligence:
                 # Harvested from sandbox.sysmayal.cloud v10.0.0-rc1 install (transport-arc)
                 'module_name_collision',
                 'paired_cross_repo_deliverable',
+                'custom_flag_blocks_controller_import',
+                'fixture_extracted_custom_doctype_birth_defect',
             ],
             'medium_risk_factors': [
                 'apps_txt_instability',
@@ -435,6 +899,8 @@ class MigrationIntelligence:
                 'webhook_url_dependencies',
                 'custom_encryption_implementation',
                 'multiple_payment_gateway_integrations',
+                # Harvested from amb_w_tds case-mismatch orphan (2026-05-06)
+                'orphan_module_case_mismatch',
             ],
             # ===== Severity → action mapping (T1.5b) =====
             # Digested from payment_security_migrator.py's _generate_risk_assessment.
@@ -442,6 +908,18 @@ class MigrationIntelligence:
             # mitigation. Used by predictive_analysis to surface actionable
             # guidance, not just a binary "risky/not".
             'severity_actions': {
+                'orphan_module_case_mismatch': {
+                    'severity': 'medium',
+                    'category': 'Module Resolution',
+                    'impact': 'bench migrate fails after rename ops; DocTypes orphaned in DB',
+                    'mitigation': (
+                        'Run denest-app or migrate-module which auto-includes the scrub '
+                        'variant in DB UPDATEs (v6+). For manual fix: '
+                        'UPDATE tabDocType SET module=<canonical>, app=<app> '
+                        'WHERE module=<scrub(canonical)>; then DELETE the duplicate '
+                        'Module Def row.'
+                    ),
+                },
                 'hardcoded_api_keys': {
                     'severity': 'high',
                     'category': 'API Keys',
@@ -515,6 +993,36 @@ class MigrationIntelligence:
                         "pattern_database['paired_cross_repo_deliverable']"
                         "['transport_behavior_options']."
                     ),
+                },
+                'custom_flag_blocks_controller_import': {
+                    'severity': 'critical',
+                    'category': 'Controller Resolution',
+                    'impact': 'Python controllers silently bypassed; methods, hooks, doc_events all ignored. Affects ALL features that depend on controller class.',
+                    'mitigation': 'Run app-migrator promote-custom-doctype: absorb CF/PS into doctype JSON, set custom=0, export-fixtures, migrate, verify import_controller returns proper class.',
+                },
+                'fixture_extracted_custom_doctype_birth_defect': {
+                    'severity': 'high',
+                    'category': 'Source Hygiene',
+                    'impact': 'doctype.json contains custom=1 plus fixture audit metadata (creation/idx/modified_by/owner); every migrate re-applies the broken state.',
+                    'mitigation': 'Edit doctype.json: set custom=0, strip audit metadata; run bench migrate.',
+                },
+                'fixtures_regenerate_drift_after_db_cleanup': {
+                    'severity': 'medium',
+                    'category': 'Migration Workflow',
+                    'impact': 'Drift reappears after every bench migrate, undoing manual cleanup.',
+                    'mitigation': 'Always run bench --site export-fixtures --app <app> after DB cleanup, BEFORE migrate.',
+                },
+                'donor_receiver_layout_mismatch': {
+                    'severity': 'medium',
+                    'category': 'App Layout',
+                    'impact': 'Migration tools fail to find source files in donor or receiver due to layout differences.',
+                    'mitigation': 'Use layout-aware path resolver that checks both <app>/<app>/<app>/doctype and <app>/<app>/<module>/doctype conventions.',
+                },
+                'bench_migrate_field_already_exists_after_absorb': {
+                    'severity': 'low',
+                    'category': 'Migration Workflow',
+                    'impact': 'bench migrate fails after absorb due to duplicate tabDocField rows.',
+                    'mitigation': 'Delete orphan tabDocField rows surgically (or all rows for nuclear rebuild), then migrate.',
                 },
             },
         }

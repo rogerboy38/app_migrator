@@ -1,1 +1,1 @@
-App Migrator
+App Migrator Core

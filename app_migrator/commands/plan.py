@@ -30,7 +30,7 @@ def app_migrator_plan(context, site, source_apps, target_app, output):
     apps_list = [a.strip() for a in source_apps.split(',')]
 
     plan = {
-        "version": "10.0.0-rc1",
+        "version": "10.1.0-rc1",
         "created": datetime.now().isoformat(),
         "source_apps": apps_list,
         "target_app": target_app,

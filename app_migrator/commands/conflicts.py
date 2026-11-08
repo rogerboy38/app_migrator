@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from collections import defaultdict
 from datetime import datetime
 
@@ -13,19 +14,38 @@ try:
 except ImportError:
     def pass_context(f):
         return f
+
+from ._envelope import emit_envelope, make_envelope
+
+
 @click.command('app-migrator-conflicts')
+@click.option('--json', 'as_json', is_flag=True, help='Emit v0.5 envelope JSON (wraps the real conflict result)')
 @click.option('--site', required=True, help='Site name')
 @click.option('--apps', help='Comma-separated apps to analyze')
 @click.option('--all-apps', 'all_apps', is_flag=True, default=False, help='Scan ALL apps in apps folder (not just installed)')
 @click.option('--output', '-o', help='Output JSON file')
 @pass_context
-def app_migrator_conflicts(context, site, apps, all_apps, output):
+def app_migrator_conflicts(context, as_json, site, apps, all_apps, output):
     """Detect conflicts between apps (use --all-apps to include uninstalled apps)"""
-    print(f"🔍 Detecting conflicts in: {site}")
-    print("=" * 60)
+    start = time.time()
+    if not as_json:
+        print(f"🔍 Detecting conflicts in: {site}")
+        print("=" * 60)
 
-    frappe.init(site=site)
-    frappe.connect()
+    try:
+        frappe.init(site=site)
+        frappe.connect()
+    except Exception as e:
+        if as_json:
+            emit_envelope(make_envelope(
+                command="conflicts",
+                status="error",
+                summary=f"conflicts failed: {type(e).__name__}",
+                findings=[{"id": "conflicts-error", "title": "Conflict scan failed",
+                           "severity": "high", "description": str(e)}],
+                site=site, start_time=start,
+            ))
+        raise
 
     doctype_to_apps = defaultdict(list)
 
@@ -36,7 +56,8 @@ def app_migrator_conflicts(context, site, apps, all_apps, output):
 
     if all_apps:
         # Scan ALL apps in apps folder by reading doctype JSON files
-        click.secho("📂 Scanning ALL apps in apps folder (including uninstalled)...", fg="cyan")
+        if not as_json:
+            click.secho("📂 Scanning ALL apps in apps folder (including uninstalled)...", fg="cyan")
         apps_list = []
 
         for app_name in os.listdir(apps_path):
@@ -71,7 +92,8 @@ def app_migrator_conflicts(context, site, apps, all_apps, output):
                             except Exception:
                                 pass
 
-        print(f"   Found {len(apps_list)} apps: {', '.join(sorted(apps_list))}")
+        if not as_json:
+            print(f"   Found {len(apps_list)} apps: {', '.join(sorted(apps_list))}")
     else:
         # Original behavior - only installed apps via database
         apps_list = apps.split(',') if apps else frappe.get_installed_apps()
@@ -109,8 +131,40 @@ def app_migrator_conflicts(context, site, apps, all_apps, output):
 
     frappe.db.close()
 
-    # Display
     total = len(result["conflicts"]["duplicate_doctypes"]) + len(result["conflicts"]["orphan_doctypes"])
+
+    if as_json:
+        dups = result["conflicts"]["duplicate_doctypes"]
+        orphs = result["conflicts"]["orphan_doctypes"]
+        if output:
+            with open(output, 'w') as f:
+                json.dump(result, f, indent=2)
+        findings = []
+        if dups:
+            names = ", ".join(d["doctype"] for d in dups[:10])
+            findings.append({"id": "conflicts-duplicate-doctypes",
+                             "title": "Duplicate DocTypes across apps", "severity": "high",
+                             "description": f"{len(dups)} duplicate(s): {names}" + (" ..." if len(dups) > 10 else "")})
+        if orphs:
+            names = ", ".join(o["doctype"] for o in orphs[:10])
+            findings.append({"id": "conflicts-orphan-doctypes",
+                             "title": "Orphan DocTypes (no module)", "severity": "warn",
+                             "description": f"{len(orphs)} orphan(s): {names}" + (" ..." if len(orphs) > 10 else "")})
+        emit_envelope(make_envelope(
+            command="conflicts",
+            status="ok" if total == 0 else "warn",
+            summary=(f"conflict scan: {len(result['apps_analyzed'])} apps, {total} issue(s) "
+                     f"({len(dups)} duplicate, {len(orphs)} orphan)"),
+            findings=findings,
+            evidence=[{"type": "conflict_counts", "data": {
+                "apps_analyzed": len(result["apps_analyzed"]),
+                "duplicate_doctypes": len(dups),
+                "orphan_doctypes": len(orphs),
+                "scan_mode": result["scan_mode"]}}],
+            site=site, start_time=start,
+        ))
+
+    # Display
     print("\n📊 CONFLICT SUMMARY:")
     print(f"   Scan Mode: {'All Apps (filesystem)' if all_apps else 'Installed Apps (database)'}")
     print(f"   Apps Scanned: {len(apps_list)}")

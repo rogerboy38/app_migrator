@@ -1,10 +1,13 @@
 """
 App Migrator Intelligence Commands
 AI-powered migration analysis and prediction
+
+v0.5-alpha W1 (Coder 2026-06-24): added --json envelope support to diagnose_app per Phase 4 contract.
 """
 
 import json
 import os
+import time
 from datetime import datetime
 
 import click
@@ -19,6 +22,8 @@ except ImportError:
     FRAPPE_AVAILABLE = False
     def pass_context(f):
         return f
+
+from ._envelope import emit_envelope, make_envelope
 # ==================== PREDICT SUCCESS ====================
 
 @click.command('app-migrator-predict-success')
@@ -133,25 +138,40 @@ def predict_success(context, site, source_app, target_version):
 # ==================== GENERATE INTELLIGENT PLAN ====================
 
 @click.command('app-migrator-generate-plan')
+@click.option('--json', 'as_json', is_flag=True, help='Emit v0.5 envelope JSON (wraps the generated plan)')
 @click.option('--site', required=True, help='Site name')
 @click.option('--source-apps', required=True, help='Comma-separated source apps')
 @click.option('--target-app', required=True, help='Target consolidated app')
 @click.option('--output', '-o', default='migration_plan.json', help='Output file')
 @pass_context
-def generate_intelligent_plan(context, site, source_apps, target_app, output):
+def generate_intelligent_plan(context, as_json, site, source_apps, target_app, output):
     """Generate an intelligent migration plan with dependency analysis"""
-    print("🧠 INTELLIGENT PLAN GENERATION")
-    print(f"   Sources: {source_apps}")
-    print(f"   Target: {target_app}")
-    print("=" * 60)
+    start = time.time()
+    if not as_json:
+        print("🧠 INTELLIGENT PLAN GENERATION")
+        print(f"   Sources: {source_apps}")
+        print(f"   Target: {target_app}")
+        print("=" * 60)
 
-    frappe.init(site=site)
-    frappe.connect()
+    try:
+        frappe.init(site=site)
+        frappe.connect()
+    except Exception as e:
+        if as_json:
+            emit_envelope(make_envelope(
+                command="generate-plan",
+                status="error",
+                summary=f"generate-plan failed: {type(e).__name__}",
+                findings=[{"id": "generate-plan-error", "title": "Plan generation failed",
+                           "severity": "high", "description": str(e)}],
+                site=site, start_time=start,
+            ))
+        raise
 
     apps_list = [a.strip() for a in source_apps.split(',')]
 
     plan = {
-        "version": "10.0.0-rc1-intelligent",
+        "version": "10.1.0-rc1-intelligent",
         "created": datetime.now().isoformat(),
         "analysis_mode": "intelligent",
         "source_apps": apps_list,
@@ -225,6 +245,31 @@ def generate_intelligent_plan(context, site, source_apps, target_app, output):
     with open(output, 'w') as f:
         json.dump(plan, f, indent=2)
 
+    if as_json:
+        emit_envelope(make_envelope(
+            command="generate-plan",
+            status="ok",
+            summary=(f"plan generated: {total_doctypes} doctype(s) across "
+                     f"{len(plan['phases'])} phases "
+                     f"({'/'.join(str(p['count']) for p in plan['phases'])}); "
+                     f"est {plan['estimated_time']}"),
+            findings=[{
+                "id": f"generate-plan-phase-{i + 1}",
+                "title": phase["name"],
+                "severity": "info",
+                "description": (f"{phase['count']} doctype(s): "
+                                + ", ".join(phase["doctypes"][:10])
+                                + (" ..." if len(phase["doctypes"]) > 10 else "")),
+            } for i, phase in enumerate(plan["phases"])],
+            evidence=[{"type": "migration_plan", "data": plan}],
+            suggested_next_commands=[{
+                "command": f"bench app-migrator execute --site {site} --plan {output} --dry-run --json",
+                "approval_required": False,
+                "description": "Dry-run the generated plan.",
+            }],
+            site=site, start_time=start,
+        ))
+
     print("\n📊 PLAN SUMMARY:")
     for phase in plan["phases"]:
         print(f"   {phase['name']}: {phase['count']} doctypes")
@@ -235,12 +280,48 @@ def generate_intelligent_plan(context, site, source_apps, target_app, output):
 # ==================== DIAGNOSE APP ====================
 
 @click.command('app-migrator-diagnose')
-@click.argument('app_name')
-@click.option('--site', help='Site name (optional, for DB analysis)')
+@click.argument('app_name', required=False)
+@click.option('--json', 'as_json', is_flag=True, help='Emit v0.5 envelope JSON')
+@click.option('--site', default=None, help='Site name (optional, for DB analysis)')
 @click.option('--output', '-o', help='Output JSON file')
 @pass_context
-def diagnose_app(context, app_name, site, output):
-    """Comprehensive app diagnosis for migration readiness"""
+def diagnose_app(context, app_name, as_json, site, output):
+    """Comprehensive app diagnosis for migration readiness
+
+    v0.5-alpha W1: --json emits envelope stub; app_name optional when --json is set.
+    """
+    start = time.time()
+    if as_json:
+        envelope = make_envelope(
+            command="diagnose",
+            status="ok",
+            summary=f"diagnose envelope stub for {app_name or '<all apps>'}",
+            findings=[
+                {
+                    "id": "diagnose-stub",
+                    "title": "diagnose envelope stub",
+                    "severity": "info",
+                    "description": (
+                        "Phase 4 envelope test stub. Full diagnosis output goes "
+                        "to --output file when --json is not set."
+                    ),
+                },
+            ],
+            suggested_next_commands=[
+                {
+                    "command": "bench app-migrator scan --site <site> --json",
+                    "approval_required": False,
+                    "description": "Scan the site before diagnose.",
+                },
+            ],
+            site=site,
+            start_time=start,
+        )
+        emit_envelope(envelope)
+    if not app_name:
+        click.echo("Error: APP_NAME argument is required (unless --json)", err=True)
+        import sys as _sys
+        _sys.exit(2)
     print(f"🔬 APP DIAGNOSIS: {app_name}")
     print("=" * 60)
 

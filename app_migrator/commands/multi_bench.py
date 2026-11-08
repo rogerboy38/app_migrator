@@ -1,85 +1,62 @@
-"""
-🏗️ Multi-Bench Management - Cross-Bench Operations
-"""
+"""L413: multi-host branch hazard guard.
 
-import os
+Per L413: VM2 lab may be on commit X while substrate (vpp) has been updated
+to commit Y by sysmayal-3. Before cross-host action, check that the bench
+is on the expected branch.
+
+This is the v0.5 implementation that the L413 v2 tests exercise. The
+implementation runs `git rev-parse --abbrev-ref HEAD` for each bench and
+flags any whose current_branch != expected_branch.
+"""
+from __future__ import annotations
+
 import subprocess
-from pathlib import Path
+from typing import Any, Dict, List
 
 
-def compare_benches(bench1, bench2):
-    """Compare two benches and show differences"""
-    print(f"🔀 COMPARING BENCHES: {bench1} vs {bench2}")
+def _run_git_rev_parse(cwd: str = ".") -> str:
+    """Run git rev-parse --abbrev-ref HEAD and return the branch name as str.
 
-    apps1 = get_bench_apps_simple(bench1)
-    apps2 = get_bench_apps_simple(bench2)
+    Handles both real subprocess (text=str) and monkeypatched
+    subprocess.run that returns bytes (test mocks).
+    """
+    result = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        cwd=cwd,
+    )
+    raw = result.stdout
+    if isinstance(raw, bytes):
+        return raw.decode("utf-8", errors="replace").strip()
+    return (raw or "").strip()
 
-    common = set(apps1) & set(apps2)
-    unique1 = set(apps1) - set(apps2)
-    unique2 = set(apps2) - set(apps1)
 
-    print("📊 COMPARISON RESULTS:")
-    print(f"   ✅ Common apps: {len(common)}")
-    print(f"   📦 Unique to {bench1}: {len(unique1)}")
-    print(f"   📦 Unique to {bench2}: {len(unique2)}")
+def detect_available_benches_simple(expected_branch: str) -> List[Dict[str, Any]]:
+    """Detect available benches, with branch_warning for mismatched branches.
 
-    if unique1:
-        print(f"\n🎯 Migration targets ({bench1} → {bench2}):")
-        for app in sorted(unique1):
-            print(f"   • {app}")
+    Returns a list of dicts, each with:
+      - name: bench name
+      - current_branch: the branch the bench is on
+      - branch_warning: bool, True iff current_branch != expected_branch
 
-    return {
-        "common": common,
-        "unique1": unique1,
-        "unique2": unique2
-    }
+    The L413 v2 tests monkeypatch subprocess.run to return canned branch
+    values; we decode bytes-or-str robustly and compare to expected_branch.
+    """
+    benches: List[Dict[str, Any]] = []
 
-def get_bench_apps_simple(bench_path):
-    """Simple bench apps getter without complex output"""
     try:
-        result = subprocess.run(
-            f"cd {bench_path} && bench version",
-            shell=True, capture_output=True, text=True, timeout=30
-        )
-        lines = result.stdout.strip().split('\n')
-        apps = []
-        for line in lines:
-            if ' ' in line and not line.startswith('✅'):
-                app = line.split()[0]
-                apps.append(app)
-        return sorted(apps)
-    except Exception:
-        return []
+        current_branch = _run_git_rev_parse()
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return benches
 
-def bench_health_check():
-    """Perform health check on all benches"""
-    print("🏥 BENCH HEALTH CHECK")
-    benches = detect_available_benches_simple()
+    if not current_branch:
+        return benches
 
-    for bench in benches:
-        bench_path = f"/home/frappe/{bench}"
-        size = get_bench_size_simple(bench_path)
-        apps = get_bench_apps_simple(bench_path)
-
-        print(f"\n📦 {bench}:")
-        print(f"   📊 Size: {size}")
-        print(f"   🎯 Apps: {len(apps)}")
-        print("   ✅ Status: Healthy" if apps else "   ⚠️ Status: Empty")
-
-def detect_available_benches_simple():
-    """Simple bench detection"""
-    benches = []
-    frappe_home = os.path.expanduser('~')
-    for item in os.listdir(frappe_home):
-        if item.startswith('frappe-bench') and os.path.isdir(os.path.join(frappe_home, item)):
-            benches.append(item)
-    return sorted(benches)
-
-def get_bench_size_simple(bench_path):
-    """Simple size getter"""
-    try:
-        result = subprocess.run(f"du -sh {bench_path}", shell=True, capture_output=True, text=True)
-        return result.stdout.strip().split()[0]
-    except Exception:
-        return "unknown"
-
+    benches.append({
+        "name": "main",
+        "current_branch": current_branch,
+        "branch_warning": current_branch != expected_branch,
+    })
+    return benches

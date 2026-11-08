@@ -1,0 +1,23 @@
+=== Step 1: backup ===
+Backup Summary for erp.sysmayal2.cloud at 2026-05-07 14:56:25.614663
+Config  : /home/frappe/frappe-bench/sites/erp.sysmayal2.cloud/private/backups/20260507_145523-erp_sysmayal2_cloud-site_config_backup.json 257.0B
+Database: /home/frappe/frappe-bench/sites/erp.sysmayal2.cloud/private/backups/20260507_145523-erp_sysmayal2_cloud-database.sql.gz 248.6MiB
+Backup for Site erp.sysmayal2.cloud has been successfully completed
+
+=== Step 2: surgical DELETE ===
+phase	n
+PRE-DELETE: tabWorkspace Sidebar Item rows pointing at Repost Accounting Ledger Settings	2
+phase	n
+POST-DELETE: should be 0	0
+
+=== Step 3: cache clear + backend restart ===
+OK
+ Container erpnext-backend-1 Restarting 
+ Container erpnext-backend-1 Started 
+
+=== Step 4: re-verify desk ===
+HTTP 200  url=https://erp.sysmayal2.cloud/login?redirect-to=%2Fdesk
+Error markers in post-fix desk response:
+0
+
+=== Step 5: re-scan UI orphan refs (should be 0) ===
