@@ -1,5 +1,72 @@
 # Changelog
 
+## [10.1.0-rc1] — 2026-11-07
+
+The audit-derived integrity family, and the fixes the 2026-11-04 review of it
+found. Built on the fork's `release/v10.2.0` (`d56fd7b`), which carries the
+W1/W2/W3 workstream ratified by Hugh on 2026-06-26T00:57Z.
+
+### Added
+- **`app_migrator/_integrity/`** — a family of 8 bench-free checks derived
+  from the 2026-11-05 audits of `amb_w_tds` @ 98e7d47 and
+  `rnd_warehouse_management` @ 95a913a: shared fixture ownership, endpoint
+  permission gaps, undeclared app dependencies, dead hook targets, missing
+  field references, client-script fieldname mismatches, duplicate module
+  trees, and select-option drift. Each finding carries a stable id, so two
+  runs diff.
+- **`audit-integrity` command** — umbrella CLI over the family with `--json`,
+  `--check`, `--severity` and an envelope contract (`schema_version` 1.0.0,
+  10 required keys, `ok`/`warn`/`blocked`/`error` -> exit 0/10/20/40).
+- **`fast-gate` CI job** — imports the package and runs the whole suite with
+  no bench and no Frappe. This closes review item 6: `a3c297b` broke every
+  `bench app-migrator` command with a `ModuleNotFoundError` and the lint job
+  still passed, because ruff never imports the package.
+
+### Fixed
+- A hook whose value is a **dict** was skipped entirely — Frappe's
+  `has_website_permission` is a dict, so the scan never looked inside it.
+- The 67 "no installed app ships DocType X" findings were the absence of
+  `frappe`/`erpnext` from the scan root, reported as 67 defects. Core
+  DocTypes are no longer reported; a target missing from an incomplete scan
+  root is `info`, from a complete root it is `high`. A DocType shipped under
+  its **folder slug** (`SPC Deviation` -> `spc_deviation`) is now resolved,
+  so an app is no longer reported as not shipping a DocType it ships.
+- A **call** is not a field read (`self.add_comment(...)`), and a **guarded**
+  read is deliberate (`getattr(self, 'title', None)`). Neither is reported.
+- The audited defect was missed because the offending code is a *module*, not
+  a DocType controller. The scan now reads non-controller modules for
+  explicitly bound documents.
+- The command layer suggested a command that did not exist, applied `--limit`
+  per check instead of to the envelope, returned the same exit code for a
+  `high` and a `medium` finding, and hard-coded the apps root to
+  `/home/frappe/frappe-bench/apps` — so on any other bench it scanned
+  nothing and reported "no findings".
+- A guest endpoint that returns a credential is an **authentication**
+  endpoint, not a permission bypass. It is still reported, under the right
+  framing.
+- `ci.yml` swallowed failures with `|| echo`: a red test suite was reported
+  as "No pytest tests found, skipping". The test step now fails on a failing
+  test, and the "Check Frappe V16 requirements" step greps the
+  repository-root `pyproject.toml` instead of `app_migrator/pyproject.toml`,
+  **a file that does not exist**.
+
+### Changed
+- Packaging metadata now agrees: `setup.cfg` declares Python 3.14 (matching
+  `pyproject.toml`) and `requests>=2.33.0`.
+- `[tool.ruff.format] indent-style` was `"tab"` while all 147 Python files in
+  `app_migrator/` use four spaces — the config contradicted the codebase, so
+  `ruff format --check` failed on files nobody had touched. It now says
+  `"space"`. ruff is pinned to 0.17.4 in both lint workflows.
+
+### Known issues
+- ruff was not installed on the build host, so the lint fix was made by hand
+  and verified with a purpose-built checker; `ruff format --check` has not
+  been run against this release. The lint job was already failing at the
+  base commit and this release no longer adds to it.
+- `deploy-prod.yml` still gates the production deploy behind `|| echo`.
+- The `release/v10.2.0` branch name and this version number come from
+  different ladders; reconciling them is an open decision.
+
 ## [10.0.0-rc1] — 2026-05-04
 
 Phase 1 cleanup of `app_migrator` to make the codebase mutable for

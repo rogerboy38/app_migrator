@@ -171,7 +171,7 @@ def generate_intelligent_plan(context, as_json, site, source_apps, target_app, o
     apps_list = [a.strip() for a in source_apps.split(',')]
 
     plan = {
-        "version": "10.0.0-rc1-intelligent",
+        "version": "10.1.0-rc1-intelligent",
         "created": datetime.now().isoformat(),
         "analysis_mode": "intelligent",
         "source_apps": apps_list,

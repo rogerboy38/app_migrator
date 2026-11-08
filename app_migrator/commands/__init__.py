@@ -1,10 +1,10 @@
 """
 App Migrator Commands
-Version: 10.0.0-rc1
+Version: 10.1.0-rc1
 Merged: Original analysis + multi-bench + Session management
 """
 
-__version__ = "10.0.0-rc1"
+__version__ = "10.1.0-rc1"
 
 import logging
 

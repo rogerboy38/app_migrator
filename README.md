@@ -1,6 +1,6 @@
 # app_migrator
 
-**Version:** 10.0.0-rc1  
+**Version:** 10.1.0-rc1  
 **Python:** 3.14+  
 **Frappe:** v16+
 
@@ -157,7 +157,7 @@ bench app-migrator git-push
 
 ## Status
 
-app_migrator 10.0.0-rc1 on branch `release/v10.0.0-cleanup`. Python 3.14, Frappe v16. Lint-clean (ruff reports 0 errors). 6 orphan scenario test fixtures in `tests/fixtures/orphan_scenarios/` — these are red tests Phase 2 will turn green. Base commit for this README: `951d60a`.
+app_migrator 10.1.0-rc1 on branch `feature/audit-derived-integrity-checks`, released as `v10.1.0-rc1`. Python 3.14, Frappe v16. Carries the audit-derived integrity family: 8 checks, 124 bench-free tests, envelope contract 1.0.0, 351 findings across the three audited apps. Ruff: the files this release adds are clean; the pre-existing tree still carries its own lint debt. 6 orphan scenario test fixtures in `tests/fixtures/orphan_scenarios/` — these are red tests Phase 2 will turn green.
 
 ---
 
