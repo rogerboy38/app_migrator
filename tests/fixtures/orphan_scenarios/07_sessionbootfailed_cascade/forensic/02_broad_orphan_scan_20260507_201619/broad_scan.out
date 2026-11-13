@@ -1,0 +1,13 @@
+--------------
+SELECT 'tabSingles' src, 'doctype' col, name, `doctype` ref FROM `tabSingles` WHERE `doctype` IN ('Repost Accounting Ledger Settings','Label Management','TDS Default Parameter','BOM Scrap Item','Job Card Scrap Item','Subcontracting Inward Order Scrap Item')
+--------------
+
+ERROR 1054 (42S22) at line 106: Unknown column 'name' in 'SELECT'
+src	col	name	ref
+tabVersion	ref_doctype	b59gis9vhi	Label Management
+tabVersion	ref_doctype	kqb8ba62uo	Label Management
+tabVersion	ref_doctype	k89bru48td	Repost Accounting Ledger Settings
+tabVersion	ref_doctype	kqdcp5rg7u	Repost Accounting Ledger Settings
+src	col	name	ref
+tabWorkspace Sidebar Item	link_to	71240vkm07	Repost Accounting Ledger Settings
+tabWorkspace Sidebar Item	link_to	79su7selqq	Repost Accounting Ledger Settings

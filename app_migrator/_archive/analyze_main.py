@@ -10,33 +10,33 @@ from .site_api import SiteAPIClient
 def analyze_all(output):
     """Complete analysis of all sites and their apps."""
     data = load_keys()
-    
+
     # Check Frappe Cloud API
     fc_data = data.get("frappe_cloud", {})
     if not fc_data.get("api_key"):
         click.secho("Frappe Cloud API not configured. Run 'setup-frappe-cloud' first.", fg="red")
         return
-    
+
     # Initialize Frappe Cloud client
     fc_client = FrappeCloudAPIClient(
         fc_data["api_key"],
         fc_data["api_secret"],
         fc_data.get("team_name")
     )
-    
+
     click.echo("Fetching sites from Frappe Cloud...")
     sites = fc_client.list_sites()
-    
+
     if not sites:
         click.secho("No sites found.", fg="yellow")
         return
-    
+
     all_results = []
-    
+
     for site in sites[:10]:  # Limit to first 10 sites for demo
         site_name = site.get("name")
         click.echo(f"\nAnalyzing: {site_name}")
-        
+
         result = {
             "site_name": site_name,
             "frappe_version": site.get("frappe_version"),
@@ -46,13 +46,13 @@ def analyze_all(output):
             "site_api_configured": False,
             "site_api_accessible": False
         }
-        
+
         # Check if we have site API credentials
         site_api_data = data.get("sites", {}).get(site_name)
-        
+
         if site_api_data and site_api_data.get("api_key"):
             result["site_api_configured"] = True
-            
+
             # Try to get apps
             try:
                 site_client = SiteAPIClient(
@@ -60,10 +60,10 @@ def analyze_all(output):
                     site_api_data["api_key"],
                     site_api_data["api_secret"]
                 )
-                
+
                 if site_client.ping():
                     result["site_api_accessible"] = True
-                    
+
                     # Get installed apps
                     apps = site_client.get_installed_apps()
                     if apps:
@@ -75,9 +75,9 @@ def analyze_all(output):
                             result["apps"] = list(versions.keys())
             except Exception as e:
                 result["error"] = str(e)
-        
+
         all_results.append(result)
-    
+
     # Output results
     if output == "json":
         click.echo(json.dumps(all_results, indent=2))
@@ -98,10 +98,10 @@ def analyze_all(output):
                 "✅" if result["site_api_configured"] else "❌",
                 "✅" if result["site_api_accessible"] else "❌"
             ])
-        
+
         headers = ["Site", "Frappe Version", "Status", "Plan", "Apps", "API Config", "API Access"]
         click.echo("\n" + tabulate(table_data, headers=headers, tablefmt="grid"))
-        
+
         # Show detailed app info for first accessible site
         accessible_sites = [r for r in all_results if r["site_api_accessible"]]
         if accessible_sites:

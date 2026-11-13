@@ -5,16 +5,16 @@ from .api_keys import load_keys, save_keys
 
 class FrappeCloudAPIClient:
     """Client for Frappe Cloud Dashboard API (press.api.*)"""
-    
+
     BASE_URL = "https://frappecloud.com/api/method"
-    
+
     def __init__(self, api_key, api_secret, team_name=None, team_id=None):
         self.api_key = api_key
         self.api_secret = api_secret
         self.team_name = team_name
         self.team_id = team_id
         self.headers = self._create_headers()
-    
+
     def _create_headers(self):
         """Create headers for Frappe Cloud API."""
         headers = {
@@ -26,7 +26,7 @@ class FrappeCloudAPIClient:
         if self.team_id:
             headers["X-Press-Team-ID"] = self.team_id
         return headers
-    
+
     def _make_request(self, method, endpoint, data=None):
         """Make authenticated request to Frappe Cloud API."""
         url = f"{self.BASE_URL}/{endpoint}"
@@ -46,19 +46,19 @@ class FrappeCloudAPIClient:
         except Exception as e:
             click.echo(f"Request failed: {e}")
             return None
-    
+
     def get_account_info(self):
         """Get account/team information."""
         return self._make_request("GET", "press.api.account.me")
-    
+
     def list_sites(self):
         """List all sites in the team."""
         return self._make_request("GET", "press.api.site.all")
-    
+
     def get_site_info(self, site_name):
         """Get detailed information about a site."""
         return self._make_request("POST", "press.api.site.get", {"name": site_name})
-    
+
     def list_benches(self):
         """List all benches."""
         return self._make_request("GET", "press.api.bench.all")
@@ -68,21 +68,21 @@ def list_sites():
     """List all sites from Frappe Cloud API."""
     data = load_keys()
     fc = data.get("frappe_cloud", {})
-    
+
     if not fc.get("api_key") or not fc.get("api_secret"):
         click.secho("Frappe Cloud API not configured. Run 'setup-frappe-cloud' first.", fg="red")
         return
-    
+
     client = FrappeCloudAPIClient(
         api_key=fc["api_key"],
         api_secret=fc["api_secret"],
         team_name=fc.get("team_name"),
         team_id=fc.get("team_id")
     )
-    
+
     click.echo("Fetching sites from Frappe Cloud...")
     sites = client.list_sites()
-    
+
     if sites:
         click.echo(f"\nFound {len(sites)} sites:")
         click.echo("-" * 80)
@@ -100,21 +100,21 @@ def get_account_info():
     """Get account information from Frappe Cloud."""
     data = load_keys()
     fc = data.get("frappe_cloud", {})
-    
+
     if not fc.get("api_key") or not fc.get("api_secret"):
         click.secho("Frappe Cloud API not configured. Run 'setup-frappe-cloud' first.", fg="red")
         return
-    
+
     client = FrappeCloudAPIClient(
         api_key=fc["api_key"],
         api_secret=fc["api_secret"],
         team_name=fc.get("team_name"),
         team_id=fc.get("team_id")
     )
-    
+
     click.echo("Fetching account information...")
     account = client.get_account_info()
-    
+
     if account:
         click.echo("\nAccount Information:")
         click.echo("-" * 40)

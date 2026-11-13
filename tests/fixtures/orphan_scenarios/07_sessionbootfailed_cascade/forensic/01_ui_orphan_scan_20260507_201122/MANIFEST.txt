@@ -1,0 +1,20 @@
+Scan: ui_orphan_reference_after_doctype_removal (Pattern 1.11)
+Site: erp.sysmayal2.cloud
+Host: srv1415373
+Date: 2026-05-07T20:11:28Z
+Backup taken pre-scan: 20260507_133902-erp_sysmayal2_cloud-database.sql.gz
+Pattern source: app_migrator v10.2.0 harvest doc Section 1.11
+Orphan DocTypes targeted (already deleted earlier today):
+  - Repost Accounting Ledger Settings
+  - Label Management
+  - TDS Default Parameter
+  - BOM Scrap Item
+  - Job Card Scrap Item
+  - Subcontracting Inward Order Scrap Item
+Tables scanned: 14 (Workspace Sidebar Item, Workspace Link, Workspace Shortcut,
+  Workspace Quick List, Workspace Number Card, Workspace Chart, Report,
+  Dashboard Chart, Number Card, Kanban Board, DocType Layout, Print Format,
+  Client Script, Server Script)
+Mode: --force (continues past missing-table errors)
+Output: scan.out
+SQL: scan.sql
