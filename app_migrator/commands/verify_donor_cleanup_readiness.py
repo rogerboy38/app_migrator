@@ -202,9 +202,9 @@ def app_migrator_verify_donor_cleanup_readiness(context, site, donor, receiver,
 
         if counts.get("MIGRATE_FIRST", 0) > 0:
             emit(f"\n  ⚠  {counts['MIGRATE_FIRST']} entry/entries need migration before donor cleanup.")
-            emit(f"     clean-donor-residue would refuse to proceed.")
+            emit("     clean-donor-residue would refuse to proceed.")
         else:
-            emit(f"\n  ✓  All donor references have receiver equivalents — safe to clean.")
+            emit("\n  ✓  All donor references have receiver equivalents — safe to clean.")
     emit("=" * 95)
 
     _output(lines, output)
@@ -278,7 +278,7 @@ def _verify_fixtures(donor_fixtures, receiver_fixtures, moved):
         for f in filters:
             if not (isinstance(f, list) and len(f) >= 3):
                 continue
-            field, op, val = f[0], f[1], f[2]
+            field, _op, val = f[0], f[1], f[2]
             if isinstance(val, list):
                 for item in val:
                     if item in moved:

@@ -345,7 +345,7 @@ class _AppSource:
     references: dict[str, list[tuple[str, int, str]]] = field(default_factory=dict)
 
     @classmethod
-    def build(cls, app: AppInfo) -> "_AppSource":
+    def build(cls, app: AppInfo) -> _AppSource:
         source = cls(app=app)
         source.files = _app_python_files(app)
         for path in source.files:

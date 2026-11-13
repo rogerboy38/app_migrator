@@ -26,7 +26,7 @@ import tempfile
 from pathlib import Path
 from typing import Union
 
-PathLike = Union[str, os.PathLike]
+PathLike = str | os.PathLike
 
 
 def compute_sha256(content: bytes) -> str:
@@ -81,4 +81,4 @@ def create_skill(target: PathLike, content: bytes) -> str:
     return sha
 
 
-__all__ = ["create_skill", "compute_sha256"]
+__all__ = ["compute_sha256", "create_skill"]

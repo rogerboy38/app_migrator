@@ -9,10 +9,10 @@ no BLANKET keyword.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 
-def verify_data_integrity(app: str, doctypes: List[Dict[str, Any]]) -> Dict[str, Any]:
+def verify_data_integrity(app: str, doctypes: list[dict[str, Any]]) -> dict[str, Any]:
     """Verify data integrity for the given app's doctypes.
 
     Returns a dict with:
@@ -20,7 +20,7 @@ def verify_data_integrity(app: str, doctypes: List[Dict[str, Any]]) -> Dict[str,
       - flagged: list of {name, reason} dicts
       - doctype_count: number of doctypes inspected
     """
-    flagged: List[Dict[str, Any]] = []
+    flagged: list[dict[str, Any]] = []
 
     if doctypes:
         blanket_count = sum(

@@ -1,9 +1,12 @@
 """One-shot absorb helpers — production cleanup for the 5 stuck DocTypes.
 Run via: bench execute app_migrator.commands._oneshot_absorb.<func>
 """
-import frappe, json, shutil
+import json
+import shutil
 from datetime import datetime
 from pathlib import Path
+
+import frappe
 
 INT_PROPS = {"in_list_view", "in_standard_filter", "reqd", "hidden",
              "read_only", "bold", "translatable", "no_copy",
@@ -194,7 +197,7 @@ def cleanup_and_export():
     so the fixture files reflect the clean DB state."""
     import frappe
     from frappe.commands.utils import export_fixtures
-    
+
     # Re-absorb for any DB drift that came back from fixtures
     _absorb(
         "TDS Product Specification",

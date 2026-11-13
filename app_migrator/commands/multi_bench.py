@@ -11,7 +11,7 @@ flags any whose current_branch != expected_branch.
 from __future__ import annotations
 
 import subprocess
-from typing import Any, Dict, List
+from typing import Any
 
 
 def _run_git_rev_parse(cwd: str = ".") -> str:
@@ -33,7 +33,7 @@ def _run_git_rev_parse(cwd: str = ".") -> str:
     return (raw or "").strip()
 
 
-def detect_available_benches_simple(expected_branch: str) -> List[Dict[str, Any]]:
+def detect_available_benches_simple(expected_branch: str) -> list[dict[str, Any]]:
     """Detect available benches, with branch_warning for mismatched branches.
 
     Returns a list of dicts, each with:
@@ -44,7 +44,7 @@ def detect_available_benches_simple(expected_branch: str) -> List[Dict[str, Any]
     The L413 v2 tests monkeypatch subprocess.run to return canned branch
     values; we decode bytes-or-str robustly and compare to expected_branch.
     """
-    benches: List[Dict[str, Any]] = []
+    benches: list[dict[str, Any]] = []
 
     try:
         current_branch = _run_git_rev_parse()

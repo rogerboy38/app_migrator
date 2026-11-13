@@ -50,7 +50,7 @@ from ..context import AppInfo, Inventory, read_text
 CHECK_ID = "client-script-fieldname-mismatch"
 
 # The reference forms a client script uses to touch a field by name.
-_REFERENCE_PATTERNS: tuple[tuple[str, "re.Pattern[str]"], ...] = (
+_REFERENCE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("frm.fields", re.compile(r"\bfrm\.fields\.([A-Za-z_][A-Za-z0-9_]*)")),
     ("frm.doc", re.compile(r"\bfrm\.doc\.([A-Za-z_][A-Za-z0-9_]*)")),
     ("frm.set_value", re.compile(r"\bfrm\.set_value\(\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]")),
@@ -142,7 +142,6 @@ STANDARD_FIELDS: set[str] = {
     "balance",
     "taxes_and_charges",
     "apply_tds",
-    "cost_center",
     "warehouse",
     "s_warehouse",
     "t_warehouse",

@@ -57,21 +57,20 @@ from .analyze_cmd import app_migrator_analyze
 
 # ==================== LIST APPS (DOWNLOADED VS INSTALLED) (T1.8.2 → apps.py) ====================
 from .apps import app_migrator_apps
+from .audit_integrity import app_migrator_audit_integrity  # audit-derived integrity checks (2026-11-05)
+from .audit_modules_disk_vs_db import app_migrator_audit_modules_disk_vs_db
+from .audit_orphan_doctypes import app_migrator_audit_orphan_doctypes
 
 # ==================== LIST BENCHES (T1.8.2 → benches.py) ====================
 from .benches import app_migrator_benches
+from .clean_donor_residue import app_migrator_clean_donor_residue
 
 # ==================== DETECT CONFLICTS COMMAND (T1.8.2 → conflicts.py) ====================
 from .conflicts import app_migrator_conflicts
-from .module_conflicts import app_migrator_module_conflicts  # v0.5-alpha W1 (Coder 2026-06-24)
-from .planner import app_migrator_planner  # v0.5-alpha W1 (Coder 2026-06-24)
-from .audit_integrity import app_migrator_audit_integrity  # audit-derived integrity checks (2026-11-05)
-from .select_option_drift import app_migrator_select_option_drift  # audit-derived integrity checks (2026-11-05)
-from .verifier import app_migrator_verifier  # v0.5-alpha W1 (Coder 2026-06-24)
-from .sessions import app_migrator_sessions  # v0.5-alpha W1 (Coder 2026-06-24)
 
 # ==================== CREATE HOST COMMAND (T1.8.3 → create_host.py) ====================
 from .create_host import app_migrator_create_host
+from .denest_app import app_migrator_denest_app
 
 # ==================== ENSURE CONTROLLERS COMMAND (T1.8.3 → ensure_controllers.py) ====================
 from .ensure_controllers import app_migrator_ensure_controllers
@@ -90,37 +89,39 @@ from .fix_structure import app_migrator_fix_structure
 
 # ==================== HEALTH COMMAND (T1.8.2 → health.py) ====================
 from .health import app_migrator_health
+from .migrate_module import app_migrator_migrate_module
+from .module_conflicts import app_migrator_module_conflicts  # v0.5-alpha W1 (Coder 2026-06-24)
+from .new_fresh_app import app_migrator_new_fresh_app
 
 # ==================== ORPHANS COMMAND (T1.8.3 → orphans.py) ====================
 from .orphans import app_migrator_orphans
 
 # ==================== GENERATE PLAN COMMAND (T1.8.2 → plan.py) ====================
 from .plan import app_migrator_plan
+from .planner import app_migrator_planner  # v0.5-alpha W1 (Coder 2026-06-24)
+from .promote_custom_doctype import app_migrator_promote_custom_doctype
 
 # ==================== RESOLVE DUPLICATES COMMAND (T1.8.3 → resolve_duplicates.py) ====================
 from .resolve_duplicates import app_migrator_resolve_duplicates
 
 # ==================== SCAN SITE COMMAND (T1.8.2 → scan.py) ====================
 from .scan import app_migrator_scan
+from .scan_donor_residue import app_migrator_scan_donor_residue
+from .select_option_drift import (
+    app_migrator_select_option_drift,  # audit-derived integrity checks (2026-11-05)
+)
 
 # ==================== SESSION MANAGEMENT (T1.8.3 → session.py) ====================
 from .session import app_migrator_session_start, app_migrator_session_status
+from .sessions import app_migrator_sessions  # v0.5-alpha W1 (Coder 2026-06-24)
 
 # ==================== STAGE COMMAND (T1.8.3 → stage.py) ====================
 from .stage import app_migrator_stage
 
 # ==================== UNSTAGE COMMAND (T1.8.3 → unstage.py) ====================
 from .unstage import app_migrator_unstage
-from .promote_custom_doctype import app_migrator_promote_custom_doctype
-from .scan_donor_residue import app_migrator_scan_donor_residue
+from .verifier import app_migrator_verifier  # v0.5-alpha W1 (Coder 2026-06-24)
 from .verify_donor_cleanup_readiness import app_migrator_verify_donor_cleanup_readiness
-from .audit_app_for_antipattern import app_migrator_audit_app_for_antipattern
-from .audit_orphan_doctypes import app_migrator_audit_orphan_doctypes
-from .audit_modules_disk_vs_db import app_migrator_audit_modules_disk_vs_db
-from .clean_donor_residue import app_migrator_clean_donor_residue
-from .new_fresh_app import app_migrator_new_fresh_app
-from .migrate_module import app_migrator_migrate_module
-from .denest_app import app_migrator_denest_app
 
 # ==================== MAIN GROUP COMMAND ====================
 
@@ -307,4 +308,5 @@ logger.debug("App Migrator v%s ready", __version__)
 
 # Analyze commands
 from . import skills  # v0.5-alpha W1 (Coder 2026-06-23)
+
 app_migrator.add_command(skills.skills)  # v0.5-alpha W1 (Coder 2026-06-23)

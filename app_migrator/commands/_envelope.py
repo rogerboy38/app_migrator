@@ -18,7 +18,7 @@ import socket
 import subprocess
 import sys
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -81,13 +81,13 @@ def make_envelope(
     command: str,
     status: str = "ok",
     summary: str = "",
-    findings: Optional[List[Dict[str, Any]]] = None,
-    risks: Optional[List[Dict[str, Any]]] = None,
-    suggested_next_commands: Optional[List[Dict[str, Any]]] = None,
-    evidence: Optional[List[Dict[str, Any]]] = None,
-    site: Optional[str] = None,
-    start_time: Optional[float] = None,
-) -> Dict[str, Any]:
+    findings: list[dict[str, Any]] | None = None,
+    risks: list[dict[str, Any]] | None = None,
+    suggested_next_commands: list[dict[str, Any]] | None = None,
+    evidence: list[dict[str, Any]] | None = None,
+    site: str | None = None,
+    start_time: float | None = None,
+) -> dict[str, Any]:
     """Build a v0.5-alpha W1 envelope payload dict.
 
     Caller is responsible for passing stable-id'd findings and approval-flagged
@@ -118,7 +118,7 @@ def make_envelope(
     }
 
 
-def emit_envelope(envelope: Dict[str, Any]) -> None:
+def emit_envelope(envelope: dict[str, Any]) -> None:
     """Print envelope as JSON to stdout, exit with status-mapped rc.
 
     Never returns: sys.exit(rc) terminates the process. The mapped rc comes

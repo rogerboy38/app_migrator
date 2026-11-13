@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+
 from conftest import FakeApp, finding_ids, run_check
 
 CHECK_ID = "undeclared-app-dependency"

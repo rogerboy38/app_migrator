@@ -24,7 +24,6 @@ from conftest import FakeApp
 _frappe_stub.install()
 
 from click.testing import CliRunner
-
 from app_migrator.commands.audit_integrity import (
     app_migrator_audit_integrity,
 )

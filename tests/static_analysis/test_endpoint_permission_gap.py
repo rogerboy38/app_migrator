@@ -12,8 +12,9 @@ CLI, which is the point of placing them outside ``app_migrator/commands/``.
 from __future__ import annotations
 
 import re
-from conftest import FakeApp, finding_ids, run_check
 from pathlib import Path
+
+from conftest import FakeApp, finding_ids, run_check
 
 CHECK_ID = "endpoint-permission-gap"
 

@@ -300,7 +300,6 @@ def scan_undeclared_dependencies(inventory: Inventory) -> dict[str, Any]:
     dynamic = 0
     standard = 0
     has_core = core_apps_present(inventory)
-    unresolved_without_core = 0
 
     for app in inventory.apps:
         declared = app.required_apps()

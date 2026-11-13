@@ -7,10 +7,10 @@ restored sites with broken encrypted credentials.
 """
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 
-def get_database_info(site: str) -> Dict[str, Any]:
+def get_database_info(site: str) -> dict[str, Any]:
     """Stub - returns the two encryption_key_hash values for a site.
 
     Production version reads from `site_config.json` and the local DB.
@@ -21,7 +21,7 @@ def get_database_info(site: str) -> Dict[str, Any]:
     return {"site_config": {}, "site_local_db": {}}
 
 
-def detect_encryption_key_drift(site: str) -> Dict[str, Any]:
+def detect_encryption_key_drift(site: str) -> dict[str, Any]:
     """Detect encryption-key drift between site_config and site_local_db.
 
     Returns a dict with:

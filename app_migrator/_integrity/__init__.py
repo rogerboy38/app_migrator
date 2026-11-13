@@ -26,15 +26,15 @@ from .context import (
 )
 
 __all__ = [
+    "DEFAULT_APPS_ROOT",
+    "DEFAULT_FINDING_LIMIT",
+    "SEVERITY_RANK",
     "AppInfo",
     "CheckResult",
     "CheckSpec",
-    "DEFAULT_APPS_ROOT",
-    "DEFAULT_FINDING_LIMIT",
     "Finding",
     "HookInfo",
     "Inventory",
-    "SEVERITY_RANK",
     "discover_apps_root",
     "get_checks",
 ]

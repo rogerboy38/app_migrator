@@ -23,10 +23,11 @@ layers match a source blob against the pattern without re-deriving the signature
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 
-def _regex_detector(patterns: List[str]) -> Callable[[str], bool]:
+def _regex_detector(patterns: list[str]) -> Callable[[str], bool]:
     """Build a case-insensitive ``detect(content) -> bool`` from regex fragments.
 
     Returns True if ANY fragment matches the content. Compiled once at build
@@ -63,9 +64,9 @@ class MigrationIntelligence:
     """
 
     def __init__(self) -> None:
-        self.pattern_database: List[Dict[str, Any]] = self._build_patterns()
+        self.pattern_database: list[dict[str, Any]] = self._build_patterns()
 
-    def _build_patterns(self) -> List[Dict[str, Any]]:
+    def _build_patterns(self) -> list[dict[str, Any]]:
         """Build the full radar pattern list (W2(e) re-export).
 
         Layer 1 — L419 data-quality + L394 radar (original W1-alpha stubs):

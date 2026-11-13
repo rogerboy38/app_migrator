@@ -92,8 +92,8 @@ def app_migrator_audit_app_for_antipattern(context, app, bench_root, output):
     emit(f"  Total DocTypes in antipattern folders: {total_affected_dts}")
     if affected_apps:
         emit(f"\n  Affected apps: {sorted(affected_apps)}")
-        emit(f"\n  Fix: bench app-migrator denest-app --app <name> "
-             f"--to-module \"<New Module>\" --apply")
+        emit("\n  Fix: bench app-migrator denest-app --app <name> "
+             "--to-module \"<New Module>\" --apply")
     emit("=" * 95)
 
     text = "\n".join(lines)

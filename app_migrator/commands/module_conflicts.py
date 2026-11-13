@@ -20,7 +20,7 @@ import ast
 import os
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import click
 
@@ -51,7 +51,7 @@ _FRAMEWORK_CONFIG_FILES = {"hooks.py"}
 DEFAULT_FINDING_LIMIT = 200
 
 
-def _iter_app_names(apps_root: str) -> List[str]:
+def _iter_app_names(apps_root: str) -> list[str]:
     """Return installed app names.
 
     Prefer apps.txt (the canonical install manifest); fall back to listing
@@ -74,7 +74,7 @@ def _iter_app_names(apps_root: str) -> List[str]:
     return names
 
 
-def _package_dir(apps_root: str, app: str) -> Optional[str]:
+def _package_dir(apps_root: str, app: str) -> str | None:
     """Resolve the inner Python package dir for an app (apps/<app>/<app>)."""
     inner = os.path.join(apps_root, app, app)
     if os.path.isdir(inner):
@@ -86,7 +86,7 @@ def _package_dir(apps_root: str, app: str) -> Optional[str]:
     return None
 
 
-def _top_level_symbols(source: str) -> List[str]:
+def _top_level_symbols(source: str) -> list[str]:
     """Extract module-level def/class/constant names from Python source.
 
     Returns names declared at module scope only — the symbols that participate
@@ -96,7 +96,7 @@ def _top_level_symbols(source: str) -> List[str]:
         tree = ast.parse(source)
     except (SyntaxError, ValueError):
         return []
-    names: List[str] = []
+    names: list[str] = []
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             names.append(node.name)
@@ -112,10 +112,10 @@ def _top_level_symbols(source: str) -> List[str]:
 
 def scan_collisions(
     apps_root: str = DEFAULT_APPS_ROOT,
-    app_names: Optional[List[str]] = None,
-    symbol_filter: Optional[str] = None,
+    app_names: list[str] | None = None,
+    symbol_filter: str | None = None,
     all_symbols: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Scan installed apps for cross-app top-level symbol collisions (L394).
 
     Args:
@@ -133,7 +133,7 @@ def scan_collisions(
     flt = re.compile(symbol_filter) if symbol_filter else None
 
     # symbol -> {app -> count of files declaring it}
-    symbol_apps: Dict[str, Dict[str, int]] = {}
+    symbol_apps: dict[str, dict[str, int]] = {}
     files_scanned = 0
     apps_scanned = 0
 
@@ -180,9 +180,9 @@ def scan_collisions(
     }
 
 
-def build_findings(collisions: Dict[str, List[str]], limit: int = DEFAULT_FINDING_LIMIT) -> List[Dict[str, Any]]:
+def build_findings(collisions: dict[str, list[str]], limit: int = DEFAULT_FINDING_LIMIT) -> list[dict[str, Any]]:
     """Turn a collisions map into envelope findings (severity: high per L380)."""
-    findings: List[Dict[str, Any]] = []
+    findings: list[dict[str, Any]] = []
     # Deterministic order: most-shared symbols first, then alphabetical.
     ordered = sorted(collisions.items(), key=lambda kv: (-len(kv[1]), kv[0]))
     for sym, apps in ordered[:limit]:

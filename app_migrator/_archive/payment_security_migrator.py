@@ -19,7 +19,7 @@ class PaymentSecurityMigrator:
     Specialized migrator for payment app security configurations
     Handles API keys, webhooks, encryption, and security compliance
     """
-    
+
     def __init__(self):
         self.security_patterns = {
             'api_keys': [
@@ -45,23 +45,23 @@ class PaymentSecurityMigrator:
                 r'rsa',
             ]
         }
-        
+
         self.payment_gateways = [
-            'stripe', 'razorpay', 'paypal', 'braintree', 'authorize', 
+            'stripe', 'razorpay', 'paypal', 'braintree', 'authorize',
             'square', 'worldpay', 'adyen'
         ]
-        
+
         self.migration_log = []
-    
+
     def analyze_security_configurations(self, app_path: str) -> Dict[str, Any]:
         """
         Comprehensive security configuration analysis for payment apps
         """
         print(f"🔍 Analyzing security configurations: {app_path}")
-        
+
         if not os.path.exists(app_path):
             return self._create_error_result("App path does not exist")
-        
+
         try:
             security_analysis = {
                 'app_path': app_path,
@@ -73,28 +73,28 @@ class PaymentSecurityMigrator:
                 'migration_risks': [],
                 'recommendations': []
             }
-            
+
             # Scan for security patterns
             security_analysis.update(self._scan_security_patterns(app_path))
-            
+
             # Check for hardcoded secrets
             security_analysis.update(self._check_hardcoded_secrets(app_path))
-            
+
             # Analyze webhook configurations
             security_analysis.update(self._analyze_webhooks(app_path))
-            
+
             # Check encryption implementations
             security_analysis.update(self._analyze_encryption(app_path))
-            
+
             # Generate risk assessment
             security_analysis.update(self._generate_risk_assessment(security_analysis))
-            
+
             print(f"✅ Security analysis complete: {len(security_analysis['security_risks'])} risks found")
             return security_analysis
-            
+
         except Exception as e:
             return self._create_error_result(f"Security analysis failed: {str(e)}")
-    
+
     def _scan_security_patterns(self, app_path: str) -> Dict[str, Any]:
         """Scan for security-related patterns in code"""
         results = {
@@ -103,19 +103,19 @@ class PaymentSecurityMigrator:
             'encryption_usage': [],
             'gateway_configs': []
         }
-        
+
         for root, dirs, files in os.walk(app_path):
             # Skip virtual environments and git directories
             if any(skip in root for skip in ['env', 'venv', '.git', '__pycache__']):
                 continue
-                
+
             for file in files:
                 if file.endswith(('.py', '.js', '.json', '.yaml', '.yml')):
                     file_path = os.path.join(root, file)
                     try:
                         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                             content = f.read()
-                            
+
                             # Check for API keys
                             for pattern in self.security_patterns['api_keys']:
                                 matches = re.findall(pattern, content, re.IGNORECASE)
@@ -127,7 +127,7 @@ class PaymentSecurityMigrator:
                                             'value_preview': f"{match[:10]}...",  # Don't log full keys
                                             'risk_level': 'high'
                                         })
-                            
+
                             # Check for webhook URLs
                             for pattern in self.security_patterns['webhook_urls']:
                                 matches = re.findall(pattern, content, re.IGNORECASE)
@@ -138,7 +138,7 @@ class PaymentSecurityMigrator:
                                         'url': match,
                                         'needs_update': True
                                     })
-                            
+
                             # Check for encryption usage
                             for pattern in self.security_patterns['encryption_patterns']:
                                 if re.search(pattern, content, re.IGNORECASE):
@@ -146,7 +146,7 @@ class PaymentSecurityMigrator:
                                         'file': file_path.replace(app_path, ''),
                                         'pattern': pattern
                                     })
-                            
+
                             # Check for payment gateway configurations
                             for gateway in self.payment_gateways:
                                 if gateway in content.lower():
@@ -155,23 +155,23 @@ class PaymentSecurityMigrator:
                                         'file': file_path.replace(app_path, ''),
                                         'configured': True
                                     })
-                                    
+
                     except Exception as e:
                         continue  # Skip files we can't read
-        
+
         return results
-    
+
     def _check_hardcoded_secrets(self, app_path: str) -> Dict[str, Any]:
         """Check for hardcoded secrets and security risks"""
         risks = []
-        
+
         # Common secret patterns (partial matches to avoid logging actual secrets)
         secret_indicators = [
             r'sk_[\w]+',  # Stripe secret key pattern
             r'rzp_[\w]+',  # Razorpay key pattern
             r'AKIA[0-9A-Z]{16}',  # AWS key pattern
         ]
-        
+
         for root, dirs, files in os.walk(app_path):
             for file in files:
                 if file.endswith('.py'):
@@ -179,7 +179,7 @@ class PaymentSecurityMigrator:
                     try:
                         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                             content = f.read()
-                            
+
                             for pattern in secret_indicators:
                                 if re.search(pattern, content):
                                     risks.append({
@@ -188,35 +188,35 @@ class PaymentSecurityMigrator:
                                         'pattern': pattern,
                                         'severity': 'critical'
                                     })
-                    
+
                     except Exception:
                         continue
-        
+
         return {'security_risks': risks}
-    
+
     def _analyze_webhooks(self, app_path: str) -> Dict[str, Any]:
         """Analyze webhook configurations and dependencies"""
         webhook_analysis = {
             'webhook_endpoints': [],
             'migration_actions': []
         }
-        
+
         # Look for webhook configuration files
         webhook_files = []
         for root, dirs, files in os.walk(app_path):
             for file in files:
                 if any(term in file.lower() for term in ['webhook', 'callback', 'endpoint']):
                     webhook_files.append(os.path.join(root, file))
-        
+
         for webhook_file in webhook_files:
             webhook_analysis['webhook_endpoints'].append({
                 'file': webhook_file.replace(app_path, ''),
                 'needs_url_update': True,
                 'action_required': 'Update webhook URLs in gateway dashboards'
             })
-        
+
         return webhook_analysis
-    
+
     def _analyze_encryption(self, app_path: str) -> Dict[str, Any]:
         """Analyze encryption implementations and key management"""
         encryption_findings = {
@@ -224,7 +224,7 @@ class PaymentSecurityMigrator:
             'key_management': [],
             'recommendations': []
         }
-        
+
         # Look for encryption-related files
         for root, dirs, files in os.walk(app_path):
             for file in files:
@@ -233,18 +233,18 @@ class PaymentSecurityMigrator:
                     try:
                         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                             content = f.read()
-                            
+
                             if any(method in content for method in ['AES', 'RSA', 'Fernet', 'cryptography']):
                                 encryption_findings['encryption_methods'].append({
                                     'file': file_path.replace(app_path, ''),
                                     'methods_found': self._detect_encryption_methods(content)
                                 })
-                    
+
                     except Exception:
                         continue
-        
+
         return encryption_findings
-    
+
     def _detect_encryption_methods(self, content: str) -> List[str]:
         """Detect specific encryption methods used"""
         methods = []
@@ -255,18 +255,18 @@ class PaymentSecurityMigrator:
             'Cryptography': r'cryptography',
             'Hashlib': r'hashlib',
         }
-        
+
         for method, pattern in crypto_patterns.items():
             if re.search(pattern, content):
                 methods.append(method)
-        
+
         return methods
-    
+
     def _generate_risk_assessment(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
         """Generate comprehensive risk assessment"""
         risks = []
         recommendations = []
-        
+
         # API Key Risks
         if analysis['api_keys_found']:
             risks.append({
@@ -276,7 +276,7 @@ class PaymentSecurityMigrator:
                 'impact': 'Security breach if keys are exposed'
             })
             recommendations.append("Move API keys to environment variables or secure config")
-        
+
         # Webhook Risks
         if analysis['webhook_configs']:
             risks.append({
@@ -286,7 +286,7 @@ class PaymentSecurityMigrator:
                 'impact': 'Payment failures if URLs not updated'
             })
             recommendations.append("Plan webhook URL updates in payment gateway dashboards")
-        
+
         # Encryption Risks
         if analysis['encryption_usage']:
             risks.append({
@@ -296,13 +296,13 @@ class PaymentSecurityMigrator:
                 'impact': 'Data decryption failures during migration'
             })
             recommendations.append("Test encryption/decryption in target environment")
-        
+
         return {
             'migration_risks': risks,
             'recommendations': recommendations
         }
-    
-    def migrate_security_configurations(self, source_path: str, target_path: str, 
+
+    def migrate_security_configurations(self, source_path: str, target_path: str,
                                       dry_run: bool = True) -> Dict[str, Any]:
         """
         Migrate security configurations from source to target
@@ -311,7 +311,7 @@ class PaymentSecurityMigrator:
         print(f"   Source: {source_path}")
         print(f"   Target: {target_path}")
         print(f"   Dry Run: {dry_run}")
-        
+
         migration_report = {
             'source_path': source_path,
             'target_path': target_path,
@@ -320,16 +320,16 @@ class PaymentSecurityMigrator:
             'warnings': [],
             'success': False
         }
-        
+
         try:
             # 1. Analyze source security configurations
             source_analysis = self.analyze_security_configurations(source_path)
             migration_report['source_analysis'] = source_analysis
-            
+
             # 2. Create security migration plan
             migration_plan = self._create_migration_plan(source_analysis, target_path)
             migration_report['migration_plan'] = migration_plan
-            
+
             # 3. Execute migration (or simulate for dry run)
             if not dry_run:
                 migration_results = self._execute_migration(migration_plan, source_path, target_path)
@@ -338,17 +338,17 @@ class PaymentSecurityMigrator:
             else:
                 migration_report['migration_steps'] = migration_plan['steps']
                 migration_report['success'] = True  # Dry run success
-            
+
             print(f"✅ Security migration {'simulation' if dry_run else 'execution'} completed")
-            
+
         except Exception as e:
             error_msg = f"Security migration failed: {str(e)}"
             print(f"❌ {error_msg}")
             migration_report['error'] = error_msg
             migration_report['success'] = False
-        
+
         return migration_report
-    
+
     def _create_migration_plan(self, analysis: Dict[str, Any], target_path: str) -> Dict[str, Any]:
         """Create detailed security migration plan"""
         plan = {
@@ -357,7 +357,7 @@ class PaymentSecurityMigrator:
             'post_migration_validations': [],
             'rollback_steps': []
         }
-        
+
         # API Key Migration Steps
         if analysis['api_keys_found']:
             plan['steps'].append({
@@ -371,7 +371,7 @@ class PaymentSecurityMigrator:
                 ],
                 'risk_level': 'high'
             })
-        
+
         # Webhook Migration Steps
         if analysis['webhook_configs']:
             plan['steps'].append({
@@ -385,7 +385,7 @@ class PaymentSecurityMigrator:
                 ],
                 'risk_level': 'medium'
             })
-        
+
         # Encryption Migration Steps
         if analysis['encryption_usage']:
             plan['steps'].append({
@@ -398,9 +398,9 @@ class PaymentSecurityMigrator:
                 ],
                 'risk_level': 'medium'
             })
-        
+
         return plan
-    
+
     def _execute_migration(self, plan: Dict[str, Any], source_path: str, target_path: str) -> Dict[str, Any]:
         """Execute the security migration plan"""
         results = {
@@ -408,25 +408,25 @@ class PaymentSecurityMigrator:
             'warnings': [],
             'errors': []
         }
-        
+
         # This would contain the actual migration logic
         # For now, we'll simulate the execution
-        
+
         for step in plan['steps']:
             results['executed_steps'].append({
                 'step': step['step'],
                 'status': 'simulated',
                 'details': f"Would execute: {step['description']}"
             })
-        
+
         return results
-    
-    def generate_security_report(self, analysis: Dict[str, Any], 
+
+    def generate_security_report(self, analysis: Dict[str, Any],
                                output_format: str = 'text') -> str:
         """Generate comprehensive security migration report"""
         if output_format == 'json':
             return json.dumps(analysis, indent=2)
-        
+
         # Text format report
         report = []
         report.append("=" * 60)
@@ -437,21 +437,21 @@ class PaymentSecurityMigrator:
         report.append(f"API Keys Found: {len(analysis.get('api_keys_found', []))}")
         report.append(f"Webhook Configs: {len(analysis.get('webhook_configs', []))}")
         report.append("")
-        
+
         # Security Risks
         if analysis.get('security_risks'):
             report.append("🔴 CRITICAL SECURITY RISKS:")
             for risk in analysis['security_risks']:
                 report.append(f"  • {risk['risk']} in {risk['file']}")
             report.append("")
-        
+
         # Migration Recommendations
         if analysis.get('recommendations'):
             report.append("🎯 MIGRATION RECOMMENDATIONS:")
             for rec in analysis['recommendations']:
                 report.append(f"  • {rec}")
             report.append("")
-        
+
         # API Key Findings
         if analysis.get('api_keys_found'):
             report.append("🔑 API KEY FINDINGS:")
@@ -460,9 +460,9 @@ class PaymentSecurityMigrator:
             if len(analysis['api_keys_found']) > 5:
                 report.append(f"  ... and {len(analysis['api_keys_found']) - 5} more")
             report.append("")
-        
+
         return "\n".join(report)
-    
+
     def _create_error_result(self, message: str) -> Dict[str, Any]:
         """Create standardized error result"""
         return {

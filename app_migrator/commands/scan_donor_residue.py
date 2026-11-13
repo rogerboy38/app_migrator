@@ -175,7 +175,7 @@ def _find_doctypes_in_app(app_root):
 
 def _find_moved_doctypes(donor_root, receiver_root):
     """A doctype is 'moved' if it has receiver JSON AND donor filesystem evidence.
-    
+
     The donor evidence: any directory named <slug> under any 'doctype/' parent
     in the donor tree. This filters out:
       - Frappe core doctypes that both apps customize (Stock Entry, Item Group, Uom)
@@ -211,9 +211,9 @@ def _scan_filesystem(donor_root, moved_slugs, bench_root, emit):
                  f"canonical .json: {'YES' if has_canonical_json else 'no'}  "
                  f"({len(files)} entries)")
             if not has_canonical_py and not has_canonical_json:
-                emit(f"     → SAFE TO DELETE (no canonical files, only backups)")
+                emit("     → SAFE TO DELETE (no canonical files, only backups)")
             else:
-                emit(f"     ⚠  HAS CANONICAL FILES — review before deleting")
+                emit("     ⚠  HAS CANONICAL FILES — review before deleting")
     if count == 0:
         emit("  (no shadow folders found — clean)")
     return count

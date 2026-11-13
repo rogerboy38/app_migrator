@@ -111,5 +111,5 @@ class CheckSpec:
     fn: CheckFn
     description: str = ""
 
-    def run(self, inventory: "Inventory") -> CheckResult:
+    def run(self, inventory: Inventory) -> CheckResult:
         return self.fn(inventory)

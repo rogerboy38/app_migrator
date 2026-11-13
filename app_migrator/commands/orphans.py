@@ -21,6 +21,7 @@ try:
 except ImportError:
     def pass_context(f):
         return f
+from ._envelope import emit_envelope, make_envelope
 from ._shared import (
     MigrationSession,
     ProgressTracker,
@@ -28,8 +29,6 @@ from ._shared import (
     get_bench_apps,
     get_current_site,
 )
-from ._envelope import emit_envelope, make_envelope
-
 
 # ──────────────────────────────────────────────────────────────────────────
 # Filesystem scan filters (added 2026-05-08 after sysmayal misattribution)

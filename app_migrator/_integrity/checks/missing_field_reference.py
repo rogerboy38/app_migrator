@@ -341,7 +341,7 @@ def _binding_for(value: ast.AST) -> str:
 class _Scope:
     """One lexical scope: a module, a class body or a function body."""
 
-    def __init__(self, parent: "_Scope" | None = None) -> None:
+    def __init__(self, parent: _Scope | None = None) -> None:
         self.parent = parent
         self.bindings: dict[str, str] = {}
 

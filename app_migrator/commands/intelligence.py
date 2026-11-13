@@ -24,6 +24,7 @@ except ImportError:
         return f
 
 from ._envelope import emit_envelope, make_envelope
+
 # ==================== PREDICT SUCCESS ====================
 
 @click.command('app-migrator-predict-success')
