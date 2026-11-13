@@ -270,12 +270,40 @@ jobs:
           cache: 'pip'
 
       - name: Install flit
+        # The build backend is flit_core (see pyproject.toml). Installing the
+        # CLI here proves the declared build requirement is satisfiable.
         run: pip install flit>=3.4
 
       - name: Validate pyproject.toml
         run: |
-          cd app_migrator
-          flit validate
+          set -euo pipefail
+          # The project metadata lives in the repository-root pyproject.toml.
+          # The old step did `cd app_migrator` and then `flit validate`: there
+          # is no pyproject.toml in that directory, and `validate` was removed
+          # from flit in 3.0 (its subcommands are build/publish/install/init),
+          # so this step could never have passed. It is replaced by a check
+          # that reads the file that actually exists.
+          python - <<'PY'
+          import pathlib, tomllib
+
+          raw = tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))
+
+          build = raw["build-system"]
+          if build["build-backend"] != "flit_core.buildapi":
+              raise SystemExit(f"unexpected build-backend: {build['build-backend']}")
+
+          project = raw["project"]
+          for key in ("name", "description", "requires-python", "readme"):
+              if key not in project:
+                  raise SystemExit(f"project.{key} is missing")
+          if "version" not in project and "version" not in project.get("dynamic", []):
+              raise SystemExit("project has neither a static version nor a dynamic one")
+
+          print(f"name          : {project['name']}")
+          print(f"version       : {project.get('version', '(dynamic)')}")
+          print(f"requires      : {project['requires-python']}")
+          print(f"build-backend : {build['build-backend']}")
+          PY
           echo "pyproject.toml is valid"
 
       - name: Check Frappe V16 requirements
