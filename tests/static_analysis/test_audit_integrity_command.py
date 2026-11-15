@@ -14,6 +14,7 @@ about the same thing: **the command lied to the caller**.
 These tests are bench-free: they drive the click command directly with a
 synthetic apps tree and never import Frappe for real.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,7 +29,6 @@ from click.testing import CliRunner
 from app_migrator.commands.audit_integrity import (
     app_migrator_audit_integrity,
 )
-
 
 GUEST_WRITE_ENDPOINT = """
 import frappe
@@ -53,9 +53,7 @@ def _run(root, *args):
 
 def _envelope(result):
     """Parse the JSON envelope the command printed."""
-    assert result.exit_code in (0, 10, 20, 40), (
-        f"unexpected exit code {result.exit_code}: {result.output}"
-    )
+    assert result.exit_code in (0, 10, 20, 40), f"unexpected exit code {result.exit_code}: {result.output}"
     return json.loads(result.output)
 
 
@@ -69,10 +67,12 @@ def test_a_clean_tree_exits_zero(apps_root):
 
 def test_a_medium_finding_exits_ten(apps_root):
     """A ``medium`` finding is a warning, not a block."""
-    root = apps_root([
-        FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
-        FakeApp(name="amb_w_tds"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
+            FakeApp(name="amb_w_tds"),
+        ]
+    )
     # amb_w_tds links into amb_w_spc without declaring the dependency.
     import json as _json
     import os
@@ -83,10 +83,7 @@ def test_a_medium_finding_exits_ten(apps_root):
         _json.dump(
             {
                 "name": "TDS Batch",
-                "fields": [
-                    {"fieldname": "batch_amb_ref", "fieldtype": "Link",
-                     "options": "Batch AMB"}
-                ],
+                "fields": [{"fieldname": "batch_amb_ref", "fieldtype": "Link", "options": "Batch AMB"}],
             },
             fh,
         )
@@ -99,15 +96,16 @@ def test_a_medium_finding_exits_ten(apps_root):
 
 def test_a_high_finding_exits_twenty(apps_root):
     """A ``high`` finding blocks: the exit code says so."""
-    root = apps_root([
-        FakeApp(
-            name="amb_w_spc",
-            python_files={
-                "system_integration/doctype/weight_event/weight_event.py":
-                    GUEST_WRITE_ENDPOINT
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_spc",
+                python_files={
+                    "system_integration/doctype/weight_event/weight_event.py": GUEST_WRITE_ENDPOINT
+                },
+            ),
+        ]
+    )
     result = _run(root, "--check", "endpoint-permission-gap")
     assert result.exit_code == 20, (result.exit_code, result.output)
     envelope = _envelope(result)
@@ -120,15 +118,16 @@ def test_the_limit_is_envelope_wide_not_per_check(apps_root):
     The old code applied the limit inside each check, so eight checks could
     return eight findings for a limit of one.
     """
-    root = apps_root([
-        FakeApp(
-            name="amb_w_spc",
-            python_files={
-                "system_integration/doctype/weight_event/weight_event.py":
-                    GUEST_WRITE_ENDPOINT
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_spc",
+                python_files={
+                    "system_integration/doctype/weight_event/weight_event.py": GUEST_WRITE_ENDPOINT
+                },
+            ),
+        ]
+    )
     result = _run(root, "--limit", "1")
     assert result.exit_code == 20, (result.exit_code, result.output)
     envelope = _envelope(result)

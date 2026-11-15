@@ -10,13 +10,16 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
+
 from ._shared import MigrationSession
 
 
-@click.command('app-migrator-session-start')
-@click.argument('name')
+@click.command("app-migrator-session-start")
+@click.argument("name")
 @pass_context
 def app_migrator_session_start(context, name):
     """Start a new migration session"""
@@ -27,8 +30,8 @@ def app_migrator_session_start(context, name):
     print(f"\n   Check status: bench app-migrator-session-status {session_id}")
 
 
-@click.command('app-migrator-session-status')
-@click.argument('session_id')
+@click.command("app-migrator-session-status")
+@click.argument("session_id")
 @pass_context
 def app_migrator_session_status(context, session_id):
     """Check migration session status"""

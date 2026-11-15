@@ -14,11 +14,14 @@ from ._shared import find_bench_root
 try:
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
-@click.command('app-migrator-modernize')
-@click.argument('app_name')
-@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+
+
+@click.command("app-migrator-modernize")
+@click.argument("app_name")
+@click.option("--dry-run/--apply", default=True, help="Dry run or apply")
 @pass_context
 def modernize_app(context, app_name, dry_run):
     """Upgrade app from traditional setup.py to modern pyproject.toml structure"""
@@ -61,7 +64,7 @@ def modernize_app(context, app_name, dry_run):
         "description": "Frappe Application",
         "publisher": "Unknown",
         "email": "unknown@example.com",
-        "license": "MIT"
+        "license": "MIT",
     }
 
     with open(hooks_path) as f:
@@ -69,6 +72,7 @@ def modernize_app(context, app_name, dry_run):
 
     # Parse hooks.py for app info
     import re
+
     patterns = {
         "title": r'app_title\s*=\s*["\']([^"\']+)["\']',
         "description": r'app_description\s*=\s*["\']([^"\']+)["\']',
@@ -102,11 +106,11 @@ def modernize_app(context, app_name, dry_run):
     pyproject_content = f'''[project]
 name = "{app_name}"
 version = "{version}"
-description = "{app_info['description']}"
+description = "{app_info["description"]}"
 authors = [
-    {{ name = "{app_info['publisher']}", email = "{app_info['email']}" }}
+    {{ name = "{app_info["publisher"]}", email = "{app_info["email"]}" }}
 ]
-license = {{ text = "{app_info['license']}" }}
+license = {{ text = "{app_info["license"]}" }}
 requires-python = ">=3.10"
 readme = "README.md"
 
@@ -127,7 +131,7 @@ frappe = ">=15.0.0"
 
     print("\n📄 PYPROJECT.TOML TO CREATE:")
     print("-" * 40)
-    for line in pyproject_content.split('\n')[:15]:
+    for line in pyproject_content.split("\n")[:15]:
         print(f"   {line}")
     print("   ...")
     print("-" * 40)
@@ -135,16 +139,16 @@ frappe = ">=15.0.0"
     if not dry_run:
         # Create pyproject.toml
         pyproject_path = os.path.join(app_path, "pyproject.toml")
-        with open(pyproject_path, 'w') as f:
+        with open(pyproject_path, "w") as f:
             f.write(pyproject_content)
         print(f"\n✅ Created: {pyproject_path}")
 
         # Create README.md if missing
         readme_path = os.path.join(app_path, "README.md")
         if not os.path.exists(readme_path):
-            readme_content = f"""# {app_info['title']}
+            readme_content = f"""# {app_info["title"]}
 
-{app_info['description']}
+{app_info["description"]}
 
 ## Installation
 
@@ -155,9 +159,9 @@ bench --site your-site install-app {app_name}
 
 ## License
 
-{app_info['license']}
+{app_info["license"]}
 """
-            with open(readme_path, 'w') as f:
+            with open(readme_path, "w") as f:
                 f.write(readme_content)
             print(f"✅ Created: {readme_path}")
 

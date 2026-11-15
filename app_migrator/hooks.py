@@ -256,4 +256,5 @@ def get_commands():
     These commands are available via: bench app-migrator <command>
     """
     from app_migrator.commands import commands
+
     return commands

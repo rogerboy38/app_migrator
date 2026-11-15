@@ -47,6 +47,7 @@ written, the resolved file / line when the target does exist, and the reason:
 Resolution is done on the parsed AST, never by importing the app: the package
 must stay importable without a bench.
 """
+
 from __future__ import annotations
 
 import ast
@@ -131,18 +132,12 @@ def _lookup(tree: ast.Module, name: str) -> tuple[ast.AST | None, str | None]:
             for target in node.targets:
                 if isinstance(target, ast.Name) and target.id == name:
                     return node, "variable"
-        if (
-            isinstance(node, ast.AnnAssign)
-            and isinstance(node.target, ast.Name)
-            and node.target.id == name
-        ):
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == name:
             return node, "variable"
     return None, None
 
 
-def _resolve_attr(
-    tree: ast.Module, attr_parts: Sequence[str]
-) -> tuple[ast.AST | None, str | None]:
+def _resolve_attr(tree: ast.Module, attr_parts: Sequence[str]) -> tuple[ast.AST | None, str | None]:
     """Resolve an attribute path inside one module.
 
     Supports ``name`` and ``Class.name`` (a method of a module-level class).
@@ -558,13 +553,9 @@ def _scan_doc_events(app: AppInfo, inventory: Inventory) -> list[dict[str, Any]]
         extra = {"doctypes": entry["doctypes"], "events": entry["events"]}
         slug = _handler_slug(handler, app)
         if not resolution.ok:
-            results.append(
-                _missing_entry("doc-event", slug, "doc_events", handler, resolution, extra)
-            )
+            results.append(_missing_entry("doc-event", slug, "doc_events", handler, resolution, extra))
         elif resolution.noop:
-            results.append(
-                _noop_entry("doc-event", slug, "doc_events", handler, resolution, app, extra)
-            )
+            results.append(_noop_entry("doc-event", slug, "doc_events", handler, resolution, app, extra))
     return results
 
 
@@ -587,15 +578,11 @@ def _scan_scheduler_events(app: AppInfo, inventory: Inventory) -> list[dict[str,
         slug = _handler_slug(handler, app)
         if not resolution.ok:
             results.append(
-                _missing_entry(
-                    "scheduler-event", slug, "scheduler_events", handler, resolution, extra
-                )
+                _missing_entry("scheduler-event", slug, "scheduler_events", handler, resolution, extra)
             )
         elif resolution.noop:
             results.append(
-                _noop_entry(
-                    "scheduler-event", slug, "scheduler_events", handler, resolution, app, extra
-                )
+                _noop_entry("scheduler-event", slug, "scheduler_events", handler, resolution, app, extra)
             )
     return results
 
@@ -775,10 +762,7 @@ def _scan_override_doctype_class(app: AppInfo, inventory: Inventory) -> list[dic
                 slug=slug,
                 status=_STATUS_DRIFT,
                 severity="medium",
-                title=(
-                    f"override_doctype_class claims a DocType owned by another "
-                    f"app: {doctype}"
-                ),
+                title=(f"override_doctype_class claims a DocType owned by another app: {doctype}"),
                 description=(
                     f"hook 'override_doctype_class' in this app claims "
                     f"'{doctype}', but that DocType ships in '{owner_app}' and "

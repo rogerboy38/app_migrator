@@ -10,6 +10,7 @@ class, so it survives click decorators, ``except`` clauses and class
 subclassing. It is **not** a Frappe emulator — it exists only to prove the
 import graph is intact.
 """
+
 from __future__ import annotations
 
 import importlib

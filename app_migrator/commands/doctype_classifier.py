@@ -19,11 +19,13 @@ from frappe.utils import get_sites
 
 class DoctypeStatus:
     """DocType status enumeration"""
-    STANDARD = "standard"          # Not touched, from core app
-    CUSTOMIZED = "customized"      # Has Custom Fields or Property Setters
-    CUSTOM = "custom"              # Created by user (custom=1)
-    ORPHAN = "orphan"              # app=None or not in file system
-    UNKNOWN = "unknown"            # Unable to classify
+
+    STANDARD = "standard"  # Not touched, from core app
+    CUSTOMIZED = "customized"  # Has Custom Fields or Property Setters
+    CUSTOM = "custom"  # Created by user (custom=1)
+    ORPHAN = "orphan"  # app=None or not in file system
+    UNKNOWN = "unknown"  # Unable to classify
+
 
 def get_doctype_classification(doctype_name):
     """
@@ -45,7 +47,7 @@ def get_doctype_classification(doctype_name):
             "custom_field_count": 0,
             "property_setter_count": 0,
             "is_orphan": False,
-            "details": []
+            "details": [],
         }
 
         # Check 1: Is it a custom doctype? (custom=1)
@@ -84,11 +86,8 @@ def get_doctype_classification(doctype_name):
         return classification
 
     except Exception as e:
-        return {
-            "name": doctype_name,
-            "status": DoctypeStatus.UNKNOWN,
-            "error": str(e)
-        }
+        return {"name": doctype_name, "status": DoctypeStatus.UNKNOWN, "error": str(e)}
+
 
 def batch_classify_doctypes(doctype_names):
     """
@@ -108,31 +107,37 @@ def batch_classify_doctypes(doctype_names):
 
     # QUERY 1: Get all doctype docs in one batch query
     doctypes = frappe.get_all(
-        "DocType",
-        filters={"name": ["in", doctype_names]},
-        fields=["name", "module", "custom"]
+        "DocType", filters={"name": ["in", doctype_names]}, fields=["name", "module", "custom"]
     )
-    doctypes_lookup = {dt['name']: dt for dt in doctypes}
+    doctypes_lookup = {dt["name"]: dt for dt in doctypes}
 
     # QUERY 2: Get Custom Field counts (GROUP BY)
-    custom_field_counts = frappe.db.sql("""
+    custom_field_counts = frappe.db.sql(
+        """
         SELECT dt, COUNT(*) as count
         FROM `tabCustom Field`
         WHERE dt IN %(doctypes)s
         GROUP BY dt
-    """, {"doctypes": doctype_names}, as_dict=True)
+    """,
+        {"doctypes": doctype_names},
+        as_dict=True,
+    )
 
     # QUERY 3: Get Property Setter counts (GROUP BY)
-    property_setter_counts = frappe.db.sql("""
+    property_setter_counts = frappe.db.sql(
+        """
         SELECT doc_type, COUNT(*) as count
         FROM `tabProperty Setter`
         WHERE doc_type IN %(doctypes)s
         GROUP BY doc_type
-    """, {"doctypes": doctype_names}, as_dict=True)
+    """,
+        {"doctypes": doctype_names},
+        as_dict=True,
+    )
 
     # Build lookup dictionaries
-    custom_fields_lookup = {item['dt']: item['count'] for item in custom_field_counts}
-    property_setters_lookup = {item['doc_type']: item['count'] for item in property_setter_counts}
+    custom_fields_lookup = {item["dt"]: item["count"] for item in custom_field_counts}
+    property_setters_lookup = {item["doc_type"]: item["count"] for item in property_setter_counts}
 
     # Classify in memory
     results = {}
@@ -145,10 +150,10 @@ def batch_classify_doctypes(doctype_names):
         property_count = property_setters_lookup.get(dt_name, 0)
 
         # Determine status
-        if dt['custom'] == 1:
+        if dt["custom"] == 1:
             status = DoctypeStatus.CUSTOM
             details = ["User-created custom doctype"]
-        elif not dt['module'] or dt['module'] == 'None':
+        elif not dt["module"] or dt["module"] == "None":
             status = DoctypeStatus.ORPHAN
             details = ["Orphan: No app assigned (app=None)"]
         elif custom_count > 0 or property_count > 0:
@@ -165,14 +170,14 @@ def batch_classify_doctypes(doctype_names):
         results[dt_name] = {
             "name": dt_name,
             "status": status,
-            "app": dt['module'],
-            "custom_flag": dt['custom'],
+            "app": dt["module"],
+            "custom_flag": dt["custom"],
             "has_custom_fields": custom_count > 0,
             "has_property_setters": property_count > 0,
             "custom_field_count": custom_count,
             "property_setter_count": property_count,
             "is_orphan": status == DoctypeStatus.ORPHAN,
-            "details": details
+            "details": details,
         }
 
     return results
@@ -185,24 +190,25 @@ def get_all_doctypes_by_app(app_name):
     Returns: list of classified doctypes
     """
     doctypes = frappe.get_all(
-        "DocType",
-        filters={"module": ["like", f"%{app_name}%"]},
-        fields=["name", "module", "custom"]
+        "DocType", filters={"module": ["like", f"%{app_name}%"]}, fields=["name", "module", "custom"]
     )
 
     if not doctypes:
         return []
 
     # Extract doctype names
-    doctype_names = [dt['name'] for dt in doctypes]
+    doctype_names = [dt["name"] for dt in doctypes]
 
     # Batch classify all at once
     classifications_dict = batch_classify_doctypes(doctype_names)
 
     # Convert back to list format
-    classified = [classifications_dict[dt_name] for dt_name in doctype_names if dt_name in classifications_dict]
+    classified = [
+        classifications_dict[dt_name] for dt_name in doctype_names if dt_name in classifications_dict
+    ]
 
     return classified
+
 
 def get_all_custom_fields_by_app(app_name):
     """
@@ -211,11 +217,7 @@ def get_all_custom_fields_by_app(app_name):
     Based on technical spec: Query tabCustom Field table
     """
     # Get all doctypes from the app first
-    doctypes = frappe.get_all(
-        "DocType",
-        filters={"module": ["like", f"%{app_name}%"]},
-        pluck="name"
-    )
+    doctypes = frappe.get_all("DocType", filters={"module": ["like", f"%{app_name}%"]}, pluck="name")
 
     if not doctypes:
         return []
@@ -224,10 +226,11 @@ def get_all_custom_fields_by_app(app_name):
     custom_fields = frappe.get_all(
         "Custom Field",
         filters={"dt": ["in", doctypes]},
-        fields=["name", "dt", "fieldname", "fieldtype", "label", "reqd", "options", "insert_after"]
+        fields=["name", "dt", "fieldname", "fieldtype", "label", "reqd", "options", "insert_after"],
     )
 
     return custom_fields
+
 
 def get_all_property_setters_by_app(app_name):
     """
@@ -236,11 +239,7 @@ def get_all_property_setters_by_app(app_name):
     Based on technical spec: Query tabProperty Setter table
     """
     # Get all doctypes from the app first
-    doctypes = frappe.get_all(
-        "DocType",
-        filters={"module": ["like", f"%{app_name}%"]},
-        pluck="name"
-    )
+    doctypes = frappe.get_all("DocType", filters={"module": ["like", f"%{app_name}%"]}, pluck="name")
 
     if not doctypes:
         return []
@@ -249,10 +248,11 @@ def get_all_property_setters_by_app(app_name):
     property_setters = frappe.get_all(
         "Property Setter",
         filters={"doc_type": ["in", doctypes]},
-        fields=["name", "doc_type", "field_name", "property", "value"]
+        fields=["name", "doc_type", "field_name", "property", "value"],
     )
 
     return property_setters
+
 
 def get_orphan_doctypes():
     """
@@ -262,11 +262,7 @@ def get_orphan_doctypes():
     """
     # Get all doctypes with app=None or empty module
     orphans = frappe.get_all(
-        "DocType",
-        filters=[
-            ["module", "in", ["", "None", None]]
-        ],
-        fields=["name", "module", "custom"]
+        "DocType", filters=[["module", "in", ["", "None", None]]], fields=["name", "module", "custom"]
     )
 
     classified_orphans = []
@@ -275,6 +271,7 @@ def get_orphan_doctypes():
         classified_orphans.append(classification)
 
     return classified_orphans
+
 
 def analyze_touched_tables():
     """
@@ -287,24 +284,15 @@ def analyze_touched_tables():
         touched_file = os.path.join(site_path, "touched_tables.json")
 
         if not os.path.exists(touched_file):
-            return {
-                "exists": False,
-                "message": "touched_tables.json not found - no migrations run yet"
-            }
+            return {"exists": False, "message": "touched_tables.json not found - no migrations run yet"}
 
         with open(touched_file) as f:
             touched_tables = json.load(f)
 
-        return {
-            "exists": True,
-            "count": len(touched_tables),
-            "tables": touched_tables
-        }
+        return {"exists": True, "count": len(touched_tables), "tables": touched_tables}
     except Exception as e:
-        return {
-            "exists": False,
-            "error": str(e)
-        }
+        return {"exists": False, "error": str(e)}
+
 
 def generate_migration_risk_assessment(doctype_name):
     """
@@ -318,7 +306,7 @@ def generate_migration_risk_assessment(doctype_name):
         DoctypeStatus.STANDARD: {
             "level": "LOW",
             "description": "Standard doctype, low migration risk",
-            "recommendations": ["Standard testing and backup procedures"]
+            "recommendations": ["Standard testing and backup procedures"],
         },
         DoctypeStatus.CUSTOMIZED: {
             "level": "MEDIUM",
@@ -326,13 +314,13 @@ def generate_migration_risk_assessment(doctype_name):
             "recommendations": [
                 "Document all custom fields before migration",
                 "Use app-specific cleanup scripts",
-                "Test in staging environment"
-            ]
+                "Test in staging environment",
+            ],
         },
         DoctypeStatus.CUSTOM: {
             "level": "LOW",
             "description": "Custom doctype, isolated from core system",
-            "recommendations": ["Standard testing and backup procedures"]
+            "recommendations": ["Standard testing and backup procedures"],
         },
         DoctypeStatus.ORPHAN: {
             "level": "HIGH",
@@ -340,17 +328,20 @@ def generate_migration_risk_assessment(doctype_name):
             "recommendations": [
                 "Identify original app",
                 "Fix app assignment before migration",
-                "Consider cleanup if truly orphaned"
-            ]
-        }
+                "Consider cleanup if truly orphaned",
+            ],
+        },
     }
 
     status = classification.get("status", DoctypeStatus.UNKNOWN)
-    risk = risk_matrix.get(status, {
-        "level": "UNKNOWN",
-        "description": "Unable to assess risk",
-        "recommendations": ["Manual review required"]
-    })
+    risk = risk_matrix.get(
+        status,
+        {
+            "level": "UNKNOWN",
+            "description": "Unable to assess risk",
+            "recommendations": ["Manual review required"],
+        },
+    )
 
     return {
         "doctype": doctype_name,
@@ -358,8 +349,9 @@ def generate_migration_risk_assessment(doctype_name):
         "risk_level": risk["level"],
         "description": risk["description"],
         "recommendations": risk["recommendations"],
-        "details": classification
+        "details": classification,
     }
+
 
 def display_classification_summary(classifications):
     """
@@ -388,7 +380,7 @@ def display_classification_summary(classifications):
         DoctypeStatus.CUSTOMIZED: "⚙️",
         DoctypeStatus.CUSTOM: "🔧",
         DoctypeStatus.ORPHAN: "⚠️",
-        DoctypeStatus.UNKNOWN: "❓"
+        DoctypeStatus.UNKNOWN: "❓",
     }
 
     for status, count in sorted(status_counts.items()):
@@ -397,6 +389,7 @@ def display_classification_summary(classifications):
         print(f"   {icon} {status.upper():12s}: {count:3d} ({percentage:5.1f}%)")
 
     print("\n" + "=" * 80)
+
 
 def display_detailed_classifications(classifications, limit=None):
     """
@@ -422,7 +415,7 @@ def display_detailed_classifications(classifications, limit=None):
             DoctypeStatus.CUSTOMIZED: "⚙️",
             DoctypeStatus.CUSTOM: "🔧",
             DoctypeStatus.ORPHAN: "⚠️",
-            DoctypeStatus.UNKNOWN: "❓"
+            DoctypeStatus.UNKNOWN: "❓",
         }
 
         icon = status_icons.get(status, "📋")

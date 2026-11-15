@@ -6,6 +6,7 @@ v2 changes (per T-VERIFY-001 Verifier review):
 - Gap 4: Uses conftest.py fixtures (skills_dir) instead of hardcoded Linux path.
 - Gap 6: Tool-registration test uses EXACT match (no "scan" substring shortcut).
 """
+
 import pytest
 
 FIRST_WAVE_SKILLS = [
@@ -21,10 +22,14 @@ REQUIRED_FRONTMATTER = {"name", "version", "description", "tools", "app_migrator
 def test_skills_list_returns_5_first_wave_skills(require_app_migrator, bench_cwd):
     """`bench app-migrator skills list` should return at least 5 first-wave skills."""
     import subprocess
+
     result = subprocess.run(
         ["bench", "app-migrator", "skills", "list"],
-        capture_output=True, text=True, timeout=60,
-    cwd=bench_cwd,)
+        capture_output=True,
+        text=True,
+        timeout=60,
+        cwd=bench_cwd,
+    )
     if result.returncode != 0:
         pytest.skip(f"skills list not yet wired (rc={result.returncode}): {result.stderr[:200]}")
     for skill in FIRST_WAVE_SKILLS:
@@ -44,13 +49,11 @@ def test_skill_frontmatter_has_required_fields(require_app_migrator, skills_dir)
     """Each SKILL.md must have all REQUIRED_FRONTMATTER keys in YAML frontmatter."""
     pytest.importorskip("yaml", reason="PyYAML not installed in test env")
     import yaml
+
     for skill in FIRST_WAVE_SKILLS:
         path = skills_dir / skill / "SKILL.md"
         if not path.exists():
-            pytest.skip(
-                f"{skill}: SKILL.md not yet written at {path} "
-                f"(Phase 1 skills layer WIP)"
-            )
+            pytest.skip(f"{skill}: SKILL.md not yet written at {path} (Phase 1 skills layer WIP)")
         content = path.read_text()
         if not content.startswith("---"):
             # T-VERIFY-002 boundary check: missing frontmatter is a clear skip,
@@ -73,12 +76,16 @@ def test_skill_tools_reference_registered_commands(require_app_migrator, skills_
     """
     pytest.importorskip("yaml", reason="PyYAML not installed in test env")
     import subprocess
+
     import yaml
 
     help_result = subprocess.run(
         ["bench", "app-migrator", "--help"],
-        capture_output=True, text=True, timeout=60,
-    cwd=bench_cwd,)
+        capture_output=True,
+        text=True,
+        timeout=60,
+        cwd=bench_cwd,
+    )
     if help_result.returncode != 0:
         pytest.skip(f"bench --help not yet wired (rc={help_result.returncode})")
 
@@ -118,10 +125,14 @@ def test_skill_tools_reference_registered_commands(require_app_migrator, skills_
 def test_skills_validate_returns_zero(require_app_migrator, bench_cwd):
     """`bench app-migrator skills validate` returns rc=0."""
     import subprocess
+
     result = subprocess.run(
         ["bench", "app-migrator", "skills", "validate"],
-        capture_output=True, text=True, timeout=60,
-    cwd=bench_cwd,)
+        capture_output=True,
+        text=True,
+        timeout=60,
+        cwd=bench_cwd,
+    )
     if result.returncode != 0:
         pytest.skip(f"skills validate not yet wired (rc={result.returncode}): {result.stderr[:200]}")
 
@@ -129,10 +140,14 @@ def test_skills_validate_returns_zero(require_app_migrator, bench_cwd):
 def test_skills_show_outputs_skill_md_body(require_app_migrator, bench_cwd):
     """`bench app-migrator skills show <skill>` outputs the SKILL.md body."""
     import subprocess
+
     result = subprocess.run(
         ["bench", "app-migrator", "skills", "show", "orphan-repair"],
-        capture_output=True, text=True, timeout=60,
-    cwd=bench_cwd,)
+        capture_output=True,
+        text=True,
+        timeout=60,
+        cwd=bench_cwd,
+    )
     if result.returncode != 0:
         pytest.skip(f"skills show not yet wired (rc={result.returncode}): {result.stderr[:200]}")
     out_lower = result.stdout.lower()

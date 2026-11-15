@@ -9,6 +9,7 @@ These tests exercise the `_extract_doctypes` shim in-process (no `bench`
 subprocess, so they never hang on this substrate — the full CLI round-trip is
 covered by T-VERIFY-005 in a fresh venv).
 """
+
 from app_migrator.commands.execute import _extract_doctypes
 
 
@@ -30,10 +31,12 @@ def test_phased_schema_does_not_keyerror():
 
 def test_legacy_flat_schema_still_works():
     """The legacy flat schema must keep working (backward compat)."""
-    plan = {"doctypes": [
-        {"name": "Payment Gateway", "target_app": "erpnext"},
-        {"name": "Payment Log", "target_app": "erpnext"},
-    ]}
+    plan = {
+        "doctypes": [
+            {"name": "Payment Gateway", "target_app": "erpnext"},
+            {"name": "Payment Log", "target_app": "erpnext"},
+        ]
+    }
     out = _extract_doctypes(plan)
     assert out == [
         {"name": "Payment Gateway", "target_app": "erpnext"},

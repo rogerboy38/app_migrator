@@ -24,22 +24,22 @@ class SchemaFixer:
 
             # Check current schema
             columns = frappe.db.sql("DESC `tabModule Def`", as_dict=True)
-            column_names = [col['Field'] for col in columns]
+            column_names = [col["Field"] for col in columns]
 
             fixes_applied = []
 
             # Add missing parent columns if they don't exist
-            if 'parent' not in column_names:
+            if "parent" not in column_names:
                 frappe.db.sql("ALTER TABLE `tabModule Def` ADD COLUMN `parent` varchar(255)")
                 fixes_applied.append("Added 'parent' column")
                 print("✅ Added 'parent' column")
 
-            if 'parentfield' not in column_names:
+            if "parentfield" not in column_names:
                 frappe.db.sql("ALTER TABLE `tabModule Def` ADD COLUMN `parentfield` varchar(255)")
                 fixes_applied.append("Added 'parentfield' column")
                 print("✅ Added 'parentfield' column")
 
-            if 'parenttype' not in column_names:
+            if "parenttype" not in column_names:
                 frappe.db.sql("ALTER TABLE `tabModule Def` ADD COLUMN `parenttype` varchar(255)")
                 fixes_applied.append("Added 'parenttype' column")
                 print("✅ Added 'parenttype' column")
@@ -90,6 +90,7 @@ class SchemaFixer:
             else:
                 print(f"📦 {self.app_name} not installed, attempting installation...")
                 from frappe.installer import install_app
+
                 install_app(self.app_name, force=True)
                 print(f"✅ {self.app_name} installed successfully!")
                 return True

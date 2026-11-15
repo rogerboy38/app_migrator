@@ -7,6 +7,7 @@ Positive case (all=1): flag each as having `inspection_required_before_delivery`
 reason. Negative case (selective): flag the ones with=1 with same reason but
 no BLANKET keyword.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -23,28 +24,29 @@ def verify_data_integrity(app: str, doctypes: list[dict[str, Any]]) -> dict[str,
     flagged: list[dict[str, Any]] = []
 
     if doctypes:
-        blanket_count = sum(
-            1 for d in doctypes
-            if d.get("inspection_required_before_delivery") == 1
-        )
+        blanket_count = sum(1 for d in doctypes if d.get("inspection_required_before_delivery") == 1)
         is_blanket = blanket_count == len(doctypes) and len(doctypes) > 1
 
         if is_blanket:
             for d in doctypes:
-                flagged.append({
-                    "name": d.get("name"),
-                    "reason": (
-                        "L398: BLANKET inspection_required_before_delivery "
-                        "enable on ALL DOCTYPES - field becomes meaningless"
-                    ),
-                })
+                flagged.append(
+                    {
+                        "name": d.get("name"),
+                        "reason": (
+                            "L398: BLANKET inspection_required_before_delivery "
+                            "enable on ALL DOCTYPES - field becomes meaningless"
+                        ),
+                    }
+                )
         else:
             for d in doctypes:
                 if d.get("inspection_required_before_delivery") == 1:
-                    flagged.append({
-                        "name": d.get("name"),
-                        "reason": "inspection_required_before_delivery",
-                    })
+                    flagged.append(
+                        {
+                            "name": d.get("name"),
+                            "reason": "inspection_required_before_delivery",
+                        }
+                    )
 
     return {
         "app": app,

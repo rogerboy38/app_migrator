@@ -39,6 +39,7 @@ Real-data validation (v1.0 + v1.1):
   Snapshots: clean_donor_residue_crm_host_20260506_215210.json (v1.0),
   clean_donor_residue_crm_host_20260506_220722.json (v1.1).
 """
+
 import ast
 import json
 import shutil
@@ -52,8 +53,10 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
 
 # Reuse verify's helpers — these contain the SAFE_TO_REMOVE detection logic
 from app_migrator.commands.verify_donor_cleanup_readiness import (
@@ -67,12 +70,11 @@ from app_migrator.commands.verify_donor_cleanup_readiness import (
 def _load_hooks_module(app_root, app_name):
     """Import donor or receiver hooks.py as a module without polluting sys.modules."""
     import importlib.util
+
     hooks_py = app_root / app_name / "hooks.py"
     if not hooks_py.exists():
         return None, None
-    spec = importlib.util.spec_from_file_location(
-        f"_cdr_{app_name}_hooks", str(hooks_py)
-    )
+    spec = importlib.util.spec_from_file_location(f"_cdr_{app_name}_hooks", str(hooks_py))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod, hooks_py
@@ -109,7 +111,7 @@ def _delete_lines(text, line_ranges):
         i_end = end
         if 0 <= i_start < len(lines) and i_end <= len(lines):
             del lines[i_start:i_end]
-            deletions += (i_end - i_start)
+            deletions += i_end - i_start
     return "\n".join(lines), deletions
 
 
@@ -139,20 +141,24 @@ def _find_fixture_value_positions(tree, values_to_remove):
                     if isinstance(third, ast.List):
                         for s in third.elts:
                             if isinstance(s, ast.Constant) and s.value in values_to_remove:
-                                positions.append({
-                                    "kind": "list_item",
-                                    "line": s.lineno,
-                                    "col": s.col_offset,
-                                    "end_col": s.end_col_offset,
-                                    "value": s.value,
-                                })
+                                positions.append(
+                                    {
+                                        "kind": "list_item",
+                                        "line": s.lineno,
+                                        "col": s.col_offset,
+                                        "end_col": s.end_col_offset,
+                                        "value": s.value,
+                                    }
+                                )
                     elif isinstance(third, ast.Constant) and third.value in values_to_remove:
-                        positions.append({
-                            "kind": "whole_filter_line",
-                            "line": filter_item.lineno,
-                            "end_line": filter_item.end_lineno or filter_item.lineno,
-                            "value": third.value,
-                        })
+                        positions.append(
+                            {
+                                "kind": "whole_filter_line",
+                                "line": filter_item.lineno,
+                                "end_line": filter_item.end_lineno or filter_item.lineno,
+                                "value": third.value,
+                            }
+                        )
     return positions
 
 
@@ -175,7 +181,7 @@ def _strip_value_from_text(text, position):
         trail_strip = 1
     elif after.startswith(" ,"):
         trail_strip = 2
-    new_line = line[:col] + line[end_col + trail_strip:]
+    new_line = line[:col] + line[end_col + trail_strip :]
     if new_line.strip() == "":
         del lines[line_idx]
     else:
@@ -200,11 +206,9 @@ def _strip_whole_filter_line(text, position):
 @click.option("--receiver", required=True, help="Receiver app name")
 @click.option("--apply", is_flag=True, help="Apply cleanup (default: dry-run)")
 @click.option("--bench-root", default="/home/frappe/frappe-bench")
-@click.option("--snapshot-dir",
-              default="/home/frappe/frappe-bench/sites/snapshots")
+@click.option("--snapshot-dir", default="/home/frappe/frappe-bench/sites/snapshots")
 @pass_context
-def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
-                                       bench_root, snapshot_dir):
+def app_migrator_clean_donor_residue(context, site, donor, receiver, apply, bench_root, snapshot_dir):
     """Remove stale donor references after a migrate-module transfer.
 
     Gated by verify-donor-cleanup-readiness: only SAFE_TO_REMOVE items
@@ -217,8 +221,7 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
     mode = "DRY-RUN" if dry_run else "APPLY"
 
     click.secho("\n" + "=" * 78, fg="cyan")
-    click.secho(f"  CLEAN-DONOR-RESIDUE — {donor} → {receiver}  [{mode}]",
-                fg="cyan", bold=True)
+    click.secho(f"  CLEAN-DONOR-RESIDUE — {donor} → {receiver}  [{mode}]", fg="cyan", bold=True)
     click.secho("=" * 78, fg="cyan")
 
     if not donor_root.exists():
@@ -230,19 +233,16 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
 
     donor_hooks, donor_hooks_py = _load_hooks_module(donor_root, donor)
     if donor_hooks is None:
-        click.secho(f"\n✗ Donor hooks.py not found: {donor_root}/{donor}/hooks.py",
-                    fg="red")
+        click.secho(f"\n✗ Donor hooks.py not found: {donor_root}/{donor}/hooks.py", fg="red")
         raise click.Abort()
     receiver_hooks, _ = _load_hooks_module(receiver_root, receiver)
     if receiver_hooks is None:
-        click.secho(f"\n✗ Receiver hooks.py not found: {receiver_root}/{receiver}/hooks.py",
-                    fg="red")
+        click.secho(f"\n✗ Receiver hooks.py not found: {receiver_root}/{receiver}/hooks.py", fg="red")
         raise click.Abort()
 
     moved = _find_moved_doctypes(donor_root, receiver_root)
     if not moved:
-        click.secho("\n  ✓ No moved DocTypes detected — donor cleanup not needed",
-                    fg="green")
+        click.secho("\n  ✓ No moved DocTypes detected — donor cleanup not needed", fg="green")
         return
 
     click.secho(f"\n  Moved DocTypes ({len(moved)}):", fg="cyan")
@@ -275,19 +275,16 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
     fixture_blocked = [d for d in fixture_decisions if d[2] == "MIGRATE_FIRST"]
 
     if blocked_migrate_first or fixture_blocked:
-        click.secho("\n  ✗ Cleanup BLOCKED — these entries are MIGRATE_FIRST:",
-                    fg="red", bold=True)
+        click.secho("\n  ✗ Cleanup BLOCKED — these entries are MIGRATE_FIRST:", fg="red", bold=True)
         for section, key, reason in blocked_migrate_first:
             click.secho(f"    • {section}['{key}']: {reason}", fg="red")
         for section, val, _v, reason in fixture_blocked:
             click.secho(f"    • {section} value '{val}': {reason}", fg="red")
-        click.secho("\n  Run migrate-module on these DocTypes first, then re-run.",
-                    fg="cyan")
+        click.secho("\n  Run migrate-module on these DocTypes first, then re-run.", fg="cyan")
         raise click.Abort()
 
     if not dict_removals and not fixture_safe_to_remove:
-        click.secho("\n  ✓ No residue detected — donor is already clean",
-                    fg="green")
+        click.secho("\n  ✓ No residue detected — donor is already clean", fg="green")
         return
 
     click.secho("\n┌── PLAN ────", fg="cyan")
@@ -306,24 +303,28 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
     click.echo("└────")
 
     if dry_run:
-        click.secho("\n  This was a DRY-RUN. To apply, re-run with --apply.",
-                    fg="yellow")
+        click.secho("\n  This was a DRY-RUN. To apply, re-run with --apply.", fg="yellow")
         return
 
     snap_dir = Path(snapshot_dir)
     snap_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     snap_file = snap_dir / f"clean_donor_residue_{donor}_{ts}.json"
-    snap_file.write_text(json.dumps({
-        "donor": donor,
-        "receiver": receiver,
-        "donor_hooks_py": str(donor_hooks_py),
-        "donor_hooks_py_before": donor_hooks_py.read_text(),
-        "dict_removals": dict_removals,
-        "fixture_removals": [list(d) for d in fixture_safe_to_remove],
-        "moved_doctypes": sorted(moved),
-        "timestamp": ts,
-    }, indent=2))
+    snap_file.write_text(
+        json.dumps(
+            {
+                "donor": donor,
+                "receiver": receiver,
+                "donor_hooks_py": str(donor_hooks_py),
+                "donor_hooks_py_before": donor_hooks_py.read_text(),
+                "dict_removals": dict_removals,
+                "fixture_removals": [list(d) for d in fixture_safe_to_remove],
+                "moved_doctypes": sorted(moved),
+                "timestamp": ts,
+            },
+            indent=2,
+        )
+    )
     click.secho(f"\n  📦 Snapshot: {snap_file}", fg="green")
 
     hooks_text = donor_hooks_py.read_text()
@@ -335,8 +336,9 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
         if rng is not None:
             line_ranges_to_delete.append(rng)
         else:
-            click.secho(f"  ⚠ Could not locate {section}['{key}'] in hooks.py — "
-                        "skipping this entry", fg="yellow")
+            click.secho(
+                f"  ⚠ Could not locate {section}['{key}'] in hooks.py — skipping this entry", fg="yellow"
+            )
 
     values_to_remove = set(d[1] for d in fixture_safe_to_remove)
     fixture_positions = _find_fixture_value_positions(tree, values_to_remove)
@@ -367,8 +369,7 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
                     line_ranges_fresh.append(rng)
             edited_text, deleted = _delete_lines(edited_text, line_ranges_fresh)
         except SyntaxError as e:
-            click.secho(f"  ⚠ hooks.py no longer parses after fixture edits: {e}",
-                        fg="yellow")
+            click.secho(f"  ⚠ hooks.py no longer parses after fixture edits: {e}", fg="yellow")
             click.secho("  → Restoring snapshot and aborting.", fg="red")
             donor_hooks_py.write_text(hooks_text)
             raise click.Abort()
@@ -390,8 +391,7 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
             section_name = target_names[0] if target_names else None
 
             # Empty top-level dict sections (doctype_class = {} etc.)
-            if (section_name in DICT_HOOK_SECTIONS
-                and isinstance(n.value, ast.Dict) and not n.value.keys):
+            if section_name in DICT_HOOK_SECTIONS and isinstance(n.value, ast.Dict) and not n.value.keys:
                 empty_lines.append((n.lineno, n.end_lineno or n.lineno))
 
             # Empty fixture filter rows (["dt", "in", []])
@@ -409,17 +409,22 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
                                 continue
                             third = filter_item.elts[2]
                             if isinstance(third, ast.List) and not third.elts:
-                                empty_lines.append((filter_item.lineno, filter_item.end_lineno or filter_item.lineno))
+                                empty_lines.append(
+                                    (filter_item.lineno, filter_item.end_lineno or filter_item.lineno)
+                                )
 
         if empty_lines:
             edited_text, _n_removed = _delete_lines(edited_text, empty_lines)
-            click.secho(f"  ✓ Post-pass: removed {len(empty_lines)} empty container(s)/filter row(s)", fg="cyan")
+            click.secho(
+                f"  ✓ Post-pass: removed {len(empty_lines)} empty container(s)/filter row(s)", fg="cyan"
+            )
     except SyntaxError as e:
         click.secho(f"  ⚠ Post-pass skipped (parse failed): {e}", fg="yellow")
 
     donor_hooks_py.write_text(edited_text)
-    click.secho(f"  ✓ hooks.py edited: removed {deleted} dict line(s), "
-                f"{fix_count} fixture value(s)", fg="green")
+    click.secho(
+        f"  ✓ hooks.py edited: removed {deleted} dict line(s), {fix_count} fixture value(s)", fg="green"
+    )
 
     try:
         ast.parse(edited_text)
@@ -432,13 +437,14 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
     click.secho("\n  Running bench export-fixtures...", fg="cyan")
     ret = subprocess.run(
         ["bench", "--site", site, "export-fixtures", "--app", donor],
-        capture_output=True, text=True, cwd=str(bench_root),
+        capture_output=True,
+        text=True,
+        cwd=str(bench_root),
     )
     if ret.returncode == 0:
         click.secho(f"  ✓ Exported fixtures for {donor}", fg="green")
     else:
-        click.secho(f"  ⚠ export-fixtures returned non-zero (continuing): "
-                    f"{ret.stderr[:200]}", fg="yellow")
+        click.secho(f"  ⚠ export-fixtures returned non-zero (continuing): {ret.stderr[:200]}", fg="yellow")
 
     cleared = 0
     for cache_dir in bench_root.rglob("__pycache__"):
@@ -450,11 +456,12 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
     click.secho("\n  Running bench migrate...", fg="cyan")
     ret = subprocess.run(
         ["bench", "--site", site, "migrate"],
-        capture_output=True, text=True, cwd=str(bench_root),
+        capture_output=True,
+        text=True,
+        cwd=str(bench_root),
     )
     if ret.returncode != 0:
-        click.secho(f"\n  ⚠ bench migrate failed (snapshot at {snap_file}):",
-                    fg="yellow")
+        click.secho(f"\n  ⚠ bench migrate failed (snapshot at {snap_file}):", fg="yellow")
         click.echo(ret.stderr[-1500:])
         return
 
@@ -466,4 +473,3 @@ def app_migrator_clean_donor_residue(context, site, donor, receiver, apply,
     click.echo(f"  Hook entries removed: {len(dict_removals)}")
     click.echo(f"  Fixture values removed: {len(fixture_safe_to_remove)}")
     click.echo(f"  Snapshot:            {snap_file.name}")
-

@@ -20,8 +20,11 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
+
 from ._shared import (
     MigrationSession,
     ProgressTracker,
@@ -31,8 +34,8 @@ from ._shared import (
 )
 
 
-@click.command('app-migrator-analyze')
-@click.argument('app_name')
+@click.command("app-migrator-analyze")
+@click.argument("app_name")
 @pass_context
 def app_migrator_analyze(context, app_name):
     """Analyze app structure (modern pyproject.toml vs traditional)"""
@@ -55,7 +58,7 @@ def app_migrator_analyze(context, app_name):
         "nested_package": False,
         "modules": [],
         "dependencies": [],
-        "issues": []
+        "issues": [],
     }
 
     # Check for modern structure (pyproject.toml)
@@ -94,7 +97,7 @@ def app_migrator_analyze(context, app_name):
         for item in os.listdir(nested_path):
             item_path = os.path.join(nested_path, item)
             if os.path.isdir(item_path) and os.path.exists(os.path.join(item_path, "__init__.py")):
-                if item not in ['templates', 'public', 'patches', 'config', '__pycache__']:
+                if item not in ["templates", "public", "patches", "config", "__pycache__"]:
                     if item not in result["modules"]:
                         result["modules"].append(item)
 
@@ -104,10 +107,11 @@ def app_migrator_analyze(context, app_name):
             with open(pyproject_path) as f:
                 content = f.read()
                 # Simple extraction of dependencies
-                if 'dependencies' in content:
+                if "dependencies" in content:
                     import re
+
                     deps = re.findall(r'"([a-zA-Z0-9_-]+)"', content)
-                    result["dependencies"] = [d for d in deps if d not in ['python', 'frappe', app_name]][:10]
+                    result["dependencies"] = [d for d in deps if d not in ["python", "frappe", app_name]][:10]
         except Exception:
             pass
 
@@ -156,4 +160,3 @@ def app_migrator_analyze(context, app_name):
         score += 10
 
     print(f"\n💯 HEALTH SCORE: {score}%")
-

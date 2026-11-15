@@ -9,17 +9,17 @@ print("🔍 Testing dependency declarations...")
 
 # Test pyproject.toml
 try:
-    with open('pyproject.toml', 'rb') as f:
+    with open("pyproject.toml", "rb") as f:
         data = tomllib.load(f)
 
-    if 'project' in data and 'dependencies' in data['project']:
-        deps = data['project']['dependencies']
+    if "project" in data and "dependencies" in data["project"]:
+        deps = data["project"]["dependencies"]
         print(f"✅ pyproject.toml has {len(deps)} dependencies:")
         for dep in deps:
             print(f"   • {dep}")
 
         # Check for keyring
-        if any('keyring' in dep for dep in deps):
+        if any("keyring" in dep for dep in deps):
             print("✅ keyring dependency declared")
         else:
             print("❌ keyring not in dependencies")
@@ -32,14 +32,14 @@ except Exception as e:
 print("\n🔍 Testing setup.cfg...")
 try:
     config = configparser.ConfigParser()
-    config.read('setup.cfg')
+    config.read("setup.cfg")
 
-    if 'options' in config and 'install_requires' in config['options']:
-        requires = config['options']['install_requires']
-        lines = [line.strip() for line in requires.split('\n') if line.strip()]
+    if "options" in config and "install_requires" in config["options"]:
+        requires = config["options"]["install_requires"]
+        lines = [line.strip() for line in requires.split("\n") if line.strip()]
         print(f"✅ setup.cfg has {len(lines)} dependencies")
 
-        if any('keyring' in line for line in lines):
+        if any("keyring" in line for line in lines):
             print("✅ keyring in install_requires")
         else:
             print("❌ keyring not in install_requires")

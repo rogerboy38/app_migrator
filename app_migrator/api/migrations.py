@@ -38,7 +38,7 @@ def create_migration(source_app, target_app, migration_type="full"):
             "status": "created",
             "created_at": frappe.utils.now(),
             "steps": [],
-            "message": _("Migration session created successfully")
+            "message": _("Migration session created successfully"),
         }
 
         # Log the migration creation
@@ -78,21 +78,24 @@ def analyze_app_structure(app_name):
             "dashboard_charts": [],
             "web_forms": [],
             "scripts": [],
-            "public_files": []
+            "public_files": [],
         }
 
         # Analyze modules
         modules_path = os.path.join(app_path, app_name)
         if os.path.exists(modules_path):
-            analysis["modules"] = [d for d in os.listdir(modules_path)
-                                 if os.path.isdir(os.path.join(modules_path, d))
-                                 and not d.startswith('__')]
+            analysis["modules"] = [
+                d
+                for d in os.listdir(modules_path)
+                if os.path.isdir(os.path.join(modules_path, d)) and not d.startswith("__")
+            ]
 
         # Analyze doctypes
         doctypes_path = os.path.join(app_path, app_name, app_name, "doctype")
         if os.path.exists(doctypes_path):
-            analysis["doctypes"] = [d for d in os.listdir(doctypes_path)
-                                  if os.path.isdir(os.path.join(doctypes_path, d))]
+            analysis["doctypes"] = [
+                d for d in os.listdir(doctypes_path) if os.path.isdir(os.path.join(doctypes_path, d))
+            ]
 
         frappe.logger().info(f"App structure analyzed: {app_name}")
         return analysis
@@ -118,7 +121,7 @@ def get_migration_status(migration_id):
         "status": "active",
         "progress": 0,
         "current_step": "initializing",
-        "details": "Migration in progress"
+        "details": "Migration in progress",
     }
 
 
@@ -136,9 +139,11 @@ def list_available_apps():
         apps_path = os.path.join(bench_path, "apps")
 
         if os.path.exists(apps_path):
-            apps = [d for d in os.listdir(apps_path)
-                   if os.path.isdir(os.path.join(apps_path, d))
-                   and not d.startswith('.')]
+            apps = [
+                d
+                for d in os.listdir(apps_path)
+                if os.path.isdir(os.path.join(apps_path, d)) and not d.startswith(".")
+            ]
             return sorted(apps)
         else:
             return []
@@ -161,12 +166,7 @@ def validate_migration_readiness(source_app, target_app):
         dict: Validation results
     """
     try:
-        validation_results = {
-            "can_proceed": True,
-            "warnings": [],
-            "errors": [],
-            "recommendations": []
-        }
+        validation_results = {"can_proceed": True, "warnings": [], "errors": [], "recommendations": []}
 
         # Check if apps exist
         source_path = frappe.get_app_source_path(source_app)
@@ -197,7 +197,4 @@ def validate_migration_readiness(source_app, target_app):
 
     except Exception as e:
         frappe.log_error(f"Error validating migration: {e!s}")
-        return {
-            "can_proceed": False,
-            "errors": [f"Validation error: {e!s}"]
-        }
+        return {"can_proceed": False, "errors": [f"Validation error: {e!s}"]}

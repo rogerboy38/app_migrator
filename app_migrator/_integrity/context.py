@@ -14,6 +14,7 @@ Nothing here imports ``frappe`` or touches the database: the inventory is
 purely a filesystem + parse view, so the checks are bench-free and testable
 in-process.
 """
+
 from __future__ import annotations
 
 import ast
@@ -103,10 +104,22 @@ def scrub(name: str) -> str:
     """Frappe's folder slug for a DocType name (``Movement Type`` -> ``movement_type``)."""
     return (name or "").strip().lower().replace(" ", "_").replace("-", "_")
 
+
 # Directories that never contain app source we want to reason about.
 SKIP_DIRS = {
-    ".git", "__pycache__", "node_modules", ".venv", "env", "dist", "build",
-    ".eggs", ".tox", ".mypy_cache", ".pytest_cache", ".ruff_cache", "site-packages",
+    ".git",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "env",
+    "dist",
+    "build",
+    ".eggs",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    "site-packages",
 }
 
 # Fixture files we know how to read.
@@ -145,7 +158,7 @@ def read_json(path: str) -> Any:
     try:
         with open(path, encoding="utf-8", errors="replace") as fh:
             return json.load(fh)
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return None
 
 
@@ -156,7 +169,7 @@ def parse_python(path: str) -> ast.Module | None:
         return None
     try:
         return ast.parse(source)
-    except (SyntaxError, ValueError):
+    except SyntaxError, ValueError:
         return None
 
 
@@ -164,7 +177,7 @@ def literal_or_none(node: ast.AST) -> Any:
     """Evaluate an AST node to a Python literal, or ``None`` if it is not one."""
     try:
         return ast.literal_eval(node)
-    except (ValueError, SyntaxError, TypeError):
+    except ValueError, SyntaxError, TypeError:
         return None
 
 
@@ -458,7 +471,7 @@ class Inventory:
 
     # -- construction -----------------------------------------------------
     def _load(self, app_names: list[str] | None) -> None:
-        for name in (app_names if app_names is not None else self._iter_app_names()):
+        for name in app_names if app_names is not None else self._iter_app_names():
             app = self._build_app(name)
             if app is None:
                 continue
@@ -573,22 +586,13 @@ class Inventory:
         if doctype in exact:
             return sorted(exact[doctype])
         lowered = doctype.lower()
-        direct = {
-            owner for name, owners in exact.items() if name.lower() == lowered for owner in owners
-        }
+        direct = {owner for name, owners in exact.items() if name.lower() == lowered for owner in owners}
         if direct:
             return sorted(direct)
         slug = scrub(doctype)
         if not slug:
             return []
-        return sorted(
-            {
-                owner
-                for name, owners in exact.items()
-                if scrub(name) == slug
-                for owner in owners
-            }
-        )
+        return sorted({owner for name, owners in exact.items() if scrub(name) == slug for owner in owners})
 
     def stats(self) -> dict[str, Any]:
         return {
@@ -606,9 +610,7 @@ def app_pair_key(record: dict[str, Any], kind: str) -> str:
     """
     if kind == "custom_field":
         return f"{record.get('dt')}-{record.get('fieldname')}"
-    return (
-        f"{record.get('doc_type')}-{record.get('field_name')}-{record.get('property')}"
-    )
+    return f"{record.get('doc_type')}-{record.get('field_name')}-{record.get('property')}"
 
 
 def comparable_record(record: dict[str, Any], ignore: tuple[str, ...]) -> dict[str, Any]:

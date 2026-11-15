@@ -9,8 +9,11 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
+
 from ._envelope import emit_envelope, make_envelope
 from ._shared import ProgressTracker
 
@@ -41,11 +44,16 @@ def _extract_doctypes(plan):
     return [_norm(dt) for phase in plan.get("phases", []) for dt in phase.get("doctypes", [])]
 
 
-@click.command('app-migrator-execute')
-@click.option('--json', 'as_json', is_flag=True, help='Emit v0.5 envelope JSON (report-only preview of the resolved plan)')
-@click.option('--site', required=True, help='Site name')
-@click.option('--plan', 'plan_file', required=True, help='Migration plan file')
-@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+@click.command("app-migrator-execute")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    help="Emit v0.5 envelope JSON (report-only preview of the resolved plan)",
+)
+@click.option("--site", required=True, help="Site name")
+@click.option("--plan", "plan_file", required=True, help="Migration plan file")
+@click.option("--dry-run/--apply", default=True, help="Dry run or apply")
 @pass_context
 def app_migrator_execute(context, as_json, site, plan_file, dry_run):
     """Execute a migration plan"""
@@ -60,14 +68,23 @@ def app_migrator_execute(context, as_json, site, plan_file, dry_run):
             plan = json.load(f)
     except Exception as e:
         if as_json:
-            emit_envelope(make_envelope(
-                command="execute",
-                status="error",
-                summary=f"execute failed: cannot load plan ({type(e).__name__})",
-                findings=[{"id": "execute-plan-load-error", "title": "Plan load failed",
-                           "severity": "high", "description": str(e)}],
-                site=site, start_time=start,
-            ))
+            emit_envelope(
+                make_envelope(
+                    command="execute",
+                    status="error",
+                    summary=f"execute failed: cannot load plan ({type(e).__name__})",
+                    findings=[
+                        {
+                            "id": "execute-plan-load-error",
+                            "title": "Plan load failed",
+                            "severity": "high",
+                            "description": str(e),
+                        }
+                    ],
+                    site=site,
+                    start_time=start,
+                )
+            )
         raise
 
     # --json is report-only: preview the resolved plan as an envelope, never apply.
@@ -75,25 +92,42 @@ def app_migrator_execute(context, as_json, site, plan_file, dry_run):
         doctypes = _extract_doctypes(plan)
         if doctypes:
             names = ", ".join(d["name"] for d in doctypes[:10])
-            findings = [{"id": "execute-planned-doctypes", "title": "DocTypes to migrate",
-                         "severity": "info",
-                         "description": f"{len(doctypes)} doctype(s): {names}" + (" ..." if len(doctypes) > 10 else "")}]
+            findings = [
+                {
+                    "id": "execute-planned-doctypes",
+                    "title": "DocTypes to migrate",
+                    "severity": "info",
+                    "description": f"{len(doctypes)} doctype(s): {names}"
+                    + (" ..." if len(doctypes) > 10 else ""),
+                }
+            ]
         else:
-            findings = [{"id": "execute-empty-plan", "title": "Plan resolved to no doctypes",
-                         "severity": "warn", "description": "The plan resolved to 0 doctypes to migrate."}]
-        emit_envelope(make_envelope(
-            command="execute",
-            status="ok" if doctypes else "warn",
-            summary=f"execute preview: {len(doctypes)} doctype(s) resolved from plan (report-only, no changes applied)",
-            findings=findings,
-            evidence=[{"type": "resolved_doctypes", "data": doctypes}],
-            suggested_next_commands=[{
-                "command": f"bench app-migrator execute --site {site} --plan {plan_file} --apply",
-                "approval_required": True,
-                "description": "Apply the migration (destructive).",
-            }],
-            site=site, start_time=start,
-        ))
+            findings = [
+                {
+                    "id": "execute-empty-plan",
+                    "title": "Plan resolved to no doctypes",
+                    "severity": "warn",
+                    "description": "The plan resolved to 0 doctypes to migrate.",
+                }
+            ]
+        emit_envelope(
+            make_envelope(
+                command="execute",
+                status="ok" if doctypes else "warn",
+                summary=f"execute preview: {len(doctypes)} doctype(s) resolved from plan (report-only, no changes applied)",
+                findings=findings,
+                evidence=[{"type": "resolved_doctypes", "data": doctypes}],
+                suggested_next_commands=[
+                    {
+                        "command": f"bench app-migrator execute --site {site} --plan {plan_file} --apply",
+                        "approval_required": True,
+                        "description": "Apply the migration (destructive).",
+                    }
+                ],
+                site=site,
+                start_time=start,
+            )
+        )
 
     if not dry_run:
         if not click.confirm("⚠️ This will modify your database. Continue?"):
@@ -109,9 +143,12 @@ def app_migrator_execute(context, as_json, site, plan_file, dry_run):
     for dt in doctypes:
         tracker.update(f"Processing {dt['name']}")
         if not dry_run:
-            frappe.db.sql("""
+            frappe.db.sql(
+                """
                 UPDATE `tabDocType` SET module = %s WHERE name = %s
-            """, (dt["target_app"], dt["name"]))
+            """,
+                (dt["target_app"], dt["name"]),
+            )
 
     if not dry_run:
         frappe.db.commit()

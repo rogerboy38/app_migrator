@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 try:
     import keyring
+
     KEYRING_AVAILABLE = True
 except ImportError:
     KEYRING_AVAILABLE = False
@@ -112,7 +113,7 @@ class APIManager:
             encrypted_file_data = file_cipher.encrypt(json.dumps(data).encode()).decode()
 
             # Write to file
-            with open(self.fallback_file, 'w') as f:
+            with open(self.fallback_file, "w") as f:
                 f.write(encrypted_file_data)
 
             # Set secure permissions
@@ -197,7 +198,7 @@ class APIManager:
                     "account": "verified-account",
                     "source": "test_key",
                     "note": "Full access (test mode)",
-                    "role": "full"
+                    "role": "full",
                 }
 
             # Test 2: Basic format validation (Guest tier)
@@ -221,7 +222,7 @@ class APIManager:
                         "account": "user-account",
                         "source": "frappe_cloud_api",
                         "note": "Full API validation",
-                        "role": "full"
+                        "role": "full",
                     }
 
                 # Actual API validation would go here
@@ -247,11 +248,11 @@ class APIManager:
             # Test 4: Plausibility check (Limited tier)
             # Check if key looks like a real Frappe Cloud key
             plausible = (
-                len(api_key) >= 20 and
-                any(c.isupper() for c in api_key) and
-                any(c.islower() for c in api_key) and
-                any(c.isdigit() for c in api_key) and
-                ("_" in api_key or "-" in api_key)
+                len(api_key) >= 20
+                and any(c.isupper() for c in api_key)
+                and any(c.islower() for c in api_key)
+                and any(c.isdigit() for c in api_key)
+                and ("_" in api_key or "-" in api_key)
             )
 
             if plausible:
@@ -263,7 +264,7 @@ class APIManager:
                     "account": "unverified-account",
                     "source": "plausibility_check",
                     "note": "Limited access - key looks valid but not verified",
-                    "role": "limited"
+                    "role": "limited",
                 }
 
             # If nothing matches, it's invalid (guest access)
@@ -281,11 +282,7 @@ class APIManager:
         api_key = self.get_api_key()
 
         if not api_key:
-            return {
-                "status": "not_set",
-                "user": None,
-                "storage": "none"
-            }
+            return {"status": "not_set", "user": None, "storage": "none"}
 
         validation = self.validate_api_key(api_key)
         if validation:
@@ -295,15 +292,10 @@ class APIManager:
                 "user": validation.get("email", "Verified User"),
                 "storage": storage_type,
                 "role": validation.get("role", "full"),
-                "source": validation.get("source", "unknown")
+                "source": validation.get("source", "unknown"),
             }
         else:
-            return {
-                "status": "invalid",
-                "user": None,
-                "storage": "unknown",
-                "role": "guest"
-            }
+            return {"status": "invalid", "user": None, "storage": "unknown", "role": "guest"}
 
     def _generate_encryption_key(self, bench_path):
         """Generate consistent encryption key from bench path"""
@@ -348,7 +340,7 @@ class SecurityManager:
                 "push_changes": False,
                 "cross_bench_sync": False,
                 "automated_migration": False,
-                "description": "Guest - basic features only"
+                "description": "Guest - basic features only",
             },
             "limited": {
                 "analyze_apps": True,
@@ -358,7 +350,7 @@ class SecurityManager:
                 "push_changes": False,  # No push for limited
                 "cross_bench_sync": True,
                 "automated_migration": True,
-                "description": "Limited - most features, no push"
+                "description": "Limited - most features, no push",
             },
             "full": {
                 "analyze_apps": True,
@@ -368,8 +360,8 @@ class SecurityManager:
                 "push_changes": True,
                 "cross_bench_sync": True,
                 "automated_migration": True,
-                "description": "Full - all features enabled"
-            }
+                "description": "Full - all features enabled",
+            },
         }
 
         return permissions.get(role, permissions["guest"])

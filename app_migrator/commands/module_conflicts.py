@@ -14,6 +14,7 @@ hard block) and ``ok`` when the symbol space is clean.
 The detection core (``scan_collisions``) is import-safe and bench-free so it can
 be unit-tested in-process; only the click wrapper touches the envelope/exit path.
 """
+
 from __future__ import annotations
 
 import ast
@@ -27,8 +28,10 @@ import click
 try:
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
 
 from ._envelope import emit_envelope, make_envelope
 
@@ -36,8 +39,19 @@ DEFAULT_APPS_ROOT = os.environ.get("BENCH_APPS_ROOT", "/home/frappe/frappe-bench
 
 # Dirs we never treat as source (vendored / build / vcs noise).
 _SKIP_DIRS = {
-    ".git", "__pycache__", "node_modules", ".venv", "env", "dist", "build",
-    ".eggs", "test", "tests", "fixtures", ".tox", "migrations",
+    ".git",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "env",
+    "dist",
+    "build",
+    ".eggs",
+    "test",
+    "tests",
+    "fixtures",
+    ".tox",
+    "migrations",
 }
 
 # Frappe's hooks.py is a declarative registration module: its top-level names
@@ -94,7 +108,7 @@ def _top_level_symbols(source: str) -> list[str]:
     """
     try:
         tree = ast.parse(source)
-    except (SyntaxError, ValueError):
+    except SyntaxError, ValueError:
         return []
     names: list[str] = []
     for node in tree.body:
@@ -164,11 +178,7 @@ def scan_collisions(
                     symbol_apps.setdefault(sym, {})
                     symbol_apps[sym][app] = symbol_apps[sym].get(app, 0) + 1
 
-    collisions = {
-        sym: sorted(app_map.keys())
-        for sym, app_map in symbol_apps.items()
-        if len(app_map) >= 2
-    }
+    collisions = {sym: sorted(app_map.keys()) for sym, app_map in symbol_apps.items() if len(app_map) >= 2}
     return {
         "collisions": collisions,
         "_stats": {
@@ -180,38 +190,51 @@ def scan_collisions(
     }
 
 
-def build_findings(collisions: dict[str, list[str]], limit: int = DEFAULT_FINDING_LIMIT) -> list[dict[str, Any]]:
+def build_findings(
+    collisions: dict[str, list[str]], limit: int = DEFAULT_FINDING_LIMIT
+) -> list[dict[str, Any]]:
     """Turn a collisions map into envelope findings (severity: high per L380)."""
     findings: list[dict[str, Any]] = []
     # Deterministic order: most-shared symbols first, then alphabetical.
     ordered = sorted(collisions.items(), key=lambda kv: (-len(kv[1]), kv[0]))
     for sym, apps in ordered[:limit]:
-        findings.append({
-            "id": f"l394-collision-{sym}",
-            "title": f"cross-app symbol collision: {sym}",
-            "severity": "high",
-            "description": (
-                f"Top-level symbol '{sym}' is declared in {len(apps)} apps "
-                f"({', '.join(apps)}). At module load this risks silent override "
-                f"or intermittent ImportError (L394 l394_symbol_collision)."
-            ),
-            "symbol": sym,
-            "apps": apps,
-        })
+        findings.append(
+            {
+                "id": f"l394-collision-{sym}",
+                "title": f"cross-app symbol collision: {sym}",
+                "severity": "high",
+                "description": (
+                    f"Top-level symbol '{sym}' is declared in {len(apps)} apps "
+                    f"({', '.join(apps)}). At module load this risks silent override "
+                    f"or intermittent ImportError (L394 l394_symbol_collision)."
+                ),
+                "symbol": sym,
+                "apps": apps,
+            }
+        )
     return findings
 
 
-@click.command('app-migrator-module-conflicts')
-@click.option('--site', default=None, help='Site name (informational; not required)')
-@click.option('--json', 'as_json', is_flag=True, help='Emit v0.5 envelope JSON')
-@click.option('--all-symbols', 'all_symbols', is_flag=True,
-              help='Inventory every module-level symbol (include _private/__dunder__)')
-@click.option('--filter', 'symbol_filter', default=None,
-              help='Only consider symbols matching this regex')
-@click.option('--apps-root', default=DEFAULT_APPS_ROOT, show_default=True,
-              help='bench apps/ directory to scan')
-@click.option('--limit', default=DEFAULT_FINDING_LIMIT, show_default=True, type=int,
-              help='Max collision findings carried in the envelope')
+@click.command("app-migrator-module-conflicts")
+@click.option("--site", default=None, help="Site name (informational; not required)")
+@click.option("--json", "as_json", is_flag=True, help="Emit v0.5 envelope JSON")
+@click.option(
+    "--all-symbols",
+    "all_symbols",
+    is_flag=True,
+    help="Inventory every module-level symbol (include _private/__dunder__)",
+)
+@click.option("--filter", "symbol_filter", default=None, help="Only consider symbols matching this regex")
+@click.option(
+    "--apps-root", default=DEFAULT_APPS_ROOT, show_default=True, help="bench apps/ directory to scan"
+)
+@click.option(
+    "--limit",
+    default=DEFAULT_FINDING_LIMIT,
+    show_default=True,
+    type=int,
+    help="Max collision findings carried in the envelope",
+)
 @pass_context
 def app_migrator_module_conflicts(context, site, as_json, all_symbols, symbol_filter, apps_root, limit):
     """Detect cross-app Python symbol collisions (L394 radar pattern)."""
@@ -231,8 +254,7 @@ def app_migrator_module_conflicts(context, site, as_json, all_symbols, symbol_fi
         summary = (
             f"module-conflicts: {stats['collision_count']} cross-app symbol "
             f"collision(s) across {stats['apps_scanned']} apps / "
-            f"{stats['files_scanned']} files"
-            + (f" (showing first {len(findings)})" if truncated > 0 else "")
+            f"{stats['files_scanned']} files" + (f" (showing first {len(findings)})" if truncated > 0 else "")
         )
         envelope = make_envelope(
             command="module-conflicts",
@@ -241,11 +263,13 @@ def app_migrator_module_conflicts(context, site, as_json, all_symbols, symbol_fi
             findings=findings,
             evidence=[
                 {"kind": "scan_stats", **stats},
-                {"kind": "scan_params",
-                 "apps_root": apps_root,
-                 "all_symbols": all_symbols,
-                 "symbol_filter": symbol_filter,
-                 "findings_truncated": max(truncated, 0)},
+                {
+                    "kind": "scan_params",
+                    "apps_root": apps_root,
+                    "all_symbols": all_symbols,
+                    "symbol_filter": symbol_filter,
+                    "findings_truncated": max(truncated, 0),
+                },
             ],
             suggested_next_commands=[
                 {

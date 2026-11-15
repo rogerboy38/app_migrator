@@ -37,6 +37,7 @@ field set is therefore widened with
 and JS-only pseudo-fields (``frm.doc.__islocal`` and friends) are skipped
 outright. What survives that is worth a human's time.
 """
+
 from __future__ import annotations
 
 import os
@@ -296,9 +297,7 @@ def _distance(left: str, right: str) -> int:
     typos such as ``sap_movment_type``.
     """
     direct = _levenshtein(left, right)
-    stripped = _levenshtein(
-        _strip_custom_prefix(left), _strip_custom_prefix(right)
-    )
+    stripped = _levenshtein(_strip_custom_prefix(left), _strip_custom_prefix(right))
     return min(direct, stripped)
 
 
@@ -503,10 +502,7 @@ def build_findings(scan: dict[str, Any]) -> list[Finding]:
             hint = f" Did you mean {', '.join(suggestions)}?"
         findings.append(
             Finding(
-                id=(
-                    f"integrity-{CHECK_ID}-{info['app']}-"
-                    f"{info['doctype_slug']}-{info['fieldname']}"
-                ),
+                id=(f"integrity-{CHECK_ID}-{info['app']}-{info['doctype_slug']}-{info['fieldname']}"),
                 title=(
                     f"Client script for {info['doctype']} uses field "
                     f"'{info['fieldname']}', which the DocType does not have"

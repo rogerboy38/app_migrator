@@ -10,6 +10,7 @@ Per v0.5 spec Phase 0 envelope design (T-VERIFY-002 ratified):
 - findings carry stable id (for diffing across runs)
 - suggested_next_commands carry approval_required (for destructive steps)
 """
+
 from __future__ import annotations
 
 import datetime
@@ -33,7 +34,10 @@ def _bench_version() -> str:
     """Return bench CLI version string (or 'unknown')."""
     try:
         out = subprocess.run(
-            ["bench", "--version"], capture_output=True, text=True, timeout=5,
+            ["bench", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         return out.stdout.strip() or "unknown"
     except Exception:
@@ -45,7 +49,9 @@ def _app_migrator_commit() -> str:
     try:
         out = subprocess.run(
             ["git", "-C", _APP_DIR, "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         return out.stdout.strip() or "unknown"
     except Exception:
@@ -69,7 +75,9 @@ def _current_site() -> str:
     try:
         out = subprocess.run(
             ["cat", currentsite_file],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         site = out.stdout.strip() if out.stdout else ""
         return site or "unknown"
@@ -104,9 +112,7 @@ def make_envelope(
         "summary": summary,
         "findings": findings if findings is not None else [],
         "risks": risks if risks is not None else [],
-        "suggested_next_commands": (
-            suggested_next_commands if suggested_next_commands is not None else []
-        ),
+        "suggested_next_commands": (suggested_next_commands if suggested_next_commands is not None else []),
         "evidence": evidence if evidence is not None else [],
         "meta": {
             "bench_version": _bench_version(),

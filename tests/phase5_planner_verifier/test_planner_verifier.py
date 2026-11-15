@@ -14,11 +14,11 @@ v3 changes (per Q7 NATIVE PARAMETRIZE ratification, 2026-06-24):
   module-collision-preflight, paired-deliverable-check, migration-preflight,
   install-recovery). Q7 resolved in code; no v2.1 backlog needed.
 """
+
 import json
 import subprocess
 
 import pytest
-
 
 # Q7 native parametrize: 5 first-wave skills per v0.5 spec.
 FIRST_WAVE_SKILLS = [
@@ -34,12 +34,13 @@ def run_planner(workflow, *extra_args):
     """Run planner; skip gracefully on any failure mode."""
     result = subprocess.run(
         ["bench", "app-migrator", "planner", workflow, *extra_args],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
     if result.returncode != 0:
         pytest.skip(
-            f"planner not yet implemented for {workflow} (rc={result.returncode}): "
-            f"{result.stderr[:200]}"
+            f"planner not yet implemented for {workflow} (rc={result.returncode}): {result.stderr[:200]}"
         )
     if not result.stdout.strip():
         pytest.skip(f"planner {workflow} returned empty stdout (WIP)")
@@ -53,13 +54,12 @@ def run_verifier(*cli_args):
     """Run verifier with arbitrary CLI args; skip gracefully on any failure mode."""
     result = subprocess.run(
         ["bench", "app-migrator", "verifier", *cli_args],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
     if result.returncode != 0:
-        pytest.skip(
-            f"verifier not yet implemented (rc={result.returncode}): "
-            f"{result.stderr[:200]}"
-        )
+        pytest.skip(f"verifier not yet implemented (rc={result.returncode}): {result.stderr[:200]}")
     if not result.stdout.strip():
         pytest.skip(f"verifier returned empty stdout (WIP)")
     try:
@@ -69,6 +69,7 @@ def run_verifier(*cli_args):
 
 
 # ---------- Planner (U1/Q3) ----------
+
 
 @pytest.mark.parametrize("workflow", FIRST_WAVE_SKILLS)
 def test_planner_emits_dry_run_by_default(workflow):
@@ -113,18 +114,20 @@ def test_planner_yes_bypasses_apply_pause(workflow):
 # with deterministic thresholds (blockers delta, findings delta).
 # A buggy verifier that always returns one value must NOT pass.
 
+
 def test_verifier_improved_when_blockers_drop():
     """Outcome=improved when blocker count drops (per U2/Q4 derivation rule)."""
     pre = {"findings": [{"id": "f1"}], "blockers": 2}
     post = {"findings": [{"id": "f1"}], "blockers": 0}
     result = run_verifier(
         "test-session",
-        "--pre", json.dumps(pre),
-        "--post", json.dumps(post),
+        "--pre",
+        json.dumps(pre),
+        "--post",
+        json.dumps(post),
     )
     assert result["outcome"] == "improved", (
-        f"blockers 2->0 should derive outcome=improved; got {result['outcome']}; "
-        f"full: {result}"
+        f"blockers 2->0 should derive outcome=improved; got {result['outcome']}; full: {result}"
     )
 
 
@@ -134,8 +137,10 @@ def test_verifier_regressed_blocks_continuation():
     post = {"findings": [{"id": "f1"}, {"id": "f2"}], "blockers": 0}
     result = run_verifier(
         "test-session",
-        "--pre", json.dumps(pre),
-        "--post", json.dumps(post),
+        "--pre",
+        json.dumps(pre),
+        "--post",
+        json.dumps(post),
     )
     assert result["outcome"] == "regressed", (
         f"new finding added should derive outcome=regressed; got {result['outcome']}"
@@ -155,16 +160,18 @@ def test_verifier_outcome_unchanged_when_no_delta():
     post = {"findings": [{"id": "f1"}], "blockers": 1}
     result = run_verifier(
         "test-session",
-        "--pre", json.dumps(pre),
-        "--post", json.dumps(post),
+        "--pre",
+        json.dumps(pre),
+        "--post",
+        json.dumps(post),
     )
     assert result["outcome"] == "unchanged", (
-        f"identical pre/post should derive outcome=unchanged; "
-        f"got {result['outcome']}; full: {result}"
+        f"identical pre/post should derive outcome=unchanged; got {result['outcome']}; full: {result}"
     )
 
 
 # ---------- Session persistence (U5/Q7c) ----------
+
 
 def test_sessions_persistence_sqlite(app_migrator_root):
     """Sessions are stored in SQLite (per U5/Q7c). A session can be created/queried/resumed."""
@@ -173,17 +180,12 @@ def test_sessions_persistence_sqlite(app_migrator_root):
     # Use fixture-resolved path (conftest.py), not hardcoded Linux path
     db_path = app_migrator_root / ".sessions" / "sessions.sqlite3"
     if not db_path.exists():
-        pytest.skip(
-            f"sessions DB not yet created at {db_path} "
-            f"(Phase 5 sessions storage WIP)"
-        )
+        pytest.skip(f"sessions DB not yet created at {db_path} (Phase 5 sessions storage WIP)")
     # T-VERIFY-002 boundary check: corrupt DB must skip with a clear message,
     # not hard-fail with stack trace.
     try:
         conn = sqlite3.connect(db_path)
-        cur = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'"
-        )
+        cur = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'")
         assert cur.fetchone() is not None, "sessions table should exist"
     except sqlite3.DatabaseError as e:
         pytest.skip(

@@ -32,6 +32,7 @@ data goes into envelope.evidence; --site is optional when --json is set).
 
 Wave 1 deliverable for v10.2.0. Read-only. No state changes.
 """
+
 import json
 import sys
 import time
@@ -44,6 +45,7 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
 
@@ -54,6 +56,7 @@ def _scrub(name):
 
 
 # ────────────────────────── SOURCE READERS ──────────────────────────
+
 
 def _read_modules_txt(app, bench_root):
     """List of module names from apps/<app>/<app>/modules.txt; [] if absent."""
@@ -84,9 +87,21 @@ def _read_on_disk_module_dirs(app, bench_root):
     if not pkg.is_dir():
         return []
     skip = {
-        "__pycache__", "templates", "public", "patches", "config",
-        "fixtures", "translations", "locale", "tests", "docs",
-        "www", "api", "utils", "hooks", "boot",
+        "__pycache__",
+        "templates",
+        "public",
+        "patches",
+        "config",
+        "fixtures",
+        "translations",
+        "locale",
+        "tests",
+        "docs",
+        "www",
+        "api",
+        "utils",
+        "hooks",
+        "boot",
     }
     out = []
     for entry in pkg.iterdir():
@@ -133,6 +148,7 @@ def _read_orphan_ui_refs():
 
 # ────────────────────────── CLASSIFIERS ──────────────────────────
 
+
 def _audit_app(app, bench_root, all_module_def_rows):
     """Per-app classifications. Returns dict label → list of finding dicts."""
     findings = defaultdict(list)
@@ -149,29 +165,35 @@ def _audit_app(app, bench_root, all_module_def_rows):
     # STRANDED_FILE: modules.txt entry → no on-disk dir
     for s, original in txt_scrub.items():
         if s not in disk_scrub:
-            findings["STRANDED_FILE"].append({
-                "app": app,
-                "module": original,
-                "detail": f"modules.txt entry '{original}' has no apps/{app}/{app}/{s}/ on disk",
-            })
+            findings["STRANDED_FILE"].append(
+                {
+                    "app": app,
+                    "module": original,
+                    "detail": f"modules.txt entry '{original}' has no apps/{app}/{app}/{s}/ on disk",
+                }
+            )
 
     # ORPHAN_DIR: on-disk dir → not in modules.txt
     for s, original in disk_scrub.items():
         if s not in txt_scrub:
-            findings["ORPHAN_DIR"].append({
-                "app": app,
-                "module": original,
-                "detail": f"apps/{app}/{app}/{original}/ on disk but not listed in modules.txt",
-            })
+            findings["ORPHAN_DIR"].append(
+                {
+                    "app": app,
+                    "module": original,
+                    "detail": f"apps/{app}/{app}/{original}/ on disk but not listed in modules.txt",
+                }
+            )
 
     # ORPHAN_DEF: Module Def → no modules.txt match
     for s, original in def_scrub.items():
         if s not in txt_scrub:
-            findings["ORPHAN_DEF"].append({
-                "app": app,
-                "module": original,
-                "detail": f"tabModule Def '{original}' (app_name={app}) has no modules.txt entry",
-            })
+            findings["ORPHAN_DEF"].append(
+                {
+                    "app": app,
+                    "module": original,
+                    "detail": f"tabModule Def '{original}' (app_name={app}) has no modules.txt entry",
+                }
+            )
 
     # CASE_VARIANT: two Module Def rows scrubbing to same key
     seen = {}
@@ -179,26 +201,27 @@ def _audit_app(app, bench_root, all_module_def_rows):
         s = _scrub(r["name"])
         if s in seen and seen[s] != r["name"]:
             pair = sorted([seen[s], r["name"]])
-            already = any(
-                set(f.get("modules", [])) == set(pair)
-                for f in findings["CASE_VARIANT"]
-            )
+            already = any(set(f.get("modules", [])) == set(pair) for f in findings["CASE_VARIANT"])
             if not already:
-                findings["CASE_VARIANT"].append({
-                    "app": app,
-                    "modules": pair,
-                    "detail": f"Module Defs {pair[0]!r} and {pair[1]!r} both scrub to '{s}'",
-                })
+                findings["CASE_VARIANT"].append(
+                    {
+                        "app": app,
+                        "modules": pair,
+                        "detail": f"Module Defs {pair[0]!r} and {pair[1]!r} both scrub to '{s}'",
+                    }
+                )
         seen.setdefault(s, r["name"])
 
     # NESTED_PARTIAL_DENEST: apps/<app>/<app>/<app>/ exists
     nested = Path(bench_root) / "apps" / app / app / app
     if nested.is_dir():
-        findings["NESTED_PARTIAL_DENEST"].append({
-            "app": app,
-            "detail": f"apps/{app}/{app}/{app}/ shadow folder exists "
-                      f"(same-name-module antipattern residue)",
-        })
+        findings["NESTED_PARTIAL_DENEST"].append(
+            {
+                "app": app,
+                "detail": f"apps/{app}/{app}/{app}/ shadow folder exists "
+                f"(same-name-module antipattern residue)",
+            }
+        )
 
     return dict(findings)
 
@@ -236,44 +259,52 @@ def _audit_global(all_module_def_rows, bench_apps_set, distinct_dt_modules):
                     matched = "fuzzy_first_segment"
             if matched:
                 conf = matched if isinstance(matched, str) else "exact"
-                findings["MISOWNED"].append({
-                    "module": r["name"],
-                    "current_owner": owner,
-                    "suggested_owner": candidate,
-                    "confidence": conf,
-                    "detail": f"Module Def {r['name']!r} owned by {owner!r} "
-                              f"but name suggests app {candidate!r} ({conf})",
-                })
+                findings["MISOWNED"].append(
+                    {
+                        "module": r["name"],
+                        "current_owner": owner,
+                        "suggested_owner": candidate,
+                        "confidence": conf,
+                        "detail": f"Module Def {r['name']!r} owned by {owner!r} "
+                        f"but name suggests app {candidate!r} ({conf})",
+                    }
+                )
                 break
 
     # GHOST_DEF: Module Def whose app_name is not in sites/apps.txt
     for r in all_module_def_rows:
         app_name = r.get("app_name")
         if app_name and app_name not in bench_apps_set:
-            findings["GHOST_DEF"].append({
-                "module": r["name"],
-                "ghost_app": app_name,
-                "detail": f"Module Def {r['name']!r} has app_name={app_name!r} "
-                          f"which is not in sites/apps.txt",
-            })
+            findings["GHOST_DEF"].append(
+                {
+                    "module": r["name"],
+                    "ghost_app": app_name,
+                    "detail": f"Module Def {r['name']!r} has app_name={app_name!r} "
+                    f"which is not in sites/apps.txt",
+                }
+            )
 
     # ORPHAN_DT_MODULE: DocType.module value not present as Module Def name
     module_def_name_set = {r["name"] for r in all_module_def_rows}
     for m in distinct_dt_modules:
         if m and m not in module_def_name_set:
-            findings["ORPHAN_DT_MODULE"].append({
-                "module": m,
-                "detail": f"DocType.module={m!r} but no tabModule Def row by that name",
-            })
+            findings["ORPHAN_DT_MODULE"].append(
+                {
+                    "module": m,
+                    "detail": f"DocType.module={m!r} but no tabModule Def row by that name",
+                }
+            )
 
     # ORPHAN_UI_REF: stranded Workspace Sidebar Items pointing at deleted DocTypes
     for sid, link_to in _read_orphan_ui_refs():
-        findings["ORPHAN_UI_REF"].append({
-            "sidebar_id": sid,
-            "link_to": link_to,
-            "detail": f"Workspace Sidebar Item {sid!r} link_to DocType {link_to!r} "
-                      f"(doesn't exist in tabDocType)",
-        })
+        findings["ORPHAN_UI_REF"].append(
+            {
+                "sidebar_id": sid,
+                "link_to": link_to,
+                "detail": f"Workspace Sidebar Item {sid!r} link_to DocType {link_to!r} "
+                f"(doesn't exist in tabDocType)",
+            }
+        )
 
     return dict(findings)
 
@@ -281,8 +312,11 @@ def _audit_global(all_module_def_rows, bench_apps_set, distinct_dt_modules):
 # ────────────────────────── OUTPUT FORMATTERS ──────────────────────────
 
 PER_APP_LABELS = (
-    "STRANDED_FILE", "ORPHAN_DIR", "ORPHAN_DEF",
-    "CASE_VARIANT", "NESTED_PARTIAL_DENEST",
+    "STRANDED_FILE",
+    "ORPHAN_DIR",
+    "ORPHAN_DEF",
+    "CASE_VARIANT",
+    "NESTED_PARTIAL_DENEST",
 )
 GLOBAL_LABELS = ("MISOWNED", "GHOST_DEF", "ORPHAN_DT_MODULE", "ORPHAN_UI_REF")
 
@@ -304,16 +338,17 @@ def _format_default(per_app, global_findings, app_filter, child_table_present):
         title += f"  --app {app_filter}"
     lines.append(title)
     lines.append("=" * 78)
-    lines.append(f"  Reader 5 (tabInstalled Application Module): "
-                 f"{'present' if child_table_present else 'absent (Frappe v16.17.5 — skipped)'}")
+    lines.append(
+        f"  Reader 5 (tabInstalled Application Module): "
+        f"{'present' if child_table_present else 'absent (Frappe v16.17.5 — skipped)'}"
+    )
 
     # Per-app summary table
     if per_app:
         lines.append("")
         lines.append("PER-APP SUMMARY")
         lines.append("-" * 78)
-        lines.append(f"  {'App':<28} {'STRAND':>6} {'O_DIR':>5} {'O_DEF':>5} "
-                     f"{'CASE':>4} {'NEST':>4}")
+        lines.append(f"  {'App':<28} {'STRAND':>6} {'O_DIR':>5} {'O_DEF':>5} {'CASE':>4} {'NEST':>4}")
         for app, findings in sorted(per_app.items()):
             row = (
                 f"  {app:<28}"
@@ -366,26 +401,33 @@ def _format_default(per_app, global_findings, app_filter, child_table_present):
     counts = _summary_counts(per_app, global_findings)
     lines.append("")
     lines.append("=" * 78)
-    lines.append(f"  TOTAL: {sum(counts.values())} finding(s) across "
-                 f"{len([k for k, v in counts.items() if v > 0])} classification(s)")
+    lines.append(
+        f"  TOTAL: {sum(counts.values())} finding(s) across "
+        f"{len([k for k, v in counts.items() if v > 0])} classification(s)"
+    )
     lines.append("=" * 78)
     return "\n".join(lines)
 
 
 def _format_json(per_app, global_findings, app_filter, child_table_present, bench_root):
-    return json.dumps({
-        "version": "v0.1",
-        "command": "audit-modules-disk-vs-db",
-        "app_filter": app_filter,
-        "bench_root": str(bench_root),
-        "child_table_present": child_table_present,
-        "per_app_findings": per_app,
-        "global_findings": global_findings,
-        "summary_counts": _summary_counts(per_app, global_findings),
-    }, indent=2, default=str)
+    return json.dumps(
+        {
+            "version": "v0.1",
+            "command": "audit-modules-disk-vs-db",
+            "app_filter": app_filter,
+            "bench_root": str(bench_root),
+            "child_table_present": child_table_present,
+            "per_app_findings": per_app,
+            "global_findings": global_findings,
+            "summary_counts": _summary_counts(per_app, global_findings),
+        },
+        indent=2,
+        default=str,
+    )
 
 
 # ────────────────────────── CLI ──────────────────────────
+
 
 @click.command("app-migrator-audit-modules-disk-vs-db")
 @click.option("--site", default=None, help="Site name (DB queries; optional when --json)")
@@ -404,6 +446,7 @@ def app_migrator_audit_modules_disk_vs_db(context, site, app, as_json, bench_roo
         # v0.5 envelope short-circuit. Full audit data goes into evidence; without
         # --site, we still emit a valid envelope so the Phase 4 test contract is met.
         from ._envelope import emit_envelope, make_envelope
+
         envelope = make_envelope(
             command="audit-modules-disk-vs-db",
             status="ok",
@@ -441,11 +484,7 @@ def app_migrator_audit_modules_disk_vs_db(context, site, app, as_json, bench_roo
     apps_txt_path = Path(bench_root) / "sites" / "apps.txt"
     bench_apps = []
     if apps_txt_path.exists():
-        bench_apps = [
-            line.strip()
-            for line in apps_txt_path.read_text().splitlines()
-            if line.strip()
-        ]
+        bench_apps = [line.strip() for line in apps_txt_path.read_text().splitlines() if line.strip()]
     bench_apps_set = set(bench_apps)
 
     # Source 5 — child table presence check (graceful skip)
@@ -479,10 +518,8 @@ def app_migrator_audit_modules_disk_vs_db(context, site, app, as_json, bench_roo
         global_findings = filtered
 
     if as_json:
-        click.echo(_format_json(per_app, global_findings, app,
-                                 child_table_present, bench_root))
+        click.echo(_format_json(per_app, global_findings, app, child_table_present, bench_root))
     else:
-        click.echo(_format_default(per_app, global_findings, app,
-                                    child_table_present))
+        click.echo(_format_default(per_app, global_findings, app, child_table_present))
 
     frappe.destroy()

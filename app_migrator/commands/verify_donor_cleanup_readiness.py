@@ -21,6 +21,7 @@ Usage:
     --donor amb_w_tds --receiver amb_w_spc \\
     --doctypes "Batch AMB,Container Barrels"
 """
+
 import importlib
 import json
 from pathlib import Path
@@ -31,6 +32,7 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
 
@@ -51,13 +53,13 @@ DICT_HOOK_SECTIONS = (
 @click.option("--site", required=True, help="Site name")
 @click.option("--donor", required=True, help="Donor app name")
 @click.option("--receiver", required=True, help="Receiver app name")
-@click.option("--doctypes", help="Comma-separated explicit DocType list "
-                                  "(else auto-detect from receiver+donor evidence)")
+@click.option(
+    "--doctypes", help="Comma-separated explicit DocType list (else auto-detect from receiver+donor evidence)"
+)
 @click.option("--output", help="Write report to file (default: stdout)")
 @click.option("--bench-root", default="/home/frappe/frappe-bench")
 @pass_context
-def app_migrator_verify_donor_cleanup_readiness(context, site, donor, receiver,
-                                                  doctypes, output, bench_root):
+def app_migrator_verify_donor_cleanup_readiness(context, site, donor, receiver, doctypes, output, bench_root):
     """Verify receiver has functional equivalence before stripping donor references.
 
     For each donor hooks.py entry pointing at a moved DocType, this command:
@@ -96,6 +98,7 @@ def app_migrator_verify_donor_cleanup_readiness(context, site, donor, receiver,
         raise click.Abort()
 
     lines = []
+
     def emit(s=""):
         lines.append(s)
 
@@ -134,8 +137,9 @@ def app_migrator_verify_donor_cleanup_readiness(context, site, donor, receiver,
             recv_target = receiver_val.get(dt) if isinstance(receiver_val, dict) else None
             verdict, detail = _verify_dict_entry(donor_target, recv_target)
             all_decisions.append((section, dt, verdict, detail))
-            marker = "✓" if verdict == "RECEIVER_OK_VERIFIED" else (
-                     "⚠" if verdict == "MIGRATE_FIRST" else "○")
+            marker = (
+                "✓" if verdict == "RECEIVER_OK_VERIFIED" else ("⚠" if verdict == "MIGRATE_FIRST" else "○")
+            )
             emit(f"  {marker} [{verdict:24}] {dt}")
             emit(f"      donor:    {donor_target}")
             emit(f"      receiver: {recv_target if recv_target else '(not registered)'}")
@@ -180,8 +184,9 @@ def app_migrator_verify_donor_cleanup_readiness(context, site, donor, receiver,
         emit(f"{'─' * 95}")
         for entry, dt, verdict, detail in fix_decisions:
             all_decisions.append((entry, dt, verdict, detail))
-            marker = "✓" if verdict == "RECEIVER_OK_VERIFIED" else (
-                     "⚠" if verdict == "MIGRATE_FIRST" else "○")
+            marker = (
+                "✓" if verdict == "RECEIVER_OK_VERIFIED" else ("⚠" if verdict == "MIGRATE_FIRST" else "○")
+            )
             emit(f"  {marker} [{verdict:24}] {entry} / {dt}")
             emit(f"      detail: {detail}")
 
@@ -195,8 +200,7 @@ def app_migrator_verify_donor_cleanup_readiness(context, site, donor, receiver,
     if not all_decisions:
         emit("  ✓ No donor hooks reference any moved DocType — donor is verified clean")
     else:
-        for v in ("RECEIVER_OK_VERIFIED", "SAFE_TO_REMOVE",
-                  "MIGRATE_FIRST", "NEEDS_INVESTIGATION"):
+        for v in ("RECEIVER_OK_VERIFIED", "SAFE_TO_REMOVE", "MIGRATE_FIRST", "NEEDS_INVESTIGATION"):
             if v in counts:
                 emit(f"  {v:25} {counts[v]}")
 
@@ -211,6 +215,7 @@ def app_migrator_verify_donor_cleanup_readiness(context, site, donor, receiver,
 
 
 # ─── Helpers ───
+
 
 def _find_moved_doctypes(donor_root, receiver_root):
     """Doctype is 'moved' if it has receiver JSON AND donor filesystem evidence."""
@@ -242,15 +247,11 @@ def _verify_dict_entry(donor_target, recv_target):
         # Donor has it, receiver does not. Check if donor target itself resolves
         # — if not, donor is referencing a phantom (SAFE_TO_REMOVE).
         if not _import_resolves(donor_target):
-            return ("SAFE_TO_REMOVE",
-                    "donor references non-existent target; just remove from donor")
-        return ("MIGRATE_FIRST",
-                "donor has working entry but receiver has none — must migrate first")
+            return ("SAFE_TO_REMOVE", "donor references non-existent target; just remove from donor")
+        return ("MIGRATE_FIRST", "donor has working entry but receiver has none — must migrate first")
     if _import_resolves(recv_target):
-        return ("RECEIVER_OK_VERIFIED",
-                "receiver entry resolves to a callable")
-    return ("MIGRATE_FIRST",
-            f"receiver entry '{recv_target}' fails to resolve")
+        return ("RECEIVER_OK_VERIFIED", "receiver entry resolves to a callable")
+    return ("MIGRATE_FIRST", f"receiver entry '{recv_target}' fails to resolve")
 
 
 def _import_resolves(import_path):
@@ -261,7 +262,7 @@ def _import_resolves(import_path):
         mod_path, attr_name = import_path.rsplit(".", 1)
         mod = importlib.import_module(mod_path)
         return getattr(mod, attr_name, None) is not None
-    except (ImportError, AttributeError, ValueError):
+    except ImportError, AttributeError, ValueError:
         return False
 
 
@@ -285,20 +286,27 @@ def _verify_fixtures(donor_fixtures, receiver_fixtures, moved):
                         # Check if receiver has fixture entry for same doctype with this item
                         recv_has = _receiver_fixture_has(receiver_fixtures, fix_doctype, field, item)
                         if recv_has:
-                            decisions.append((f"fixtures[{fix_doctype}]",
-                                            item,
-                                            "RECEIVER_OK_VERIFIED",
-                                            f"receiver fixture filter includes '{item}'"))
+                            decisions.append(
+                                (
+                                    f"fixtures[{fix_doctype}]",
+                                    item,
+                                    "RECEIVER_OK_VERIFIED",
+                                    f"receiver fixture filter includes '{item}'",
+                                )
+                            )
                         else:
-                            decisions.append((f"fixtures[{fix_doctype}]",
-                                            item,
-                                            "SAFE_TO_REMOVE",
-                                            f"receiver doesn't filter for '{item}' but DocType lives there now — donor filter is stale"))
+                            decisions.append(
+                                (
+                                    f"fixtures[{fix_doctype}]",
+                                    item,
+                                    "SAFE_TO_REMOVE",
+                                    f"receiver doesn't filter for '{item}' but DocType lives there now — donor filter is stale",
+                                )
+                            )
             elif val in moved:
                 recv_has = _receiver_fixture_has(receiver_fixtures, fix_doctype, field, val)
                 verdict = "RECEIVER_OK_VERIFIED" if recv_has else "SAFE_TO_REMOVE"
-                decisions.append((f"fixtures[{fix_doctype}]", val, verdict,
-                                f"receiver match: {recv_has}"))
+                decisions.append((f"fixtures[{fix_doctype}]", val, verdict, f"receiver match: {recv_has}"))
     return decisions
 
 

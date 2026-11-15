@@ -12,12 +12,7 @@ class SSHManager:
 
     def check_ssh_status(self):
         """Check SSH key status and GitHub connectivity"""
-        status = {
-            "has_ssh_keys": False,
-            "github_connected": False,
-            "keys": [],
-            "ssh_agent_running": False
-        }
+        status = {"has_ssh_keys": False, "github_connected": False, "keys": [], "ssh_agent_running": False}
 
         # Check for SSH keys
         key_patterns = ["id_ed25519", "id_rsa", "id_ecdsa", "id_dsa"]
@@ -27,17 +22,18 @@ class SSHManager:
 
             if private_key.exists() and public_key.exists():
                 status["has_ssh_keys"] = True
-                status["keys"].append({
-                    "type": pattern.replace("id_", ""),
-                    "private": str(private_key),
-                    "public": str(public_key),
-                    "size": os.path.getsize(private_key)
-                })
+                status["keys"].append(
+                    {
+                        "type": pattern.replace("id_", ""),
+                        "private": str(private_key),
+                        "public": str(public_key),
+                        "size": os.path.getsize(private_key),
+                    }
+                )
 
         # Check SSH agent
         try:
-            result = subprocess.run(["ssh-add", "-l"],
-                                  capture_output=True, text=True)
+            result = subprocess.run(["ssh-add", "-l"], capture_output=True, text=True)
             status["ssh_agent_running"] = result.returncode == 0
         except Exception:
             status["ssh_agent_running"] = False
@@ -56,12 +52,7 @@ class SSHManager:
                 cmd = ["ssh", "-i", key_path, "-T", "git@github.com"]
 
             # Add timeout and don't wait for interactive prompt
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
 
             # GitHub returns various messages on success
             output = result.stderr.lower() + result.stdout.lower()
@@ -69,7 +60,7 @@ class SSHManager:
                 "successfully authenticated",
                 "you've successfully authenticated",
                 "hi username!",
-                "hello username!"
+                "hello username!",
             ]
 
             for indicator in success_indicators:
@@ -108,10 +99,14 @@ class SSHManager:
 
         cmd = [
             "ssh-keygen",
-            "-t", key_type,
-            "-C", full_comment,
-            "-f", str(key_path),
-            "-N", ""  # No passphrase for automation
+            "-t",
+            key_type,
+            "-C",
+            full_comment,
+            "-f",
+            str(key_path),
+            "-N",
+            "",  # No passphrase for automation
         ]
 
         try:
@@ -142,8 +137,7 @@ class SSHManager:
         """Add SSH key to ssh-agent"""
         try:
             # Check if ssh-agent is running
-            result = subprocess.run(["ssh-add", "-l"],
-                                  capture_output=True, text=True)
+            result = subprocess.run(["ssh-add", "-l"], capture_output=True, text=True)
 
             if result.returncode == 1 and "Could not open a connection" in result.stderr:
                 print("⚠️  ssh-agent not running. Starting it...")
@@ -152,11 +146,7 @@ class SSHManager:
 
             # Add the key
             print(f"🔑 Adding key to ssh-agent: {key_path}")
-            result = subprocess.run(
-                ["ssh-add", key_path],
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(["ssh-add", key_path], capture_output=True, text=True)
 
             if result.returncode == 0:
                 print("✅ Added key to ssh-agent")

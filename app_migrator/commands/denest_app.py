@@ -15,6 +15,7 @@ Usage:
   bench app-migrator denest-app --site <site> --app <app> --to-module "<New Name>"
   bench app-migrator denest-app --site <site> --app amb_w_tds --to-module "AMB TDS Core" --apply
 """
+
 import json
 import re
 import shutil
@@ -28,6 +29,7 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
 
@@ -54,10 +56,10 @@ SKIP_PATH_PATTERNS = (
 
 # Tables that store a `module` column referencing tabModule Def.name
 MODULE_REF_TABLES = [
-    ("tabReport",          False),
-    ("tabPage",            False),
-    ("tabDashboard",       False),
-    ("`tabPrint Format`",  True),
+    ("tabReport", False),
+    ("tabPage", False),
+    ("tabDashboard", False),
+    ("`tabPrint Format`", True),
     ("`tabClient Script`", True),
     ("`tabServer Script`", True),
 ]
@@ -66,16 +68,16 @@ MODULE_REF_TABLES = [
 @click.command("app-migrator-denest-app")
 @click.option("--site", required=True, help="Site name (for DB updates)")
 @click.option("--app", required=True, help="App with the antipattern")
-@click.option("--to-module", required=True,
-              help='New module name (e.g. "App Migrator Core"). '
-                   'MUST scrub to a value DIFFERENT from app name.')
+@click.option(
+    "--to-module",
+    required=True,
+    help='New module name (e.g. "App Migrator Core"). MUST scrub to a value DIFFERENT from app name.',
+)
 @click.option("--apply", is_flag=True, help="Apply changes (default --dry-run)")
 @click.option("--bench-root", default="/home/frappe/frappe-bench")
-@click.option("--snapshot-dir",
-              default="/home/frappe/frappe-bench/sites/snapshots")
+@click.option("--snapshot-dir", default="/home/frappe/frappe-bench/sites/snapshots")
 @pass_context
-def app_migrator_denest_app(context, site, app, to_module, apply,
-                              bench_root, snapshot_dir):
+def app_migrator_denest_app(context, site, app, to_module, apply, bench_root, snapshot_dir):
     """Rename the same-name-module antipattern folder and cascade references."""
     bench_root = Path(bench_root)
     new_slug = _scrub(to_module)
@@ -83,15 +85,16 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     mode = "DRY-RUN" if dry_run else "APPLY"
 
     click.secho("\n" + "=" * 78, fg="cyan")
-    click.secho(f"  DENEST-APP v7 — {app}  →  '{to_module}'  [{mode}]",
-                fg="cyan", bold=True)
+    click.secho(f"  DENEST-APP v7 — {app}  →  '{to_module}'  [{mode}]", fg="cyan", bold=True)
     click.secho("=" * 78, fg="cyan")
 
     # ── Validation ──
     if new_slug == app:
-        click.secho(f"\n✗ ERROR: scrub('{to_module}') = '{new_slug}' equals app name '{app}'.\n"
-                     f"  This is the antipattern. Choose a different module name.",
-                     fg="red")
+        click.secho(
+            f"\n✗ ERROR: scrub('{to_module}') = '{new_slug}' equals app name '{app}'.\n"
+            f"  This is the antipattern. Choose a different module name.",
+            fg="red",
+        )
         click.secho(f"  Suggestions: '{app}_core', 'main', 'core'", fg="cyan")
         raise click.Abort()
 
@@ -103,8 +106,7 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     antipattern_folder = app_pkg / app
     if not antipattern_folder.exists():
         click.secho(f"✗ Antipattern folder not found: {antipattern_folder}", fg="red")
-        click.secho("  This app may not have the antipattern. "
-                    "Run audit-app-for-antipattern.", fg="cyan")
+        click.secho("  This app may not have the antipattern. Run audit-app-for-antipattern.", fg="cyan")
         raise click.Abort()
 
     new_folder = app_pkg / new_slug
@@ -135,8 +137,7 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     dt_dir = antipattern_folder / "doctype"
     dt_count = 0
     if dt_dir.exists():
-        dt_count = sum(1 for d in dt_dir.iterdir()
-                       if d.is_dir() and (d / f"{d.name}.json").exists())
+        dt_count = sum(1 for d in dt_dir.iterdir() if d.is_dir() and (d / f"{d.name}.json").exists())
 
     # Find all files containing old_pkg references
     affected_py_files = []
@@ -167,13 +168,15 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     click.echo(f"│  2. Update modules.txt: '{antipattern_module_name}' → '{to_module}'")
     click.echo(f"│  3. Rewrite import refs (\\b{old_pkg}\\b → {new_pkg})")
     click.echo(f"│     in {len(affected_py_files)} .py file(s)")
-    click.echo(f"│  4. patches.txt rewrite: "
-                f"{'YES' if patches_has_old_ref else 'no (file empty or no refs)'}")
+    click.echo(f"│  4. patches.txt rewrite: {'YES' if patches_has_old_ref else 'no (file empty or no refs)'}")
     click.echo("│  5. DB updates:")
-    click.echo(f"│     • UPDATE `tabModule Def` SET name='{to_module}' "
-                f"WHERE name='{antipattern_module_name}'")
-    click.echo(f"│     • UPDATE tabDocType SET module='{to_module}' "
-                f"WHERE module='{antipattern_module_name}' ({dt_count} row(s) max)")
+    click.echo(
+        f"│     • UPDATE `tabModule Def` SET name='{to_module}' WHERE name='{antipattern_module_name}'"
+    )
+    click.echo(
+        f"│     • UPDATE tabDocType SET module='{to_module}' "
+        f"WHERE module='{antipattern_module_name}' ({dt_count} row(s) max)"
+    )
     click.echo("│     • UPDATE module col on 6 ancillary tables (Report/Page/")
     click.echo("│       Dashboard/Print Format/Client Script/Server Script)")
     click.echo("│  6. Clear __pycache__ for app + retry-once-on-fail bench migrate")
@@ -186,8 +189,7 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
             for f in affected_py_files:
                 click.echo(f"    • {f.relative_to(bench_root)}")
         elif affected_py_files:
-            click.secho(f"\n  Affected .py files (first 15 of {len(affected_py_files)}):",
-                        fg="cyan")
+            click.secho(f"\n  Affected .py files (first 15 of {len(affected_py_files)}):", fg="cyan")
             for f in affected_py_files[:15]:
                 click.echo(f"    • {f.relative_to(bench_root)}")
             click.echo(f"    ... and {len(affected_py_files) - 15} more")
@@ -198,17 +200,22 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     snap.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     snapshot_file = snap / f"denest_{app}_{ts}.json"
-    snapshot_file.write_text(json.dumps({
-        "app": app,
-        "antipattern_module": antipattern_module_name,
-        "to_module": to_module,
-        "old_folder": str(antipattern_folder),
-        "new_folder": str(new_folder),
-        "affected_py_files": [str(f) for f in affected_py_files],
-        "modules_txt_before": modules_txt.read_text(),
-        "patches_txt_before": patches_txt.read_text() if patches_txt.exists() else None,
-        "timestamp": ts,
-    }, indent=2))
+    snapshot_file.write_text(
+        json.dumps(
+            {
+                "app": app,
+                "antipattern_module": antipattern_module_name,
+                "to_module": to_module,
+                "old_folder": str(antipattern_folder),
+                "new_folder": str(new_folder),
+                "affected_py_files": [str(f) for f in affected_py_files],
+                "modules_txt_before": modules_txt.read_text(),
+                "patches_txt_before": patches_txt.read_text() if patches_txt.exists() else None,
+                "timestamp": ts,
+            },
+            indent=2,
+        )
+    )
     click.secho(f"\n  📦 Snapshot: {snapshot_file}", fg="green")
 
     # v4: rewrite imports BEFORE folder rename — paths in affected_py_files
@@ -257,8 +264,7 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
                 jp.write_text(json.dumps(j, indent=1, sort_keys=False) + "\n")
                 json_updates += 1
     if json_updates:
-        click.secho(f"  ✓ Updated 'module' field in {json_updates} doctype JSON file(s)",
-                    fg="green")
+        click.secho(f"  ✓ Updated 'module' field in {json_updates} doctype JSON file(s)", fg="green")
     else:
         click.echo("  ○ No doctype JSON 'module' field updates needed")
 
@@ -282,10 +288,10 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     frappe.db.sql("SET SQL_SAFE_UPDATES=0")
     try:
         # Primary: tabModule Def + tabDocType
-        frappe.db.sql("UPDATE `tabModule Def` SET name=%s WHERE name=%s",
-                      (to_module, antipattern_module_name))
-        frappe.db.sql("UPDATE tabDocType SET module=%s WHERE module=%s",
-                      (to_module, antipattern_module_name))
+        frappe.db.sql(
+            "UPDATE `tabModule Def` SET name=%s WHERE name=%s", (to_module, antipattern_module_name)
+        )
+        frappe.db.sql("UPDATE tabDocType SET module=%s WHERE module=%s", (to_module, antipattern_module_name))
 
         # v6: catch case-mismatch orphans — DocTypes anchored to the lowercase
         # scrub variant of the source module name (legacy bug; we found this on
@@ -294,13 +300,13 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
         # Re-anchor them to the canonical name and delete the duplicate Module Def.
         src_scrubbed = _scrub(antipattern_module_name)
         if src_scrubbed != antipattern_module_name:
-            has_dup = frappe.db.sql(
-                "SELECT 1 FROM `tabModule Def` WHERE name=%s LIMIT 1", src_scrubbed
-            )
+            has_dup = frappe.db.sql("SELECT 1 FROM `tabModule Def` WHERE name=%s LIMIT 1", src_scrubbed)
             if has_dup:
-                click.echo(f"  ⚠ Found case-mismatch orphan reference: "
-                           f"module='{src_scrubbed}' (lowercase variant of "
-                           f"'{antipattern_module_name}')")
+                click.echo(
+                    f"  ⚠ Found case-mismatch orphan reference: "
+                    f"module='{src_scrubbed}' (lowercase variant of "
+                    f"'{antipattern_module_name}')"
+                )
                 # Re-anchor DocTypes pointing at the lowercase variant
                 frappe.db.sql(
                     "UPDATE tabDocType SET module=%s, app=%s WHERE module=%s",
@@ -319,8 +325,7 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
                     except Exception:
                         pass
                 # Delete the duplicate lowercase Module Def
-                frappe.db.sql("DELETE FROM `tabModule Def` WHERE name=%s",
-                              src_scrubbed)
+                frappe.db.sql("DELETE FROM `tabModule Def` WHERE name=%s", src_scrubbed)
                 click.secho(
                     "  ✓ Cleaned case-mismatch orphans + removed duplicate Module Def",
                     fg="green",
@@ -343,8 +348,7 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
     finally:
         frappe.db.sql("SET SQL_SAFE_UPDATES=1")
     frappe.db.commit()
-    click.secho(f"  ✓ Updated DB rows ({cross_count}/{len(MODULE_REF_TABLES)} cross-tables)",
-                fg="green")
+    click.secho(f"  ✓ Updated DB rows ({cross_count}/{len(MODULE_REF_TABLES)} cross-tables)", fg="green")
 
     # 7. Clear __pycache__ for the app, then bench migrate (retry-once-on-fail)
     # v5: bench-wide pycache clear (was app-scoped — sometimes missed cached
@@ -358,31 +362,30 @@ def app_migrator_denest_app(context, site, app, to_module, apply,
         click.echo(f"  ✓ Cleared {cleared} __pycache__ dir(s) (bench-wide)")
 
     click.secho("\n  Running bench migrate...", fg="cyan")
-    ret = subprocess.run(["bench", "--site", site, "migrate"],
-                         capture_output=True, text=True,
-                         cwd=str(bench_root))
+    ret = subprocess.run(
+        ["bench", "--site", site, "migrate"], capture_output=True, text=True, cwd=str(bench_root)
+    )
     # v5: check both stdout and stderr — Frappe writes msgprint to stdout
     # via _raise_exception, so a strict stderr-only check missed real cache races.
     if ret.returncode != 0 and "ModuleNotFoundError" in (ret.stdout + ret.stderr):
-        click.secho("  ⚠ First migrate failed (ModuleNotFoundError); "
-                    "clearing more pycache + retrying...", fg="yellow")
+        click.secho(
+            "  ⚠ First migrate failed (ModuleNotFoundError); clearing more pycache + retrying...", fg="yellow"
+        )
         for cache_dir in bench_root.rglob("__pycache__"):
             shutil.rmtree(cache_dir, ignore_errors=True)
-        ret = subprocess.run(["bench", "--site", site, "migrate"],
-                             capture_output=True, text=True,
-                             cwd=str(bench_root))
+        ret = subprocess.run(
+            ["bench", "--site", site, "migrate"], capture_output=True, text=True, cwd=str(bench_root)
+        )
 
     click.echo("\n".join(ret.stdout.splitlines()[-8:]))
     if ret.returncode != 0:
         click.secho("\n  ⚠  bench migrate failed:", fg="yellow")
         click.echo(ret.stderr[-1500:])
-        click.secho(f"\n  Snapshot at {snapshot_file} preserves pre-change state.",
-                    fg="yellow")
+        click.secho(f"\n  Snapshot at {snapshot_file} preserves pre-change state.", fg="yellow")
         return
 
     click.secho(f"\n{'=' * 78}", fg="green")
-    click.secho(f"  ✓ DENEST COMPLETE — {app} no longer has the antipattern",
-                fg="green", bold=True)
+    click.secho(f"  ✓ DENEST COMPLETE — {app} no longer has the antipattern", fg="green", bold=True)
     click.secho("=" * 78, fg="green")
     click.echo(f"  Module:    '{antipattern_module_name}' → '{to_module}'")
     click.echo(f"  Folder:    {app}/ → {new_slug}/")

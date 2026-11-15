@@ -2,6 +2,7 @@
 Fixtures for App Migrator
 """
 
+
 def get_fixtures():
     """
     Return fixtures for the app
@@ -11,5 +12,6 @@ def get_fixtures():
         # "Migration Profile",
         # "App Migration Log"
     ]
+
 
 print("✓ Fixtures module loaded")

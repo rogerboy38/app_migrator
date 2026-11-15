@@ -35,11 +35,15 @@ import click
 try:
     import frappe
     from frappe.commands import pass_context
+
     FRAPPE_AVAILABLE = True
 except ImportError:
     FRAPPE_AVAILABLE = False
+
     def pass_context(f):
         return f
+
+
 # ==================== UTILITIES ====================
 # Helpers extracted to _shared.py in T1.8.1
 # ==================== FIX ORPHAN DOCTYPES [DEPRECATED] (T1.8.5 → _legacy/fix_orphans.py) ====================
@@ -125,7 +129,8 @@ from .verify_donor_cleanup_readiness import app_migrator_verify_donor_cleanup_re
 
 # ==================== MAIN GROUP COMMAND ====================
 
-@click.group('app-migrator', invoke_without_command=True)
+
+@click.group("app-migrator", invoke_without_command=True)
 @click.pass_context
 def app_migrator(ctx):
     """App Migrator - Multi-bench migration toolkit"""
@@ -180,6 +185,7 @@ Usage: bench app-migrator <command> [options]
 Help:  bench app-migrator <command> --help
 """)
 
+
 # ==================== INTELLIGENCE COMMANDS ====================
 
 from .analyze.apps import analyze_apps
@@ -200,32 +206,38 @@ from .setup.wizard import setup_wizard
 from .simple_api_setup import quick_setup, simple_api_setup
 
 # Add subcommands to the group
-app_migrator.add_command(app_migrator_health, 'health')
-app_migrator.add_command(app_migrator_scan, 'scan')
-app_migrator.add_command(app_migrator_conflicts, 'conflicts')
-app_migrator.add_command(app_migrator_module_conflicts, 'module-conflicts')  # v0.5-alpha W1 (Coder 2026-06-24)
-app_migrator.add_command(app_migrator_audit_integrity, 'audit-integrity')  # audit-derived integrity checks (2026-11-05)
-app_migrator.add_command(app_migrator_select_option_drift, 'select-option-drift')  # audit-derived integrity checks (2026-11-05)
-app_migrator.add_command(app_migrator_planner, 'planner')  # v0.5-alpha W1 (Coder 2026-06-24)
-app_migrator.add_command(app_migrator_verifier, 'verifier')  # v0.5-alpha W1 (Coder 2026-06-24)
-app_migrator.add_command(app_migrator_sessions, 'sessions')  # v0.5-alpha W1 (Coder 2026-06-24)
-app_migrator.add_command(app_migrator_plan, 'plan')
-app_migrator.add_command(app_migrator_execute, 'execute')
-app_migrator.add_command(app_migrator_benches, 'benches')
-app_migrator.add_command(app_migrator_session_start, 'session-start')
-app_migrator.add_command(app_migrator_session_status, 'session-status')
-app_migrator.add_command(app_migrator_apps, 'apps')
-app_migrator.add_command(app_migrator_fix_orphans, 'fix-orphans')
-app_migrator.add_command(app_migrator_analyze, 'analyze')
-app_migrator.add_command(app_migrator_create_host, 'create-host')
-app_migrator.add_command(app_migrator_stage, 'stage')
-app_migrator.add_command(app_migrator_unstage, 'unstage')
-app_migrator.add_command(app_migrator_fix_structure, 'fix-structure')
-app_migrator.add_command(app_migrator_ensure_controllers, 'ensure-controllers')
-app_migrator.add_command(app_migrator_fix_app_field, 'fix-app-field')
-app_migrator.add_command(app_migrator_fix_json_app, 'fix-json-app')
-app_migrator.add_command(app_migrator_resolve_duplicates, 'resolve-duplicates')
-app_migrator.add_command(app_migrator_orphans, 'orphans')
+app_migrator.add_command(app_migrator_health, "health")
+app_migrator.add_command(app_migrator_scan, "scan")
+app_migrator.add_command(app_migrator_conflicts, "conflicts")
+app_migrator.add_command(
+    app_migrator_module_conflicts, "module-conflicts"
+)  # v0.5-alpha W1 (Coder 2026-06-24)
+app_migrator.add_command(
+    app_migrator_audit_integrity, "audit-integrity"
+)  # audit-derived integrity checks (2026-11-05)
+app_migrator.add_command(
+    app_migrator_select_option_drift, "select-option-drift"
+)  # audit-derived integrity checks (2026-11-05)
+app_migrator.add_command(app_migrator_planner, "planner")  # v0.5-alpha W1 (Coder 2026-06-24)
+app_migrator.add_command(app_migrator_verifier, "verifier")  # v0.5-alpha W1 (Coder 2026-06-24)
+app_migrator.add_command(app_migrator_sessions, "sessions")  # v0.5-alpha W1 (Coder 2026-06-24)
+app_migrator.add_command(app_migrator_plan, "plan")
+app_migrator.add_command(app_migrator_execute, "execute")
+app_migrator.add_command(app_migrator_benches, "benches")
+app_migrator.add_command(app_migrator_session_start, "session-start")
+app_migrator.add_command(app_migrator_session_status, "session-status")
+app_migrator.add_command(app_migrator_apps, "apps")
+app_migrator.add_command(app_migrator_fix_orphans, "fix-orphans")
+app_migrator.add_command(app_migrator_analyze, "analyze")
+app_migrator.add_command(app_migrator_create_host, "create-host")
+app_migrator.add_command(app_migrator_stage, "stage")
+app_migrator.add_command(app_migrator_unstage, "unstage")
+app_migrator.add_command(app_migrator_fix_structure, "fix-structure")
+app_migrator.add_command(app_migrator_ensure_controllers, "ensure-controllers")
+app_migrator.add_command(app_migrator_fix_app_field, "fix-app-field")
+app_migrator.add_command(app_migrator_fix_json_app, "fix-json-app")
+app_migrator.add_command(app_migrator_resolve_duplicates, "resolve-duplicates")
+app_migrator.add_command(app_migrator_orphans, "orphans")
 app_migrator.add_command(fix_module_names, "fix-module-names")
 app_migrator.add_command(standardize_modules, "standardize-modules")
 app_migrator.add_command(module_diagnostic, "module-diagnostic")
@@ -234,30 +246,30 @@ app_migrator.add_command(fix_orphan_modules, "fix-modules")
 app_migrator.add_command(fix_amb_w_tds2, "fix-amb-w-tds2")
 app_migrator.add_command(fix_kpi_factors, "fix-kpi-factors")
 
-app_migrator.add_command(predict_success, 'predict-success')
-app_migrator.add_command(generate_intelligent_plan, 'generate-plan')
-app_migrator.add_command(diagnose_app, 'diagnose')
-app_migrator.add_command(modernize_app, 'modernize')
+app_migrator.add_command(predict_success, "predict-success")
+app_migrator.add_command(generate_intelligent_plan, "generate-plan")
+app_migrator.add_command(diagnose_app, "diagnose")
+app_migrator.add_command(modernize_app, "modernize")
 app_migrator.add_command(git_push, "git-push")
 app_migrator.add_command(git_pull, "git-pull")
 app_migrator.add_command(api_key_cleanup, "api-key-cleanup")
 app_migrator.add_command(api_key_status, "api-key-status")
 app_migrator.add_command(api_key_setup, "api-key-setup")
 app_migrator.add_command(git_info, "git-info")
-app_migrator.add_command(setup_wizard,"setup-wizard")
-app_migrator.add_command(simple_api_setup, 'simple-api-setup')
-app_migrator.add_command(analyze_apps, 'analyze-apps')
-app_migrator.add_command(quick_setup, 'quick-setup')
-app_migrator.add_command(app_migrator_promote_custom_doctype, 'promote-custom-doctype')
-app_migrator.add_command(app_migrator_scan_donor_residue, 'scan-donor-residue')
-app_migrator.add_command(app_migrator_verify_donor_cleanup_readiness, 'verify-donor-cleanup-readiness')
-app_migrator.add_command(app_migrator_audit_app_for_antipattern, 'audit-app-for-antipattern')
-app_migrator.add_command(app_migrator_audit_orphan_doctypes, 'audit-orphan-doctypes')
-app_migrator.add_command(app_migrator_audit_modules_disk_vs_db, 'audit-modules-disk-vs-db')
-app_migrator.add_command(app_migrator_clean_donor_residue, 'clean-donor-residue')
-app_migrator.add_command(app_migrator_new_fresh_app, 'new-fresh-app')
-app_migrator.add_command(app_migrator_migrate_module, 'migrate-module')
-app_migrator.add_command(app_migrator_denest_app, 'denest-app')
+app_migrator.add_command(setup_wizard, "setup-wizard")
+app_migrator.add_command(simple_api_setup, "simple-api-setup")
+app_migrator.add_command(analyze_apps, "analyze-apps")
+app_migrator.add_command(quick_setup, "quick-setup")
+app_migrator.add_command(app_migrator_promote_custom_doctype, "promote-custom-doctype")
+app_migrator.add_command(app_migrator_scan_donor_residue, "scan-donor-residue")
+app_migrator.add_command(app_migrator_verify_donor_cleanup_readiness, "verify-donor-cleanup-readiness")
+app_migrator.add_command(app_migrator_audit_app_for_antipattern, "audit-app-for-antipattern")
+app_migrator.add_command(app_migrator_audit_orphan_doctypes, "audit-orphan-doctypes")
+app_migrator.add_command(app_migrator_audit_modules_disk_vs_db, "audit-modules-disk-vs-db")
+app_migrator.add_command(app_migrator_clean_donor_residue, "clean-donor-residue")
+app_migrator.add_command(app_migrator_new_fresh_app, "new-fresh-app")
+app_migrator.add_command(app_migrator_migrate_module, "migrate-module")
+app_migrator.add_command(app_migrator_denest_app, "denest-app")
 
 # ==================== EXPORT ALL COMMANDS ====================
 
@@ -294,13 +306,12 @@ commands = [
     generate_intelligent_plan,
     diagnose_app,
     modernize_app,
-
     setup_wizard,
     app_migrator_audit_app_for_antipattern,
     app_migrator_promote_custom_doctype,
     app_migrator_scan_donor_residue,
     app_migrator_verify_donor_cleanup_readiness,
-    ]
+]
 
 logger.debug("App Migrator v%s ready", __version__)
 

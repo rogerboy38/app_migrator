@@ -5,6 +5,7 @@ site_local_db.encryption_key_hash, indicating a stale encryption key
 after a site restore. This is a frequent bug pattern that leaves
 restored sites with broken encrypted credentials.
 """
+
 from __future__ import annotations
 
 from typing import Any

@@ -46,25 +46,25 @@ class MigrationSession:
                 "session_id": self.session_id,
                 "start_time": datetime.now().isoformat(),
                 "status": "active",
-                "current_phase": "initialization"
+                "current_phase": "initialization",
             },
             "progress": {
                 "completed_operations": [],
                 "current_operation": None,
                 "failed_operations": [],
-                "checkpoints": {}
+                "checkpoints": {},
             },
             "migration_data": {
                 "source_bench": None,
                 "target_bench": None,
                 "apps_to_migrate": [],
-                "completed_apps": []
+                "completed_apps": [],
             },
             "system_state": {
                 "pre_migration_snapshot": {},
                 "backup_locations": {},
-                "rollback_instructions": {}
-            }
+                "rollback_instructions": {},
+            },
         }
 
     def save(self):
@@ -73,7 +73,7 @@ class MigrationSession:
             # Ensure directory exists
             self.session_dir.mkdir(exist_ok=True)
 
-            with open(self.session_file, 'w') as f:
+            with open(self.session_file, "w") as f:
                 json.dump(self.data, f, indent=2)
 
             print(f"🔍 DEBUG: Session saved to: {self.session_file}")
@@ -88,7 +88,7 @@ class MigrationSession:
             progress_entry = {
                 "operation": operation,
                 "status": status,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
             if details:
                 progress_entry["details"] = details
@@ -115,7 +115,7 @@ class MigrationSession:
         try:
             self.data["progress"]["checkpoints"][checkpoint_name] = {
                 "timestamp": datetime.now().isoformat(),
-                "data": data
+                "data": data,
             }
             self.save()
             return True
@@ -150,8 +150,12 @@ class MigrationSession:
         """Get comprehensive session status"""
         try:
             total_ops = len(self.data["progress"]["completed_operations"])
-            completed_ops = len([op for op in self.data["progress"]["completed_operations"] if op["status"] == "completed"])
-            failed_ops = len([op for op in self.data["progress"]["completed_operations"] if op["status"] == "failed"])
+            completed_ops = len(
+                [op for op in self.data["progress"]["completed_operations"] if op["status"] == "completed"]
+            )
+            failed_ops = len(
+                [op for op in self.data["progress"]["completed_operations"] if op["status"] == "failed"]
+            )
 
             return {
                 "session_id": self.session_id,
@@ -162,13 +166,14 @@ class MigrationSession:
                     "total_operations": total_ops,
                     "completed": completed_ops,
                     "failed": failed_ops,
-                    "success_rate": f"{(completed_ops/total_ops)*100:.1f}%" if total_ops > 0 else "0%"
+                    "success_rate": f"{(completed_ops / total_ops) * 100:.1f}%" if total_ops > 0 else "0%",
                 },
                 "migration_progress": {
                     "total_apps": len(self.data["migration_data"]["apps_to_migrate"]),
                     "completed_apps": len(self.data["migration_data"]["completed_apps"]),
-                    "remaining_apps": len(self.data["migration_data"]["apps_to_migrate"]) - len(self.data["migration_data"]["completed_apps"])
-                }
+                    "remaining_apps": len(self.data["migration_data"]["apps_to_migrate"])
+                    - len(self.data["migration_data"]["completed_apps"]),
+                },
             }
         except Exception as e:
             print(f"❌ Failed to get session status: {e}")
@@ -197,6 +202,7 @@ class MigrationSession:
             print(f"❌ Failed to mark session as failed: {e}")
             return False
 
+
 def load_session(session_id):
     """Load existing session by session_id"""
     try:
@@ -213,6 +219,7 @@ def load_session(session_id):
         print(f"❌ Failed to load session {session_id}: {e}")
         return None
 
+
 def list_all_sessions():
     """List all migration sessions"""
     try:
@@ -224,10 +231,7 @@ def list_all_sessions():
                 try:
                     with open(session_file) as f:
                         data = json.load(f)
-                    sessions.append({
-                        "file": session_file.name,
-                        "data": data
-                    })
+                    sessions.append({"file": session_file.name, "data": data})
                 except Exception as e:
                     print(f"❌ Error reading {session_file}: {e}")
 
@@ -237,6 +241,7 @@ def list_all_sessions():
     except Exception as e:
         print(f"❌ Failed to list sessions: {e}")
         return []
+
 
 def get_session_by_name(session_name):
     """Find session by name (not session_id)"""

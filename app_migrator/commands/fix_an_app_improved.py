@@ -17,8 +17,10 @@ from pathlib import Path
 class TimeoutError(Exception):
     pass
 
+
 def timeout_handler(signum, frame):
     raise TimeoutError("Command timed out")
+
 
 class AppFixer:
     def __init__(self, app_name, bench_path=".", site_name=None):
@@ -39,13 +41,7 @@ class AppFixer:
             signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(timeout)
 
-            result = subprocess.run(
-                cmd,
-                shell=True,
-                cwd=cwd,
-                capture_output=capture_output,
-                text=True
-            )
+            result = subprocess.run(cmd, shell=True, cwd=cwd, capture_output=capture_output, text=True)
 
             # Cancel timeout
             signal.alarm(0)
@@ -128,7 +124,7 @@ class AppFixer:
             try:
                 with open(site_config) as f:
                     config = json.load(f)
-                    installed_apps = config.get('installed_apps', [])
+                    installed_apps = config.get("installed_apps", [])
                     return self.app_name in installed_apps
             except Exception:
                 pass
@@ -167,14 +163,14 @@ app_version = version
 app_license = "MIT"
 '''
             hooks_py.parent.mkdir(parents=True, exist_ok=True)
-            with open(hooks_py, 'w') as f:
+            with open(hooks_py, "w") as f:
                 f.write(hooks_content)
             print("✅ Created missing hooks.py")
             fixes_applied += 1
 
         if not init_py.exists():
             init_py.parent.mkdir(parents=True, exist_ok=True)
-            with open(init_py, 'w') as f:
+            with open(init_py, "w") as f:
                 f.write('__version__ = "1.0.0"')
             print("✅ Created missing __init__.py")
             fixes_applied += 1
@@ -217,12 +213,13 @@ app_license = "MIT"
             print("❌ No fixes were applied")
             return False
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Fix Frappe app structural issues')
-    parser.add_argument('app_name', help='Name of the app to fix')
-    parser.add_argument('--bench-path', default='.', help='Path to bench directory')
-    parser.add_argument('--site', help='Site name for installation')
-    parser.add_argument('--quick', action='store_true', help='Use quick fix mode (no bench commands)')
+    parser = argparse.ArgumentParser(description="Fix Frappe app structural issues")
+    parser.add_argument("app_name", help="Name of the app to fix")
+    parser.add_argument("--bench-path", default=".", help="Path to bench directory")
+    parser.add_argument("--site", help="Site name for installation")
+    parser.add_argument("--quick", action="store_true", help="Use quick fix mode (no bench commands)")
 
     args = parser.parse_args()
 
@@ -236,6 +233,7 @@ def main():
         success = fixer.fix_app_quick()
 
     sys.exit(0 if success else 1)
+
 
 if __name__ == "__main__":
     main()

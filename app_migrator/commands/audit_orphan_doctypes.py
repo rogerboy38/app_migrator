@@ -23,6 +23,7 @@ Usage:
   bench --site <site> app-migrator audit-orphan-doctypes --app amb_w_tds
   bench --site <site> app-migrator audit-orphan-doctypes --output /tmp/orphans.txt
 """
+
 from collections import defaultdict
 from pathlib import Path
 
@@ -32,6 +33,7 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
 
@@ -54,6 +56,7 @@ def app_migrator_audit_orphan_doctypes(context, site, app, output, bench_root):
     frappe.connect()
 
     lines = []
+
     def emit(s=""):
         lines.append(s)
 
@@ -67,13 +70,17 @@ def app_migrator_audit_orphan_doctypes(context, site, app, output, bench_root):
     # ── CLASS 1: STRANDED — module not in tabModule Def ──
     where_app = "AND dt.app=%s" if app else ""
     args = (app,) if app else ()
-    stranded = frappe.db.sql(f"""
+    stranded = frappe.db.sql(
+        f"""
         SELECT dt.name, dt.module, dt.app, dt.custom
         FROM tabDocType dt
         LEFT JOIN `tabModule Def` md ON md.name = dt.module
         WHERE md.name IS NULL {where_app}
         ORDER BY dt.module, dt.name
-    """, args, as_dict=True)
+    """,
+        args,
+        as_dict=True,
+    )
 
     emit(f"\n{'─' * 95}")
     emit(f"  CLASS 1 — STRANDED ({len(stranded)} found)")
@@ -106,9 +113,7 @@ def app_migrator_audit_orphan_doctypes(context, site, app, output, bench_root):
         emit(f"  {'Canonical':35} {'Variant (duplicate)':30} {'app'}")
         for canonical, variant, app_name in case_mismatch_pairs:
             emit(f"  {canonical:35} {variant:30} {app_name}")
-            anchored = frappe.db.sql(
-                "SELECT name FROM tabDocType WHERE module=%s", variant, as_dict=True
-            )
+            anchored = frappe.db.sql("SELECT name FROM tabDocType WHERE module=%s", variant, as_dict=True)
             if anchored:
                 for a in anchored:
                     emit(f"    ↳ DocType anchored to variant: {a.name}")
@@ -120,13 +125,17 @@ def app_migrator_audit_orphan_doctypes(context, site, app, output, bench_root):
         emit("  ✓ no case-mismatch duplicates")
 
     # ── CLASS 3: FILESYSTEM — module exists in DB but no source files at expected path ──
-    canonical_dts = frappe.db.sql(f"""
+    canonical_dts = frappe.db.sql(
+        f"""
         SELECT dt.name, dt.module, dt.app
         FROM tabDocType dt
         JOIN `tabModule Def` md ON md.name = dt.module
         WHERE dt.custom = 0 {where_app}
         ORDER BY dt.app, dt.module, dt.name
-    """, args, as_dict=True)
+    """,
+        args,
+        as_dict=True,
+    )
 
     filesystem_orphans = []
     for r in canonical_dts:
@@ -136,7 +145,14 @@ def app_migrator_audit_orphan_doctypes(context, site, app, output, bench_root):
         slug_doctype = _scrub(r.name)
         # Try expected paths (handle nested AND flat layouts)
         expected_paths = [
-            bench_root / "apps" / r.app / r.app / slug_module / "doctype" / slug_doctype / f"{slug_doctype}.json",
+            bench_root
+            / "apps"
+            / r.app
+            / r.app
+            / slug_module
+            / "doctype"
+            / slug_doctype
+            / f"{slug_doctype}.json",
             bench_root / "apps" / r.app / r.app / r.app / "doctype" / slug_doctype / f"{slug_doctype}.json",
         ]
         if not any(p.exists() for p in expected_paths):

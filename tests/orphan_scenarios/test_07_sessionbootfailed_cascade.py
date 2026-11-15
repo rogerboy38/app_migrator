@@ -136,8 +136,7 @@ def test_chain_05_delete_sql_targets_only_workspace_sidebar_item():
     assert delete_targets, "no DELETE statements found in delete.sql"
     for target in delete_targets:
         assert target.strip() == "tabWorkspace Sidebar Item", (
-            f"unexpected DELETE target: {target!r} — fix must not touch "
-            f"tabVersion or other tables"
+            f"unexpected DELETE target: {target!r} — fix must not touch tabVersion or other tables"
         )
 
 
@@ -153,8 +152,7 @@ def test_chain_05_delete_sql_uses_captured_row_ids():
         for tok in re.findall(r"'([^']+)'", clause):
             found_ids.add(tok)
     assert BOOT_BLOCKING_ROW_IDS <= found_ids, (
-        f"missing captured row ids in DELETE: "
-        f"{BOOT_BLOCKING_ROW_IDS - found_ids}"
+        f"missing captured row ids in DELETE: {BOOT_BLOCKING_ROW_IDS - found_ids}"
     )
 
 
@@ -258,7 +256,7 @@ def test_orphan_scanner_replay_against_test_site():
             try:
                 rows = frappe.db.sql(stmt)
             except Exception:  # noqa: BLE001 — captured SQL can include known-failing
-                continue       # statements (e.g. tabSingles column shape mismatch)
+                continue  # statements (e.g. tabSingles column shape mismatch)
             for r in rows:
                 if len(r) >= 3 and r[2] == "Repost Accounting Ledger Settings":
                     hits.add((r[0], r[1], r[2]))
@@ -269,7 +267,9 @@ def test_orphan_scanner_replay_against_test_site():
 
         # 3. Apply the captured fix.
         delete_sql = (_chain(5) / "delete.sql").read_text()
-        for stmt in (s.strip() for s in delete_sql.split(";") if s.strip() and not s.strip().startswith("--")):
+        for stmt in (
+            s.strip() for s in delete_sql.split(";") if s.strip() and not s.strip().startswith("--")
+        ):
             frappe.db.sql(stmt)
         frappe.db.commit()
 

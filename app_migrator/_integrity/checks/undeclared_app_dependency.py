@@ -68,6 +68,7 @@ The other 4 were not core, and each needed a different answer:
 What remains after both fixes are the **8** real ``medium`` findings: the
 cross-app dependencies that neither app declares.
 """
+
 from __future__ import annotations
 
 import re
@@ -82,12 +83,12 @@ CHECK_ID = "undeclared-app-dependency"
 _LINK_FIELDTYPES = ("Link", "Table")
 
 # Scan outcome for one (app, target DocType) pair.
-_OWN = "own"                # the app ships the target itself — normal
-_DECLARED = "declared"      # the owner app is declared in required_apps
+_OWN = "own"  # the app ships the target itself — normal
+_DECLARED = "declared"  # the owner app is declared in required_apps
 _UNDECLARED = "undeclared"  # the owner app is NOT declared in required_apps
-_MISSING = "missing"        # no installed app ships the target
-_UNKNOWN = "unknown"        # required_apps is built at runtime — cannot judge
-_STANDARD = "standard"      # the target is a standard frappe/erpnext DocType
+_MISSING = "missing"  # no installed app ships the target
+_UNKNOWN = "unknown"  # required_apps is built at runtime — cannot judge
+_STANDARD = "standard"  # the target is a standard frappe/erpnext DocType
 
 # The apps that ship the standard DocTypes. When neither of them is in the
 # scan root, the scan root is incomplete: an unresolved target may simply be
@@ -118,122 +119,124 @@ CORE_APP_NAMES = frozenset({"frappe", "erpnext"})
 # distinct DocTypes that produced 67 bogus "no installed app ships DocType"
 # findings) plus the obvious core Frappe / ERPNext DocTypes.
 # --------------------------------------------------------------------------
-STANDARD_DOCTYPES = frozenset({
-    # -- Frappe core ------------------------------------------------------
-    "Access Log",
-    "Audit Log",
-    "Comment",
-    "Communication",
-    "Custom Field",
-    "Dashboard Chart",
-    "DocPerm",
-    "DocType",
-    "Error Log",
-    "File",
-    "Has Role",
-    "Module Def",
-    "Note",
-    "Notification",
-    "Patch Log",
-    "Personal Note",
-    "Personal Tag",
-    "Print Format",
-    "Property Setter",
-    "Report",
-    "Role",
-    "Scheduled Job Log",
-    "Server Script",
-    "Session Default",
-    "Tag",
-    "ToDo",
-    "User",
-    "Version",
-    "Web Form",
-    "Workspace",
-    "Client Script",
-    # -- ERPNext core -----------------------------------------------------
-    "Address",
-    "Bank Account",
-    "Batch",
-    "Bin",
-    "BOM",
-    "BOM Item",
-    "Brand",
-    "Company",
-    "Contact",
-    "Cost Center",
-    "Country",
-    "Currency",
-    "Customer",
-    "Customer Group",
-    "Delivery Note",
-    "Delivery Note Item",
-    "Department",
-    "Employee",
-    "Equipment",
-    "Item",
-    "Item Attribute",
-    "Item Attribute Value",
-    "Item Group",
-    "Item Price",
-    "Item Quality Inspection Parameter",
-    "Item Tax",
-    "Journal Entry",
-    "Language",
-    "Location",
-    "Material Issue",
-    "Material Issue Item",
-    "Material Receipt",
-    "Material Receipt Item",
-    "Material Request",
-    "Material Request Item",
-    "Mode of Payment",
-    "Operation",
-    "Payment Entry",
-    "Payment Entry Reference",
-    "Payment Terms Template",
-    "Price List",
-    "Production Line",
-    "Production Plan",
-    "Project",
-    "Purchase Invoice",
-    "Purchase Invoice Item",
-    "Purchase Receipt",
-    "Purchase Receipt Item",
-    "Purchase Taxes and Charges",
-    "Quality Inspection",
-    "Quality Inspection Method",
-    "Quality Inspection Parameter",
-    "Quality Inspection Parameter Group",
-    "Quality Procedure",
-    "Quotation",
-    "Quotation Item",
-    "Routing",
-    "Sales Invoice",
-    "Sales Invoice Item",
-    "Sales Order",
-    "Sales Order Item",
-    "Sales Partner",
-    "Sales Person",
-    "Sales Taxes and Charges",
-    "Serial No",
-    "Stock Entry",
-    "Stock Entry Detail",
-    "Supplier",
-    "Supplier Quotation",
-    "Supplier Quotation Item",
-    "Tax Category",
-    "Territory",
-    "Terms",
-    "UOM",
-    "UOM Conversion Detail",
-    "Warehouse",
-    "Work Order",
-    "Workflow",
-    "Workflow Action Master",
-    "Workflow State",
-    "Workstation",
-})
+STANDARD_DOCTYPES = frozenset(
+    {
+        # -- Frappe core ------------------------------------------------------
+        "Access Log",
+        "Audit Log",
+        "Comment",
+        "Communication",
+        "Custom Field",
+        "Dashboard Chart",
+        "DocPerm",
+        "DocType",
+        "Error Log",
+        "File",
+        "Has Role",
+        "Module Def",
+        "Note",
+        "Notification",
+        "Patch Log",
+        "Personal Note",
+        "Personal Tag",
+        "Print Format",
+        "Property Setter",
+        "Report",
+        "Role",
+        "Scheduled Job Log",
+        "Server Script",
+        "Session Default",
+        "Tag",
+        "ToDo",
+        "User",
+        "Version",
+        "Web Form",
+        "Workspace",
+        "Client Script",
+        # -- ERPNext core -----------------------------------------------------
+        "Address",
+        "Bank Account",
+        "Batch",
+        "Bin",
+        "BOM",
+        "BOM Item",
+        "Brand",
+        "Company",
+        "Contact",
+        "Cost Center",
+        "Country",
+        "Currency",
+        "Customer",
+        "Customer Group",
+        "Delivery Note",
+        "Delivery Note Item",
+        "Department",
+        "Employee",
+        "Equipment",
+        "Item",
+        "Item Attribute",
+        "Item Attribute Value",
+        "Item Group",
+        "Item Price",
+        "Item Quality Inspection Parameter",
+        "Item Tax",
+        "Journal Entry",
+        "Language",
+        "Location",
+        "Material Issue",
+        "Material Issue Item",
+        "Material Receipt",
+        "Material Receipt Item",
+        "Material Request",
+        "Material Request Item",
+        "Mode of Payment",
+        "Operation",
+        "Payment Entry",
+        "Payment Entry Reference",
+        "Payment Terms Template",
+        "Price List",
+        "Production Line",
+        "Production Plan",
+        "Project",
+        "Purchase Invoice",
+        "Purchase Invoice Item",
+        "Purchase Receipt",
+        "Purchase Receipt Item",
+        "Purchase Taxes and Charges",
+        "Quality Inspection",
+        "Quality Inspection Method",
+        "Quality Inspection Parameter",
+        "Quality Inspection Parameter Group",
+        "Quality Procedure",
+        "Quotation",
+        "Quotation Item",
+        "Routing",
+        "Sales Invoice",
+        "Sales Invoice Item",
+        "Sales Order",
+        "Sales Order Item",
+        "Sales Partner",
+        "Sales Person",
+        "Sales Taxes and Charges",
+        "Serial No",
+        "Stock Entry",
+        "Stock Entry Detail",
+        "Supplier",
+        "Supplier Quotation",
+        "Supplier Quotation Item",
+        "Tax Category",
+        "Territory",
+        "Terms",
+        "UOM",
+        "UOM Conversion Detail",
+        "Warehouse",
+        "Work Order",
+        "Workflow",
+        "Workflow Action Master",
+        "Workflow State",
+        "Workstation",
+    }
+)
 
 # Case-insensitive lookup of the list above: MariaDB's default collation is
 # case-insensitive, so "item group" and "Item Group" are the same DocType.
@@ -307,9 +310,8 @@ def scan_undeclared_dependencies(inventory: Inventory) -> dict[str, Any]:
         # ``required_apps`` can be built at runtime. Then the declaration
         # cannot be judged statically, and claiming "not declared" would be a
         # false positive.
-        required_apps_dynamic = (
-            "required_apps" in app.hooks.assignments
-            and not isinstance(app.hooks.assignments.get("required_apps"), (list, tuple))
+        required_apps_dynamic = "required_apps" in app.hooks.assignments and not isinstance(
+            app.hooks.assignments.get("required_apps"), (list, tuple)
         )
         if required_apps_dynamic:
             dynamic += 1
@@ -335,9 +337,7 @@ def scan_undeclared_dependencies(inventory: Inventory) -> dict[str, Any]:
                 status = _MISSING
                 unresolved += 1
             else:
-                missing_declaration = [
-                    owner for owner in owners if owner.lower() not in declared_lower
-                ]
+                missing_declaration = [owner for owner in owners if owner.lower() not in declared_lower]
                 if not missing_declaration:
                     status = _DECLARED
                 elif required_apps_dynamic:

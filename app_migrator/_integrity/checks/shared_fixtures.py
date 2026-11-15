@@ -27,6 +27,7 @@ copies are currently identical or already divergent. Divergence is escalated
 to ``high``; identical copies are ``medium`` because they are a latent trap
 rather than an active defect.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -44,9 +45,7 @@ def _collect(inventory: Inventory, kind: str) -> dict[str, dict[str, Any]]:
     """Map record key -> {app: record} for every app that ships one."""
     owners: dict[str, dict[str, Any]] = {}
     for app in inventory.apps:
-        records = (
-            app.custom_fields() if kind == "custom_field" else app.property_setters()
-        )
+        records = app.custom_fields() if kind == "custom_field" else app.property_setters()
         for record in records:
             key = app_pair_key(record, kind)
             if not key or key.endswith("-None"):
@@ -82,9 +81,7 @@ def scan_shared_fixtures(inventory: Inventory) -> dict[str, Any]:
                 "copies": {name: by_app[name] for name in app_names},
             }
         result[bucket] = shared
-        result["_stats"][f"{bucket}_scanned"] = sum(
-            1 for _ in _collect(inventory, kind).values()
-        )
+        result["_stats"][f"{bucket}_scanned"] = sum(1 for _ in _collect(inventory, kind).values())
         result["_stats"][f"{bucket}_shared"] = len(shared)
     result["_stats"]["apps_scanned"] = len(inventory.apps)
     return result
@@ -117,8 +114,7 @@ def build_findings(scan: dict[str, Any]) -> list[Finding]:
                     title=f"{label} shipped by {len(apps)} apps: {key}",
                     severity=severity,
                     description=(
-                        f"{label} '{key}' is shipped by {len(apps)} apps "
-                        f"({', '.join(apps)}). {detail}"
+                        f"{label} '{key}' is shipped by {len(apps)} apps ({', '.join(apps)}). {detail}"
                     ),
                     app=apps[0],
                     evidence={

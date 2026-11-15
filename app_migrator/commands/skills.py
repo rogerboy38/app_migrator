@@ -9,6 +9,7 @@ Loaded by the active bench app's commands/__init__.py:
   from . import skills
   app_migrator.add_command(skills)
 """
+
 import os
 
 import click

@@ -9,6 +9,7 @@ subprocess -> never hangs on this substrate). The full envelope-shape assertions
 over live output are covered by tests/phase4_envelope/test_json_envelope.py under
 T-VERIFY-005 in a fresh venv.
 """
+
 import pytest
 
 from app_migrator.commands.conflicts import app_migrator_conflicts

@@ -8,6 +8,7 @@ This is the v0.5 implementation that the L413 v2 tests exercise. The
 implementation runs `git rev-parse --abbrev-ref HEAD` for each bench and
 flags any whose current_branch != expected_branch.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -48,15 +49,17 @@ def detect_available_benches_simple(expected_branch: str) -> list[dict[str, Any]
 
     try:
         current_branch = _run_git_rev_parse()
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+    except subprocess.TimeoutExpired, FileNotFoundError, OSError:
         return benches
 
     if not current_branch:
         return benches
 
-    benches.append({
-        "name": "main",
-        "current_branch": current_branch,
-        "branch_warning": current_branch != expected_branch,
-    })
+    benches.append(
+        {
+            "name": "main",
+            "current_branch": current_branch,
+            "branch_warning": current_branch != expected_branch,
+        }
+    )
     return benches

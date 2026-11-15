@@ -21,75 +21,63 @@ import frappe
 
 def analyze_module_naming_pattern(module_name: str) -> dict:
     """Analyze a module name and suggest corrections"""
-    analysis = {
-        'original': module_name,
-        'pattern': 'unknown',
-        'suggestions': [],
-        'issues': []
-    }
+    analysis = {"original": module_name, "pattern": "unknown", "suggestions": [], "issues": []}
 
     # Detect pattern
     if module_name.isupper():
-        analysis['pattern'] = 'UPPERCASE'
-    elif module_name.islower() and '_' in module_name:
-        analysis['pattern'] = 'snake_case'
-    elif ' ' in module_name and module_name.istitle():
-        analysis['pattern'] = 'Title Case'
-    elif module_name[0].isupper() and ' ' not in module_name and '_' not in module_name:
-        analysis['pattern'] = 'CamelCase'
+        analysis["pattern"] = "UPPERCASE"
+    elif module_name.islower() and "_" in module_name:
+        analysis["pattern"] = "snake_case"
+    elif " " in module_name and module_name.istitle():
+        analysis["pattern"] = "Title Case"
+    elif module_name[0].isupper() and " " not in module_name and "_" not in module_name:
+        analysis["pattern"] = "CamelCase"
     elif any(c.isupper() for c in module_name[1:]) and not module_name.isupper():
-        analysis['pattern'] = 'mixedCase'
+        analysis["pattern"] = "mixedCase"
 
     # Check for common issues
-    if '  ' in module_name:  # Double spaces
-        analysis['issues'].append('contains double spaces')
+    if "  " in module_name:  # Double spaces
+        analysis["issues"].append("contains double spaces")
 
-    if module_name.startswith(' ') or module_name.endswith(' '):
-        analysis['issues'].append('has leading/trailing spaces')
+    if module_name.startswith(" ") or module_name.endswith(" "):
+        analysis["issues"].append("has leading/trailing spaces")
 
-    if re.search(r'[^\w\s-]', module_name):  # Special characters
-        analysis['issues'].append('contains special characters')
+    if re.search(r"[^\w\s-]", module_name):  # Special characters
+        analysis["issues"].append("contains special characters")
 
     # Generate suggestions
     # 1. Proper Title Case (standard Frappe convention)
-    title_case = ' '.join(word.capitalize() for word in re.split(r'[\s_]+', module_name))
+    title_case = " ".join(word.capitalize() for word in re.split(r"[\s_]+", module_name))
     if title_case != module_name:
-        analysis['suggestions'].append({
-            'type': 'title_case',
-            'value': title_case,
-            'description': 'Standard Frappe Title Case'
-        })
+        analysis["suggestions"].append(
+            {"type": "title_case", "value": title_case, "description": "Standard Frappe Title Case"}
+        )
 
     # 2. snake_case (Python module convention)
-    snake_case = re.sub(r'[\s-]+', '_', module_name).lower()
+    snake_case = re.sub(r"[\s-]+", "_", module_name).lower()
     if snake_case != module_name.lower():
-        analysis['suggestions'].append({
-            'type': 'snake_case',
-            'value': snake_case,
-            'description': 'Python snake_case convention'
-        })
+        analysis["suggestions"].append(
+            {"type": "snake_case", "value": snake_case, "description": "Python snake_case convention"}
+        )
 
     # 3. Clean version (remove extra spaces, special chars)
-    clean = re.sub(r'\s+', ' ', module_name.strip())
-    clean = re.sub(r'[^\w\s-]', '', clean)
+    clean = re.sub(r"\s+", " ", module_name.strip())
+    clean = re.sub(r"[^\w\s-]", "", clean)
     if clean != module_name:
-        analysis['suggestions'].append({
-            'type': 'clean',
-            'value': clean,
-            'description': 'Cleaned version'
-        })
+        analysis["suggestions"].append({"type": "clean", "value": clean, "description": "Cleaned version"})
 
     return analysis
+
 
 def get_app_module_mapping() -> dict[str, list[str]]:
     """Get mapping of apps to their modules from hooks.py files"""
     app_module_map = {}
     bench_path = Path(find_bench_root())
 
-    for app_dir in (bench_path / 'apps').iterdir():
-        if app_dir.is_dir() and not app_dir.name.startswith('.'):
+    for app_dir in (bench_path / "apps").iterdir():
+        if app_dir.is_dir() and not app_dir.name.startswith("."):
             app_name = app_dir.name
-            modules_file = app_dir / app_name / 'modules.txt'
+            modules_file = app_dir / app_name / "modules.txt"
 
             if modules_file.exists():
                 try:
@@ -100,6 +88,7 @@ def get_app_module_mapping() -> dict[str, list[str]]:
                     pass
 
     return app_module_map
+
 
 def find_best_module_match(module_name: str, available_modules: list[str]) -> tuple[str, float] | None:
     """Find the best matching module with confidence score"""
@@ -123,8 +112,8 @@ def find_best_module_match(module_name: str, available_modules: list[str]) -> tu
         # Similar after normalization
         else:
             # Normalize both names (remove spaces, underscores, special chars)
-            norm1 = re.sub(r'[\s_]+', '', module_lower)
-            norm2 = re.sub(r'[\s_]+', '', available_lower)
+            norm1 = re.sub(r"[\s_]+", "", module_lower)
+            norm2 = re.sub(r"[\s_]+", "", available_lower)
             if norm1 == norm2:
                 score = 0.9
 
@@ -137,14 +126,19 @@ def find_best_module_match(module_name: str, available_modules: list[str]) -> tu
 
     return None
 
-@click.command('fix-module-names')
-@click.option('--site', required=True, help='Site name')
-@click.option('--app', help='Specific app to fix (optional)')
-@click.option('--pattern', type=click.Choice(['title_case', 'snake_case', 'uppercase', 'all']),
-              default='all', help='Pattern to fix')
-@click.option('--apply', is_flag=True, help='Apply fixes')
-@click.option('--dry-run', is_flag=True, help='Dry run only')
-@click.option('--verbose', '-v', is_flag=True, help='Verbose output')
+
+@click.command("fix-module-names")
+@click.option("--site", required=True, help="Site name")
+@click.option("--app", help="Specific app to fix (optional)")
+@click.option(
+    "--pattern",
+    type=click.Choice(["title_case", "snake_case", "uppercase", "all"]),
+    default="all",
+    help="Pattern to fix",
+)
+@click.option("--apply", is_flag=True, help="Apply fixes")
+@click.option("--dry-run", is_flag=True, help="Dry run only")
+@click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 def fix_module_names(site, app, pattern, apply, dry_run, verbose):
     """
     Fix inconsistent module naming patterns across apps
@@ -189,24 +183,26 @@ def fix_module_names(site, app, pattern, apply, dry_run, verbose):
         for module_name in sorted(db_module_names):
             analysis = analyze_module_naming_pattern(module_name)
 
-            has_issues = len(analysis['issues']) > 0
-            pattern_mismatch = analysis['pattern'] not in ['Title Case', 'CamelCase', 'snake_case']
+            has_issues = len(analysis["issues"]) > 0
+            pattern_mismatch = analysis["pattern"] not in ["Title Case", "CamelCase", "snake_case"]
 
-            if has_issues or pattern_mismatch or analysis['suggestions']:
+            if has_issues or pattern_mismatch or analysis["suggestions"]:
                 # Check if this module exists in any app
                 in_apps = []
                 for app_name, modules in app_module_map.items():
                     if module_name in modules:
                         in_apps.append(app_name)
 
-                inconsistencies.append({
-                    'module': module_name,
-                    'pattern': analysis['pattern'],
-                    'issues': analysis['issues'],
-                    'suggestions': analysis['suggestions'],
-                    'in_apps': in_apps,
-                    'in_fs': module_name in fs_module_names
-                })
+                inconsistencies.append(
+                    {
+                        "module": module_name,
+                        "pattern": analysis["pattern"],
+                        "issues": analysis["issues"],
+                        "suggestions": analysis["suggestions"],
+                        "in_apps": in_apps,
+                        "in_fs": module_name in fs_module_names,
+                    }
+                )
 
         if not inconsistencies:
             click.echo("✅ No naming inconsistencies found!")
@@ -218,33 +214,33 @@ def fix_module_names(site, app, pattern, apply, dry_run, verbose):
         # Process inconsistencies
         fixed_count = 0
         for inc in inconsistencies:
-            if verbose or inc['in_fs']:  # Show modules that exist in filesystem
+            if verbose or inc["in_fs"]:  # Show modules that exist in filesystem
                 click.echo(f"\n📋 Module: {inc['module']}")
                 click.echo(f"   Pattern: {inc['pattern']}")
-                if inc['issues']:
+                if inc["issues"]:
                     click.echo(f"   Issues: {', '.join(inc['issues'])}")
-                if inc['in_apps']:
+                if inc["in_apps"]:
                     click.echo(f"   Used in: {', '.join(inc['in_apps'])}")
 
                 # Show suggestions
-                if inc['suggestions']:
+                if inc["suggestions"]:
                     click.echo("   Suggestions:")
-                    for suggestion in inc['suggestions']:
-                        if pattern == 'all' or pattern == suggestion['type']:
+                    for suggestion in inc["suggestions"]:
+                        if pattern == "all" or pattern == suggestion["type"]:
                             click.echo(f"     • {suggestion['type']}: {suggestion['value']}")
 
                     # Apply fix if requested
-                    if apply and inc['suggestions']:
+                    if apply and inc["suggestions"]:
                         # Use first suggestion that matches pattern
                         target_suggestion = None
-                        for suggestion in inc['suggestions']:
-                            if pattern == 'all' or pattern == suggestion['type']:
+                        for suggestion in inc["suggestions"]:
+                            if pattern == "all" or pattern == suggestion["type"]:
                                 target_suggestion = suggestion
                                 break
 
                         if target_suggestion:
-                            old_name = inc['module']
-                            new_name = target_suggestion['value']
+                            old_name = inc["module"]
+                            new_name = target_suggestion["value"]
 
                             # Check if new name already exists
                             if new_name in db_module_names and new_name != old_name:
@@ -258,9 +254,9 @@ def fix_module_names(site, app, pattern, apply, dry_run, verbose):
                                 module_doc.save()
 
                                 # Update all doctypes using this module
-                                doctypes = frappe.get_all("DocType",
-                                    filters={"module": old_name},
-                                    fields=["name"])
+                                doctypes = frappe.get_all(
+                                    "DocType", filters={"module": old_name}, fields=["name"]
+                                )
 
                                 for dt in doctypes:
                                     dt_doc = frappe.get_doc("DocType", dt["name"])
@@ -281,16 +277,16 @@ def fix_module_names(site, app, pattern, apply, dry_run, verbose):
         for module_name in db_module_names:
             if module_name not in fs_module_names:
                 # Check if any doctypes use this module
-                doctypes = frappe.get_all("DocType",
-                    filters={"module": module_name},
-                    fields=["name"])
+                doctypes = frappe.get_all("DocType", filters={"module": module_name}, fields=["name"])
 
                 if doctypes:
-                    orphan_modules.append({
-                        'module': module_name,
-                        'doctype_count': len(doctypes),
-                        'doctypes': [d["name"] for d in doctypes[:3]]  # First 3
-                    })
+                    orphan_modules.append(
+                        {
+                            "module": module_name,
+                            "doctype_count": len(doctypes),
+                            "doctypes": [d["name"] for d in doctypes[:3]],  # First 3
+                        }
+                    )
 
         if orphan_modules:
             click.echo(f"⚠️ Found {len(orphan_modules)} modules in DB not linked to apps:")
@@ -321,14 +317,20 @@ def fix_module_names(site, app, pattern, apply, dry_run, verbose):
     except Exception as e:
         click.echo(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         frappe.destroy()
 
-@click.command('standardize-modules')
-@click.option('--site', required=True, help='Site name')
-@click.option('--to', type=click.Choice(['title_case', 'snake_case']),
-              default='title_case', help='Target naming convention')
-@click.option('--apply', is_flag=True, help='Apply standardization')
+
+@click.command("standardize-modules")
+@click.option("--site", required=True, help="Site name")
+@click.option(
+    "--to",
+    type=click.Choice(["title_case", "snake_case"]),
+    default="title_case",
+    help="Target naming convention",
+)
+@click.option("--apply", is_flag=True, help="Apply standardization")
 def standardize_modules(site, to, apply):
     """
     Standardize all modules to a consistent naming convention
@@ -350,10 +352,10 @@ def standardize_modules(site, to, apply):
             old_name = module["name"]
 
             # Convert to target convention
-            if to == 'title_case':
-                new_name = ' '.join(word.capitalize() for word in re.split(r'[\s_]+', old_name))
-            elif to == 'snake_case':
-                new_name = re.sub(r'[\s-]+', '_', old_name).lower()
+            if to == "title_case":
+                new_name = " ".join(word.capitalize() for word in re.split(r"[\s_]+", old_name))
+            elif to == "snake_case":
+                new_name = re.sub(r"[\s-]+", "_", old_name).lower()
 
             # Only add if name would change
             if new_name != old_name:
@@ -362,10 +364,7 @@ def standardize_modules(site, to, apply):
                     click.echo(f"⚠️ Skipping '{old_name}' → '{new_name}' (already exists)")
                     continue
 
-                conversions.append({
-                    'old': old_name,
-                    'new': new_name
-                })
+                conversions.append({"old": old_name, "new": new_name})
 
         if not conversions:
             click.echo("✅ All modules already follow the target convention!")
@@ -379,18 +378,16 @@ def standardize_modules(site, to, apply):
             for conv in conversions:
                 try:
                     # Update module definition
-                    module_doc = frappe.get_doc("Module Def", conv['old'])
-                    module_doc.module_name = conv['new']
+                    module_doc = frappe.get_doc("Module Def", conv["old"])
+                    module_doc.module_name = conv["new"]
                     module_doc.save()
 
                     # Update all doctypes
-                    doctypes = frappe.get_all("DocType",
-                        filters={"module": conv['old']},
-                        fields=["name"])
+                    doctypes = frappe.get_all("DocType", filters={"module": conv["old"]}, fields=["name"])
 
                     for dt in doctypes:
                         dt_doc = frappe.get_doc("DocType", dt["name"])
-                        dt_doc.module = conv['new']
+                        dt_doc.module = conv["new"]
                         dt_doc.save()
 
                     click.echo(f"   ✅ {conv['old']} → {conv['new']} ({len(doctypes)} doctypes)")
@@ -405,9 +402,7 @@ def standardize_modules(site, to, apply):
             click.echo("\n📋 PROPOSED CHANGES (dry run):")
             for conv in conversions[:20]:  # Show first 20
                 # Count doctypes
-                doctypes = frappe.get_all("DocType",
-                    filters={"module": conv['old']},
-                    fields=["name"])
+                doctypes = frappe.get_all("DocType", filters={"module": conv["old"]}, fields=["name"])
 
                 click.echo(f"   • {conv['old']} → {conv['new']} ({len(doctypes)} doctypes)")
 
@@ -421,6 +416,7 @@ def standardize_modules(site, to, apply):
     except Exception as e:
         click.echo(f"❌ Error: {e}")
         frappe.destroy()
+
 
 if __name__ == "__main__":
     fix_module_names()

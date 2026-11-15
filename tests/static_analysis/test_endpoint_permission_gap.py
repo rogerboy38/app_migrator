@@ -9,6 +9,7 @@ is a defect rather than a house style.
 The check is bench-free: these tests run with no Frappe and no ``bench``
 CLI, which is the point of placing them outside ``app_migrator/commands/``.
 """
+
 from __future__ import annotations
 
 import re
@@ -91,14 +92,14 @@ def migrate_foxpro_stock():
 
 def test_unwhitelisted_write_is_not_reported(apps_root, inventory):
     """The common case must stay clean — a noisy check is a check nobody runs."""
-    root = apps_root([
-        FakeApp(
-            name="app_a",
-            python_files={"api/internal.py": UNGUARDED_WRITE.replace(
-                "@frappe.whitelist()\n", ""
-            )},
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="app_a",
+                python_files={"api/internal.py": UNGUARDED_WRITE.replace("@frappe.whitelist()\n", "")},
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
     assert result.stats["unprotected_endpoints"] == 0
@@ -106,9 +107,11 @@ def test_unwhitelisted_write_is_not_reported(apps_root, inventory):
 
 def test_guarded_endpoint_is_not_reported(apps_root, inventory):
     """An endpoint that checks its own permissions is doing the right thing."""
-    root = apps_root([
-        FakeApp(name="app_a", python_files={"api/guarded.py": GUARDED_READ}),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="app_a", python_files={"api/guarded.py": GUARDED_READ}),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
     assert result.stats["whitelisted_endpoints"] == 1
@@ -116,9 +119,11 @@ def test_guarded_endpoint_is_not_reported(apps_root, inventory):
 
 def test_unprotected_write_endpoint_is_high(apps_root, inventory):
     """A whitelisted endpoint that writes raw SQL and has no guard: high."""
-    root = apps_root([
-        FakeApp(name="amb_w_tds", python_files={"api/batch_api.py": UNGUARDED_WRITE}),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_tds", python_files={"api/batch_api.py": UNGUARDED_WRITE}),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -136,9 +141,11 @@ def test_unprotected_write_endpoint_is_high(apps_root, inventory):
 
 def test_read_only_endpoint_is_medium(apps_root, inventory):
     """A read-only bypass is a leak, not a data-loss: medium."""
-    root = apps_root([
-        FakeApp(name="app_a", python_files={"api/read.py": READ_ONLY}),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="app_a", python_files={"api/read.py": READ_ONLY}),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -149,9 +156,11 @@ def test_read_only_endpoint_is_medium(apps_root, inventory):
 
 def test_ignore_permissions_write_is_high(apps_root, inventory):
     """``doc.delete(ignore_permissions=True)`` is a permission bypass too."""
-    root = apps_root([
-        FakeApp(name="app_a", python_files={"api/wipe.py": IGNORE_PERMISSIONS}),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="app_a", python_files={"api/wipe.py": IGNORE_PERMISSIONS}),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -162,27 +171,33 @@ def test_ignore_permissions_write_is_high(apps_root, inventory):
 
 def test_commit_without_a_write_is_not_a_bypass(apps_root, inventory):
     """``frappe.db.commit`` alone proves nothing — it must not create noise."""
-    root = apps_root([
-        FakeApp(
-            name="app_a",
-            python_files={"api/commit.py": (
-                "import frappe\n\n\n"
-                "@frappe.whitelist()\n"
-                "def flush():\n"
-                "    frappe.db.commit()\n"
-                "    return {'ok': True}\n"
-            )},
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="app_a",
+                python_files={
+                    "api/commit.py": (
+                        "import frappe\n\n\n"
+                        "@frappe.whitelist()\n"
+                        "def flush():\n"
+                        "    frappe.db.commit()\n"
+                        "    return {'ok': True}\n"
+                    )
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
 
 def test_whitelisted_function_in_test_module_is_high(apps_root, inventory):
     """Audit evidence: ``cleanup_test_data`` is a whitelisted endpoint."""
-    root = apps_root([
-        FakeApp(name="amb_w_tds", python_files={"tests/test_cleanup.py": CLEANUP_TEST_DATA}),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_tds", python_files={"tests/test_cleanup.py": CLEANUP_TEST_DATA}),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -193,9 +208,11 @@ def test_whitelisted_function_in_test_module_is_high(apps_root, inventory):
 
 def test_whitelisted_function_in_migration_module_is_high(apps_root, inventory):
     """Audit evidence: two FoxPro migration helpers are whitelisted."""
-    root = apps_root([
-        FakeApp(name="amb_w_tds", python_files={"migrations/v1_0.py": MIGRATION_HELPER}),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_tds", python_files={"migrations/v1_0.py": MIGRATION_HELPER}),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -205,9 +222,11 @@ def test_whitelisted_function_in_migration_module_is_high(apps_root, inventory):
 
 def test_guest_endpoint_is_surfaced_in_the_evidence(apps_root, inventory):
     """A guest endpoint needs no session at all — it must be obvious."""
-    root = apps_root([
-        FakeApp(name="app_a", python_files={"api/public.py": GUEST_ENDPOINT}),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="app_a", python_files={"api/public.py": GUEST_ENDPOINT}),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -218,9 +237,11 @@ def test_guest_endpoint_is_surfaced_in_the_evidence(apps_root, inventory):
 
 def test_finding_id_is_stable_and_carries_no_line_number(apps_root, inventory):
     """Stable ids are the diff key an agent uses; they must not drift."""
-    root = apps_root([
-        FakeApp(name="amb_w_tds", python_files={"api/batch_api.py": UNGUARDED_WRITE}),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_tds", python_files={"api/batch_api.py": UNGUARDED_WRITE}),
+        ]
+    )
     first = finding_ids(run_check(CHECK_ID, inventory(root)))
     second = finding_ids(run_check(CHECK_ID, inventory(root)))
     assert first == second
@@ -231,12 +252,12 @@ def test_finding_id_survives_a_line_shift(apps_root, inventory):
     """Moving the function down the file must not change its id."""
     source = "import frappe\n\n\n@frappe.whitelist()\ndef run_batch(name):\n    frappe.db.sql('UPDATE tabItem SET x = 1')\n"
     shifted = "\n\n" + source
-    before = finding_ids(run_check(CHECK_ID, inventory(
-        apps_root([FakeApp(name="app_a", python_files={"api/x.py": source})])
-    )))
-    after = finding_ids(run_check(CHECK_ID, inventory(
-        apps_root([FakeApp(name="app_a", python_files={"api/x.py": shifted})])
-    )))
+    before = finding_ids(
+        run_check(CHECK_ID, inventory(apps_root([FakeApp(name="app_a", python_files={"api/x.py": source})])))
+    )
+    after = finding_ids(
+        run_check(CHECK_ID, inventory(apps_root([FakeApp(name="app_a", python_files={"api/x.py": shifted})])))
+    )
     assert before == after
     assert before == ["integrity-endpoint-permission-gap-app-a-api-x-run-batch"]
 
@@ -284,12 +305,14 @@ def test_a_guest_login_endpoint_is_not_reported_as_a_permission_bypass(apps_root
     reported, because a credential-minting endpoint that anyone can reach
     is worth a human's attention, but under its own framing.
     """
-    root = apps_root([
-        FakeApp(
-            name="amb_w_spc",
-            python_files={"scripts/automation_scripts.py": GUEST_LOGIN_ENDPOINT},
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_spc",
+                python_files={"scripts/automation_scripts.py": GUEST_LOGIN_ENDPOINT},
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -307,15 +330,16 @@ def test_a_guest_write_endpoint_is_still_a_permission_bypass(apps_root, inventor
     ``ignore_permissions=True``. That is the real defect, and it keeps the
     high severity.
     """
-    root = apps_root([
-        FakeApp(
-            name="amb_w_spc",
-            python_files={
-                "system_integration/doctype/weight_event/weight_event.py":
-                    GUEST_WRITE_ENDPOINT
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_spc",
+                python_files={
+                    "system_integration/doctype/weight_event/weight_event.py": GUEST_WRITE_ENDPOINT
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -326,15 +350,16 @@ def test_a_guest_write_endpoint_is_still_a_permission_bypass(apps_root, inventor
 
 def test_the_guest_wording_does_not_say_logged_in_users(apps_root, inventory):
     """A guest endpoint is reachable by anyone at all, not only by logged-in users."""
-    root = apps_root([
-        FakeApp(
-            name="amb_w_spc",
-            python_files={
-                "system_integration/doctype/weight_event/weight_event.py":
-                    GUEST_WRITE_ENDPOINT
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_spc",
+                python_files={
+                    "system_integration/doctype/weight_event/weight_event.py": GUEST_WRITE_ENDPOINT
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     description = result.findings[0].description
     assert "any logged-in user" not in description, description

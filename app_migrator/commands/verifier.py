@@ -17,6 +17,7 @@ Derivation rules (priority order):
 
 Full LLM-assisted verifier logic deferred to W1 close.
 """
+
 from __future__ import annotations
 
 import json
@@ -49,9 +50,7 @@ def _derive_outcome(pre: dict, post: dict) -> dict:
         return {
             "outcome": "regressed",
             "block_continuation": True,
-            "reason": (
-                f"new findings={[list(new_findings)]}; blocker delta={blocker_delta}"
-            ),
+            "reason": (f"new findings={[list(new_findings)]}; blocker delta={blocker_delta}"),
         }
 
     # Rule 2: improved (better)
@@ -70,10 +69,10 @@ def _derive_outcome(pre: dict, post: dict) -> dict:
     }
 
 
-@click.command('app-migrator-verifier')
-@click.argument('session_id')
-@click.option('--pre', required=True, help='Pre-state JSON')
-@click.option('--post', required=True, help='Post-state JSON')
+@click.command("app-migrator-verifier")
+@click.argument("session_id")
+@click.option("--pre", required=True, help="Pre-state JSON")
+@click.option("--post", required=True, help="Post-state JSON")
 def app_migrator_verifier(session_id, pre, post):
     """Derive outcome from pre/post evidence (deterministic; per U2/Q4).
 

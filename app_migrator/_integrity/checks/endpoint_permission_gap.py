@@ -44,6 +44,7 @@ endpoint at ``medium``.
 The check is a pure AST + filesystem read: it never imports ``frappe`` and
 never touches a bench, a database or the network.
 """
+
 from __future__ import annotations
 
 import ast
@@ -91,24 +92,37 @@ GUARD_TOKENS = (
 #: endpoint that returns one of these is an **authentication** endpoint, not
 #: a permission bypass: it is supposed to be reachable without a session,
 #: because establishing the session is its job.
-CREDENTIAL_KEYS = frozenset({
-    "access_token",
-    "api_key",
-    "api_token",
-    "auth_token",
-    "id_token",
-    "jwt",
-    "refresh_token",
-    "secret",
-    "session_token",
-    "token",
-})
+CREDENTIAL_KEYS = frozenset(
+    {
+        "access_token",
+        "api_key",
+        "api_token",
+        "auth_token",
+        "id_token",
+        "jwt",
+        "refresh_token",
+        "secret",
+        "session_token",
+        "token",
+    }
+)
 
 #: SQL leading keywords that mean "this statement changes data".
-WRITE_SQL_KEYWORDS = frozenset({
-    "insert", "update", "delete", "replace", "create", "drop",
-    "alter", "truncate", "rename", "grant", "revoke",
-})
+WRITE_SQL_KEYWORDS = frozenset(
+    {
+        "insert",
+        "update",
+        "delete",
+        "replace",
+        "create",
+        "drop",
+        "alter",
+        "truncate",
+        "rename",
+        "grant",
+        "revoke",
+    }
+)
 
 
 # --------------------------------------------------------------------------
@@ -540,11 +554,7 @@ def build_findings(scan: dict[str, Any]) -> list[Finding]:
                 )
         else:
             severity = "high" if info["write_capable"] else "medium"
-            caller = (
-                "anyone at all — no session is required"
-                if info["allow_guest"]
-                else "any logged-in user"
-            )
+            caller = "anyone at all — no session is required" if info["allow_guest"] else "any logged-in user"
             title = f"{prefix}Whitelisted endpoint '{function}' bypasses the permission model"
             detail = (
                 f"'{function}' is published as an HTTP endpoint via @frappe.whitelist() and "

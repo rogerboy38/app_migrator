@@ -68,6 +68,7 @@ ignore it. The analysis is therefore deliberately narrow:
 - a field another app ships as a Custom Field for the same DocType counts as
   known, because it exists at runtime.
 """
+
 from __future__ import annotations
 
 import ast
@@ -175,7 +176,7 @@ BASE_DOCUMENT_API: set[str] = {
 _NON_WORD = re.compile(r"[^a-z0-9]")
 
 # Binding sentinels for a local name.
-_SELF = "\x00self"       # bound to the controller's own document
+_SELF = "\x00self"  # bound to the controller's own document
 _UNKNOWN = "\x00unknown"  # bound to a document of an unknown DocType
 
 
@@ -212,9 +213,7 @@ def _match_doctype_name(names: Iterable[str], name: str) -> str | None:
     return None
 
 
-def _known_doctype(
-    paths: dict[str, str], name: str, shipped: Iterable[str]
-) -> str | None:
+def _known_doctype(paths: dict[str, str], name: str, shipped: Iterable[str]) -> str | None:
     """The DocType ``name`` refers to, when the inventory knows it.
 
     A DocType is known when the app ships it -- as a package ``doctype/``
@@ -233,9 +232,7 @@ def _is_fixture_doctype_path(app: AppInfo, path: str) -> bool:
     fixture = app.fixture_path(DOCTYPE_FIXTURE)
     if not fixture:
         return False
-    return os.path.normcase(os.path.abspath(path)) == os.path.normcase(
-        os.path.abspath(fixture)
-    )
+    return os.path.normcase(os.path.abspath(path)) == os.path.normcase(os.path.abspath(fixture))
 
 
 def _controller_slug(app: AppInfo, path: str) -> str | None:
@@ -264,9 +261,7 @@ def _controller_slug(app: AppInfo, path: str) -> str | None:
     return slug
 
 
-def _resolve_doctype(
-    app: AppInfo, slug: str, paths: dict[str, str]
-) -> str | None:
+def _resolve_doctype(app: AppInfo, slug: str, paths: dict[str, str]) -> str | None:
     """The DocType the folder ``slug`` belongs to (None when the app does not ship it)."""
     for name, json_path in paths.items():
         if _is_fixture_doctype_path(app, json_path):
@@ -279,9 +274,7 @@ def _resolve_doctype(
     return None
 
 
-def _slug_for_doctype(
-    app: AppInfo, doctype: str, paths: dict[str, str]
-) -> str:
+def _slug_for_doctype(app: AppInfo, doctype: str, paths: dict[str, str]) -> str:
     """The stable folder slug used in finding ids for ``doctype``."""
     json_path = paths.get(doctype)
     if json_path and not _is_fixture_doctype_path(app, json_path):
@@ -291,9 +284,7 @@ def _slug_for_doctype(
     return _scrub(doctype)
 
 
-def _doctype_for_variable(
-    app: AppInfo, base_name: str, paths: dict[str, str]
-) -> str | None:
+def _doctype_for_variable(app: AppInfo, base_name: str, paths: dict[str, str]) -> str | None:
     """Resolve a ``<something>_doc`` variable name to a DocType the app ships.
 
     ``movement_type_doc`` is the Frappe convention for "a Movement Type
@@ -561,9 +552,7 @@ def scan_missing_field_references(inventory: Inventory) -> dict[str, Any]:
     def known_fields(app: AppInfo, doctype: str, paths: dict[str, str]) -> set[str]:
         key = f"{app.name}|{doctype}"
         if key not in known_cache:
-            names = app.fieldnames_for(doctype) | _custom_fields_for_doctype(
-                inventory, doctype
-            )
+            names = app.fieldnames_for(doctype) | _custom_fields_for_doctype(inventory, doctype)
             if _match_doctype_name(paths.keys(), doctype) is None:
                 # Another app owns this DocType: judge the read by the
                 # owner's fields, or every field would look missing.
@@ -596,9 +585,7 @@ def scan_missing_field_references(inventory: Inventory) -> dict[str, Any]:
             defined = _class_defined_names(tree)
             guarded = _guarded_attributes(tree)
             called = _called_attributes(tree)
-            controller_classes = (
-                _controller_class_names(tree, doctype) if is_controller else set()
-            )
+            controller_classes = _controller_class_names(tree, doctype) if is_controller else set()
             collector = _ReadCollector(called)
             collector.visit(tree)
             for scope, enclosing, nested, base_name, attr, lineno in collector.reads:
@@ -649,9 +636,7 @@ def scan_missing_field_references(inventory: Inventory) -> dict[str, Any]:
                             target = None
                         else:
                             target = (
-                                None
-                                if base_name == "doc"
-                                else _doctype_for_variable(app, base_name, paths)
+                                None if base_name == "doc" else _doctype_for_variable(app, base_name, paths)
                             )
                     else:
                         # The local is bound to a document of a named DocType:
@@ -693,14 +678,8 @@ def build_findings(scan: dict[str, Any]) -> list[Finding]:
     for _key, info in sorted(scan.get("missing", {}).items()):
         findings.append(
             Finding(
-                id=(
-                    f"integrity-{CHECK_ID}-{info['app']}-"
-                    f"{info['doctype_slug']}-{info['fieldname']}"
-                ),
-                title=(
-                    f"{info['doctype']}.{info['fieldname']} is read but the "
-                    f"DocType does not define it"
-                ),
+                id=(f"integrity-{CHECK_ID}-{info['app']}-{info['doctype_slug']}-{info['fieldname']}"),
+                title=(f"{info['doctype']}.{info['fieldname']} is read but the DocType does not define it"),
                 severity="medium",
                 description=(
                     f"{info['app']}'s {info['doctype']} controller reads "

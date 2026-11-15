@@ -58,31 +58,24 @@ def fix_orphan_doctypes(source_app):
             return False
 
         # Get all doctypes for the app
-        all_app_doctypes = frappe.get_all('DocType',
-            filters={'app': source_app},
-            fields=['name', 'module', 'app']
+        all_app_doctypes = frappe.get_all(
+            "DocType", filters={"app": source_app}, fields=["name", "module", "app"]
         )
 
         # Identify orphans
         orphans = []
         for dt in all_app_doctypes:
-            if not dt['module']:
-                orphans.append({
-                    'doctype': dt['name'],
-                    'issue': 'NO_MODULE',
-                    'current_module': None
-                })
+            if not dt["module"]:
+                orphans.append({"doctype": dt["name"], "issue": "NO_MODULE", "current_module": None})
             else:
                 # Check if module belongs to the app
-                module_check = frappe.get_all('Module Def',
-                    filters={'module_name': dt['module'], 'app_name': source_app}
+                module_check = frappe.get_all(
+                    "Module Def", filters={"module_name": dt["module"], "app_name": source_app}
                 )
                 if not module_check:
-                    orphans.append({
-                        'doctype': dt['name'],
-                        'issue': 'WRONG_MODULE',
-                        'current_module': dt['module']
-                    })
+                    orphans.append(
+                        {"doctype": dt["name"], "issue": "WRONG_MODULE", "current_module": dt["module"]}
+                    )
 
         print(f"\n📊 Found {len(orphans)} orphan doctypes\n")
 
@@ -93,24 +86,23 @@ def fix_orphan_doctypes(source_app):
         # Display orphans
         print("🔍 Orphan Doctypes:")
         for orphan in orphans[:20]:
-            issue_icon = "⚠️" if orphan['issue'] == 'NO_MODULE' else "🔄"
-            print(f"  {issue_icon} {orphan['doctype']:<40s} - {orphan['issue']} (module: {orphan['current_module']})")
+            issue_icon = "⚠️" if orphan["issue"] == "NO_MODULE" else "🔄"
+            print(
+                f"  {issue_icon} {orphan['doctype']:<40s} - {orphan['issue']} (module: {orphan['current_module']})"
+            )
 
         if len(orphans) > 20:
             print(f"  ... and {len(orphans) - 20} more")
 
         # Confirm action
         confirm = input(f"\n⚠️  Fix {len(orphans)} orphan doctypes? (y/N): ").strip().lower()
-        if confirm != 'y':
+        if confirm != "y":
             print("🚫 Operation cancelled")
             return False
 
         # Get valid modules for the app
-        app_modules = frappe.get_all('Module Def',
-            filters={'app_name': source_app},
-            fields=['module_name']
-        )
-        module_names = [m['module_name'] for m in app_modules]
+        app_modules = frappe.get_all("Module Def", filters={"app_name": source_app}, fields=["module_name"])
+        module_names = [m["module_name"] for m in app_modules]
 
         if not module_names:
             print(f"❌ No modules found for {source_app}")
@@ -120,13 +112,15 @@ def fix_orphan_doctypes(source_app):
         fixed_count = 0
         for orphan in orphans:
             try:
-                if orphan['issue'] == 'NO_MODULE' and module_names:
-                    frappe.db.set_value('DocType', orphan['doctype'], 'module', module_names[0])
+                if orphan["issue"] == "NO_MODULE" and module_names:
+                    frappe.db.set_value("DocType", orphan["doctype"], "module", module_names[0])
                     print(f"  ✅ Assigned {orphan['doctype']} to module: {module_names[0]}")
                     fixed_count += 1
-                elif orphan['issue'] == 'WRONG_MODULE' and module_names:
-                    frappe.db.set_value('DocType', orphan['doctype'], 'module', module_names[0])
-                    print(f"  ✅ Reassigned {orphan['doctype']} from {orphan['current_module']} to {module_names[0]}")
+                elif orphan["issue"] == "WRONG_MODULE" and module_names:
+                    frappe.db.set_value("DocType", orphan["doctype"], "module", module_names[0])
+                    print(
+                        f"  ✅ Reassigned {orphan['doctype']} from {orphan['current_module']} to {module_names[0]}"
+                    )
                     fixed_count += 1
             except Exception as e:
                 print(f"  ❌ Failed to fix {orphan['doctype']}: {e}")
@@ -145,6 +139,7 @@ def fix_orphan_doctypes(source_app):
     except Exception as e:
         print(f"❌ Fix orphan doctypes failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -163,13 +158,12 @@ def restore_missing_doctypes(source_app):
             return False
 
         # Get all doctypes for the app
-        app_doctypes = frappe.get_all('DocType',
-            filters={'app': source_app},
-            fields=['name', 'module', 'custom']
+        app_doctypes = frappe.get_all(
+            "DocType", filters={"app": source_app}, fields=["name", "module", "custom"]
         )
 
         bench_path = Path(find_bench_root())
-        app_path = bench_path / 'apps' / source_app / source_app
+        app_path = bench_path / "apps" / source_app / source_app
 
         if not app_path.exists():
             print(f"❌ App path not found: {app_path}")
@@ -181,8 +175,8 @@ def restore_missing_doctypes(source_app):
 
         # Check each doctype for missing file
         for doctype in app_doctypes:
-            doctype_name = doctype['name']
-            module_name = doctype['module']
+            doctype_name = doctype["name"]
+            module_name = doctype["module"]
 
             if not module_name:
                 continue
@@ -194,11 +188,9 @@ def restore_missing_doctypes(source_app):
             snake_path = app_path / module_name / f"{snake_name}.json"
 
             if not expected_path.exists() and not snake_path.exists():
-                missing_files.append({
-                    'doctype': doctype_name,
-                    'module': module_name,
-                    'custom': doctype.get('custom', 0)
-                })
+                missing_files.append(
+                    {"doctype": doctype_name, "module": module_name, "custom": doctype.get("custom", 0)}
+                )
 
         print(f"📊 Found {len(missing_files)} missing doctype files\n")
 
@@ -209,7 +201,7 @@ def restore_missing_doctypes(source_app):
         # Display missing files
         print("🔍 Missing Doctype Files:")
         for missing in missing_files[:20]:
-            custom_flag = " (CUSTOM)" if missing['custom'] else ""
+            custom_flag = " (CUSTOM)" if missing["custom"] else ""
             print(f"  • {missing['doctype']:<40s} in {missing['module']}{custom_flag}")
 
         if len(missing_files) > 20:
@@ -217,7 +209,7 @@ def restore_missing_doctypes(source_app):
 
         # Confirm action
         confirm = input(f"\n⚠️  Create {len(missing_files)} missing doctype files? (y/N): ").strip().lower()
-        if confirm != 'y':
+        if confirm != "y":
             print("🚫 Operation cancelled")
             return False
 
@@ -228,15 +220,15 @@ def restore_missing_doctypes(source_app):
         for missing in missing_files:
             try:
                 # Get full doctype definition from database
-                doc = frappe.get_doc('DocType', missing['doctype'])
+                doc = frappe.get_doc("DocType", missing["doctype"])
 
                 # Create module directory if it doesn't exist
-                module_dir = app_path / missing['module']
+                module_dir = app_path / missing["module"]
                 module_dir.mkdir(parents=True, exist_ok=True)
 
                 # Save doctype JSON
                 file_path = module_dir / f"{missing['doctype']}.json"
-                with open(file_path, 'w') as f:
+                with open(file_path, "w") as f:
                     f.write(doc.as_json())
 
                 created_count += 1
@@ -260,6 +252,7 @@ def restore_missing_doctypes(source_app):
     except Exception as e:
         print(f"❌ Restore missing doctypes failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -278,9 +271,8 @@ def fix_app_none_doctypes(target_app):
             return False
 
         # Get all doctypes with app=None
-        app_none_doctypes = frappe.get_all('DocType',
-            filters={'app': ['is', 'not set']},
-            fields=['name', 'module']
+        app_none_doctypes = frappe.get_all(
+            "DocType", filters={"app": ["is", "not set"]}, fields=["name", "module"]
         )
 
         print(f"\n📊 Found {len(app_none_doctypes)} doctypes with app=None\n")
@@ -299,7 +291,7 @@ def fix_app_none_doctypes(target_app):
 
         # Confirm action
         confirm = input(f"\n⚠️  Fix {len(app_none_doctypes)} doctypes with app=None? (y/N): ").strip().lower()
-        if confirm != 'y':
+        if confirm != "y":
             print("🚫 Operation cancelled")
             return False
 
@@ -310,26 +302,24 @@ def fix_app_none_doctypes(target_app):
         for dt in app_none_doctypes:
             try:
                 # Determine correct app based on module
-                if dt['module']:
-                    module_def = frappe.get_all('Module Def',
-                        filters={'module_name': dt['module']},
-                        fields=['app_name'],
-                        limit=1
+                if dt["module"]:
+                    module_def = frappe.get_all(
+                        "Module Def", filters={"module_name": dt["module"]}, fields=["app_name"], limit=1
                     )
 
-                    if module_def and module_def[0]['app_name']:
-                        app_name = module_def[0]['app_name']
-                        frappe.db.set_value('DocType', dt['name'], 'app', app_name)
+                    if module_def and module_def[0]["app_name"]:
+                        app_name = module_def[0]["app_name"]
+                        frappe.db.set_value("DocType", dt["name"], "app", app_name)
                         print(f"  ✅ Fixed {dt['name']} → {app_name}")
                         fixed_count += 1
                     else:
                         # Fallback to target app
-                        frappe.db.set_value('DocType', dt['name'], 'app', target_app)
+                        frappe.db.set_value("DocType", dt["name"], "app", target_app)
                         print(f"  ✅ Fixed {dt['name']} → {target_app} (fallback)")
                         fixed_count += 1
                 else:
                     # No module, assign to target app
-                    frappe.db.set_value('DocType', dt['name'], 'app', target_app)
+                    frappe.db.set_value("DocType", dt["name"], "app", target_app)
                     print(f"  ✅ Fixed {dt['name']} → {target_app} (no module)")
                     fixed_count += 1
 
@@ -351,6 +341,7 @@ def fix_app_none_doctypes(target_app):
     except Exception as e:
         print(f"❌ Fix app=None doctypes failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -369,38 +360,37 @@ def fix_all_references(target_app):
             return False
 
         # Get all doctypes in target app
-        target_doctypes = frappe.get_all('DocType',
-            filters={'app': target_app},
-            fields=['name']
-        )
-        target_doctype_names = [dt['name'] for dt in target_doctypes]
+        target_doctypes = frappe.get_all("DocType", filters={"app": target_app}, fields=["name"])
+        target_doctype_names = [dt["name"] for dt in target_doctypes]
 
         print(f"\n📊 Analyzing references to {len(target_doctype_names)} doctypes in {target_app}\n")
 
         # Get all doctypes to check
-        all_doctypes = frappe.get_all('DocType', fields=['name', 'app'])
+        all_doctypes = frappe.get_all("DocType", fields=["name", "app"])
 
         references = {}
         checked_count = 0
 
         for source_dt in all_doctypes:
             try:
-                doc = frappe.get_doc('DocType', source_dt['name'])
+                doc = frappe.get_doc("DocType", source_dt["name"])
                 doc_references = []
 
                 # Check all fields
                 for field in doc.fields:
-                    if field.fieldtype in ['Link', 'Table'] and field.options in target_doctype_names:
-                        doc_references.append({
-                            'fieldname': field.fieldname,
-                            'fieldtype': field.fieldtype,
-                            'target': field.options
-                        })
+                    if field.fieldtype in ["Link", "Table"] and field.options in target_doctype_names:
+                        doc_references.append(
+                            {
+                                "fieldname": field.fieldname,
+                                "fieldtype": field.fieldtype,
+                                "target": field.options,
+                            }
+                        )
 
                 if doc_references:
-                    references[source_dt['name']] = {
-                        'app': source_dt.get('app', 'Unknown'),
-                        'references': doc_references
+                    references[source_dt["name"]] = {
+                        "app": source_dt.get("app", "Unknown"),
+                        "references": doc_references,
                     }
 
                     print(f"  🔗 {source_dt['name']} ({source_dt.get('app', 'Unknown')})")
@@ -435,6 +425,7 @@ def fix_all_references(target_app):
     except Exception as e:
         print(f"❌ Fix references failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -452,46 +443,40 @@ def verify_data_integrity(app_name):
             print("❌ Cannot establish Frappe connection")
             return False
 
-        issues = {
-            'orphans': [],
-            'missing_files': [],
-            'app_none': [],
-            'no_module': []
-        }
+        issues = {"orphans": [], "missing_files": [], "app_none": [], "no_module": []}
 
         # Get all doctypes for the app
-        app_doctypes = frappe.get_all('DocType',
-            filters={'app': app_name},
-            fields=['name', 'module', 'custom', 'app']
+        app_doctypes = frappe.get_all(
+            "DocType", filters={"app": app_name}, fields=["name", "module", "custom", "app"]
         )
 
         print(f"\n📊 Checking {len(app_doctypes)} doctypes...\n")
 
         bench_path = Path(find_bench_root())
-        app_path = bench_path / 'apps' / app_name / app_name
+        app_path = bench_path / "apps" / app_name / app_name
 
         for dt in app_doctypes:
             # Check for no module
-            if not dt['module']:
-                issues['no_module'].append(dt['name'])
+            if not dt["module"]:
+                issues["no_module"].append(dt["name"])
             else:
                 # Check for orphan module
-                module_check = frappe.get_all('Module Def',
-                    filters={'module_name': dt['module'], 'app_name': app_name}
+                module_check = frappe.get_all(
+                    "Module Def", filters={"module_name": dt["module"], "app_name": app_name}
                 )
                 if not module_check:
-                    issues['orphans'].append(dt['name'])
+                    issues["orphans"].append(dt["name"])
 
             # Check for app=None
-            if not dt['app']:
-                issues['app_none'].append(dt['name'])
+            if not dt["app"]:
+                issues["app_none"].append(dt["name"])
 
             # Check for missing file
-            if app_path.exists() and dt['module']:
-                expected_path = app_path / dt['module'] / f"{dt['name']}.json"
-                snake_path = app_path / dt['module'] / f"{frappe.scrub(dt['name'])}.json"
+            if app_path.exists() and dt["module"]:
+                expected_path = app_path / dt["module"] / f"{dt['name']}.json"
+                snake_path = app_path / dt["module"] / f"{frappe.scrub(dt['name'])}.json"
                 if not expected_path.exists() and not snake_path.exists():
-                    issues['missing_files'].append(dt['name'])
+                    issues["missing_files"].append(dt["name"])
 
         # Display results
         print("=" * 70)
@@ -517,11 +502,11 @@ def verify_data_integrity(app_name):
             print("🎉 No data integrity issues found!")
         else:
             print("💡 Use data_quality functions to fix these issues:")
-            if issues['orphans'] or issues['no_module']:
+            if issues["orphans"] or issues["no_module"]:
                 print("  • fix_orphan_doctypes(app_name)")
-            if issues['missing_files']:
+            if issues["missing_files"]:
                 print("  • restore_missing_doctypes(app_name)")
-            if issues['app_none']:
+            if issues["app_none"]:
                 print("  • fix_app_none_doctypes(app_name)")
 
         print("=" * 70)
@@ -531,6 +516,7 @@ def verify_data_integrity(app_name):
     except Exception as e:
         print(f"❌ Integrity verification failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -538,6 +524,7 @@ def verify_data_integrity(app_name):
 if __name__ == "__main__":
     # For testing
     import sys
+
     if len(sys.argv) > 1:
         app_name = sys.argv[1]
         verify_data_integrity(app_name)

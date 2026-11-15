@@ -12,6 +12,7 @@ which is the argument for detecting it statically.
 
 The check is bench-free: these tests run with no Frappe and no ``bench`` CLI.
 """
+
 from __future__ import annotations
 
 from conftest import FakeApp, finding_ids, run_check
@@ -69,18 +70,19 @@ def _loads_document(local: str, doctype: str, field: str) -> str:
 
 def test_reading_a_field_that_does_not_exist_is_reported(apps_root, inventory):
     """The positive case: the controller reads a field the DocType lacks."""
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code", "movement_code"]},
-            python_files={
-                "doctype/item/item.py": _controller(
-                    "        if self.sap_movement_code:\n"
-                    "            frappe.throw('boom')"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code", "movement_code"]},
+                python_files={
+                    "doctype/item/item.py": _controller(
+                        "        if self.sap_movement_code:\n            frappe.throw('boom')"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -92,93 +94,97 @@ def test_reading_a_field_that_does_not_exist_is_reported(apps_root, inventory):
 
 def test_reading_a_field_that_does_exist_is_not_reported(apps_root, inventory):
     """The clean case must stay clean — a noisy check is a check nobody runs."""
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code", "movement_code"]},
-            python_files={
-                "doctype/item/item.py": _controller(
-                    "        if self.movement_code:\n"
-                    "            frappe.throw('boom')"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code", "movement_code"]},
+                python_files={
+                    "doctype/item/item.py": _controller(
+                        "        if self.movement_code:\n            frappe.throw('boom')"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
 
 def test_framework_attributes_are_not_mistaken_for_fields(apps_root, inventory):
     """``self.docstatus`` / ``self.flags`` are BaseDocument API, not fields."""
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"]},
-            python_files={
-                "doctype/item/item.py": _controller(
-                    "        if self.docstatus and self.name and self.flags:\n"
-                    "            frappe.throw('boom')"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"]},
+                python_files={
+                    "doctype/item/item.py": _controller(
+                        "        if self.docstatus and self.name and self.flags:\n"
+                        "            frappe.throw('boom')"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
 
 def test_a_custom_field_shipped_by_the_app_is_a_known_field(apps_root, inventory):
     """A Custom Field the app itself ships is a real field, not a missing one."""
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"]},
-            custom_fields=[
-                {"dt": "Item", "fieldname": "custom_sap_movement_type", "fieldtype": "Data"},
-            ],
-            python_files={
-                "doctype/item/item.py": _controller(
-                    "        if self.custom_sap_movement_type:\n"
-                    "            frappe.throw('boom')"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"]},
+                custom_fields=[
+                    {"dt": "Item", "fieldname": "custom_sap_movement_type", "fieldtype": "Data"},
+                ],
+                python_files={
+                    "doctype/item/item.py": _controller(
+                        "        if self.custom_sap_movement_type:\n            frappe.throw('boom')"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
 
 def test_a_non_controller_module_is_not_scanned(apps_root, inventory):
     """Only DocType controllers are in scope; a helper module is not a field."""
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"]},
-            python_files={
-                "utils/helpers.py": (
-                    "def helper(doc):\n"
-                    "    return doc.some_random_attribute\n"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"]},
+                python_files={
+                    "utils/helpers.py": ("def helper(doc):\n    return doc.some_random_attribute\n"),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
 
 def test_finding_ids_are_stable_across_runs(apps_root, inventory):
     """Stable ids are the diff key an agent uses; they must not drift."""
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"]},
-            python_files={
-                "doctype/item/item.py": _controller(
-                    "        if self.sap_movement_code:\n"
-                    "            frappe.throw('boom')"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"]},
+                python_files={
+                    "doctype/item/item.py": _controller(
+                        "        if self.sap_movement_code:\n            frappe.throw('boom')"
+                    ),
+                },
+            ),
+        ]
+    )
     first = finding_ids(run_check(CHECK_ID, inventory(root)))
     second = finding_ids(run_check(CHECK_ID, inventory(root)))
     assert first == second
@@ -187,18 +193,19 @@ def test_finding_ids_are_stable_across_runs(apps_root, inventory):
 
 def test_severity_is_medium_not_high(apps_root, inventory):
     """A missing field usually raises at runtime; it does not corrupt data."""
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"]},
-            python_files={
-                "doctype/item/item.py": _controller(
-                    "        if self.nope:\n"
-                    "            frappe.throw('boom')"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"]},
+                python_files={
+                    "doctype/item/item.py": _controller(
+                        "        if self.nope:\n            frappe.throw('boom')"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings[0].severity == "medium"
 
@@ -213,43 +220,46 @@ def test_a_method_call_is_not_a_field_read(apps_root, inventory):
     missing field was a false positive: the name is *called*, and a method
     that does not exist is a different bug class.
     """
-    root = apps_root([
-        FakeApp(
-            name="amb_w_tds",
-            doctypes={"Item": ["item_code"]},
-            python_files={
-                "doctype/item/item.py": _controller(
-                    "        self.add_comment('Info', 'Amended from')\n"
-                    "        frappe.throw('boom')"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_tds",
+                doctypes={"Item": ["item_code"]},
+                python_files={
+                    "doctype/item/item.py": _controller(
+                        "        self.add_comment('Info', 'Amended from')\n        frappe.throw('boom')"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
 
 def test_a_method_call_off_another_document_is_not_a_field_read(apps_root, inventory):
     """``batch.add_comment(...)`` is a call on another document, too."""
-    root = apps_root([
-        FakeApp(
-            name="amb_w_tds",
-            doctypes={"Item": ["item_code"], "Batch AMB": ["batch_id"]},
-            python_files={
-                "doctype/item/item.py": (
-                    "import frappe\n"
-                    "from frappe.model.document import Document\n"
-                    "\n"
-                    "\n"
-                    "class Item(Document):\n"
-                    "    def validate(self):\n"
-                    "        batch = frappe.get_doc('Batch AMB', self.item_code)\n"
-                    "        batch.add_comment('Info', 'done')\n"
-                    "        frappe.throw('boom')\n"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_tds",
+                doctypes={"Item": ["item_code"], "Batch AMB": ["batch_id"]},
+                python_files={
+                    "doctype/item/item.py": (
+                        "import frappe\n"
+                        "from frappe.model.document import Document\n"
+                        "\n"
+                        "\n"
+                        "class Item(Document):\n"
+                        "    def validate(self):\n"
+                        "        batch = frappe.get_doc('Batch AMB', self.item_code)\n"
+                        "        batch.add_comment('Info', 'done')\n"
+                        "        frappe.throw('boom')\n"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
@@ -263,37 +273,40 @@ def test_a_guarded_read_is_not_a_field_read(apps_root, inventory):
     The plain ``self.title`` that follows it is the fallback of that same
     deliberate pattern, so neither may be reported.
     """
-    root = apps_root([
-        FakeApp(
-            name="amb_w_tds",
-            doctypes={"Item": ["item_code"]},
-            python_files={
-                "doctype/item/item.py": _controller(
-                    "        title = getattr(self, 'title', None)\n"
-                    "        if title or self.title:\n"
-                    "            frappe.throw('boom')"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_tds",
+                doctypes={"Item": ["item_code"]},
+                python_files={
+                    "doctype/item/item.py": _controller(
+                        "        title = getattr(self, 'title', None)\n"
+                        "        if title or self.title:\n"
+                        "            frappe.throw('boom')"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
 
 def test_a_hasattr_guard_is_not_a_field_read(apps_root, inventory):
     """``hasattr(self, 'x')`` is the same deliberate guard."""
-    root = apps_root([
-        FakeApp(
-            name="amb_w_spc",
-            doctypes={"Item": ["item_code"]},
-            python_files={
-                "doctype/item/item.py": _controller(
-                    "        if hasattr(self, 'upper_limit'):\n"
-                    "            frappe.throw(self.upper_limit)"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_spc",
+                doctypes={"Item": ["item_code"]},
+                python_files={
+                    "doctype/item/item.py": _controller(
+                        "        if hasattr(self, 'upper_limit'):\n            frappe.throw(self.upper_limit)"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
@@ -303,18 +316,19 @@ def test_a_hasattr_guard_is_not_a_field_read(apps_root, inventory):
 # --------------------------------------------------------------------------
 def test_a_plain_read_of_an_unknown_field_is_reported(apps_root, inventory):
     """The positive case stays positive after the false positives are gone."""
-    root = apps_root([
-        FakeApp(
-            name="amb_w_tds",
-            doctypes={"Item": ["item_code"]},
-            python_files={
-                "doctype/item/item.py": _controller(
-                    "        if self.some_unknown_field:\n"
-                    "            frappe.throw('boom')"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_tds",
+                doctypes={"Item": ["item_code"]},
+                python_files={
+                    "doctype/item/item.py": _controller(
+                        "        if self.some_unknown_field:\n            frappe.throw('boom')"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -333,17 +347,17 @@ def test_a_field_read_off_another_document_is_reported(apps_root, inventory):
     The binding names the DocType, so the read can be judged against that
     DocType's fields instead of the controller's own.
     """
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"], "Batch AMB": ["batch_id"]},
-            python_files={
-                "doctype/item/item.py": _loads_document(
-                    "loaded", "Batch AMB", "nope"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"], "Batch AMB": ["batch_id"]},
+                python_files={
+                    "doctype/item/item.py": _loads_document("loaded", "Batch AMB", "nope"),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -354,17 +368,17 @@ def test_a_field_read_off_another_document_is_reported(apps_root, inventory):
 
 def test_a_field_that_exists_on_another_document_is_not_reported(apps_root, inventory):
     """The same shape, reading a field the other DocType does have."""
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"], "Batch AMB": ["batch_id"]},
-            python_files={
-                "doctype/item/item.py": _loads_document(
-                    "loaded", "Batch AMB", "batch_id"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"], "Batch AMB": ["batch_id"]},
+                python_files={
+                    "doctype/item/item.py": _loads_document("loaded", "Batch AMB", "batch_id"),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
@@ -375,17 +389,17 @@ def test_a_binding_to_an_unknown_doctype_is_not_judged(apps_root, inventory):
     Guessing would report a field that may well exist on a DocType the
     inventory has never seen.
     """
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"]},
-            python_files={
-                "doctype/item/item.py": _loads_document(
-                    "loaded", "Unknown DocType", "whatever"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"]},
+                python_files={
+                    "doctype/item/item.py": _loads_document("loaded", "Unknown DocType", "whatever"),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
@@ -400,13 +414,15 @@ def test_the_inventory_indexes_a_fixture_shipped_doctype(apps_root, inventory):
     the DocType at all, and every check that asks "does this DocType have
     that field?" then answers "no such DocType".
     """
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"]},
-            fixtures={"doctype.json": MOVEMENT_TYPE_FIXTURE},
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"]},
+                fixtures={"doctype.json": MOVEMENT_TYPE_FIXTURE},
+            ),
+        ]
+    )
     inv = inventory(root)
     app = inv.app("rnd_warehouse_management")
     assert app is not None
@@ -424,18 +440,20 @@ def test_a_field_read_off_a_fixture_shipped_doctype_is_reported(apps_root, inven
     The controller loads the document with ``frappe.get_doc("Movement
     Type", ...)`` and reads a field the DocType does not define.
     """
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"]},
-            fixtures={"doctype.json": MOVEMENT_TYPE_FIXTURE},
-            python_files={
-                "doctype/item/item.py": _loads_document(
-                    "movement_type_doc", "Movement Type", "sap_movement_code"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"]},
+                fixtures={"doctype.json": MOVEMENT_TYPE_FIXTURE},
+                python_files={
+                    "doctype/item/item.py": _loads_document(
+                        "movement_type_doc", "Movement Type", "sap_movement_code"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -444,25 +462,26 @@ def test_a_field_read_off_a_fixture_shipped_doctype_is_reported(apps_root, inven
     assert finding.evidence["app"] == "rnd_warehouse_management"
     assert finding.severity == "medium"
     assert finding.id == (
-        "integrity-missing-field-reference-"
-        "rnd_warehouse_management-movement_type-sap_movement_code"
+        "integrity-missing-field-reference-rnd_warehouse_management-movement_type-sap_movement_code"
     )
 
 
 def test_a_field_that_exists_on_a_fixture_shipped_doctype_is_not_reported(apps_root, inventory):
     """The same shape, reading ``movement_code`` -- which does exist."""
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"]},
-            fixtures={"doctype.json": MOVEMENT_TYPE_FIXTURE},
-            python_files={
-                "doctype/item/item.py": _loads_document(
-                    "movement_type_doc", "Movement Type", "movement_code"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"]},
+                fixtures={"doctype.json": MOVEMENT_TYPE_FIXTURE},
+                python_files={
+                    "doctype/item/item.py": _loads_document(
+                        "movement_type_doc", "Movement Type", "movement_code"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
@@ -477,26 +496,28 @@ def test_a_module_read_of_a_bound_document_is_reported(apps_root, inventory):
     so that only the *binding* can identify the DocType -- the
     ``<name>_doc`` convention is not allowed to do the work here.
     """
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"]},
-            fixtures={"doctype.json": MOVEMENT_TYPE_FIXTURE},
-            python_files={
-                "stock_entry.py": (
-                    "import frappe\n"
-                    "from frappe.model.document import Document\n"
-                    "\n"
-                    "\n"
-                    "class CustomStockEntry(Document):\n"
-                    "    def validate(self):\n"
-                    "        mt = frappe.get_doc('Movement Type', self.custom_movement_type)\n"
-                    "        if mt.sap_movement_code:\n"
-                    "            frappe.throw('nope')\n"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"]},
+                fixtures={"doctype.json": MOVEMENT_TYPE_FIXTURE},
+                python_files={
+                    "stock_entry.py": (
+                        "import frappe\n"
+                        "from frappe.model.document import Document\n"
+                        "\n"
+                        "\n"
+                        "class CustomStockEntry(Document):\n"
+                        "    def validate(self):\n"
+                        "        mt = frappe.get_doc('Movement Type', self.custom_movement_type)\n"
+                        "        if mt.sap_movement_code:\n"
+                        "            frappe.throw('nope')\n"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -512,23 +533,25 @@ def test_self_reads_outside_a_controller_are_not_reported(apps_root, inventory):
     all. Reporting it would be a guess, and a check that guesses is a check
     whose findings get ignored.
     """
-    root = apps_root([
-        FakeApp(
-            name="amb_w_tds",
-            doctypes={"Item": ["item_code"]},
-            python_files={
-                "helpers.py": (
-                    "import frappe\n"
-                    "from frappe.model.document import Document\n"
-                    "\n"
-                    "\n"
-                    "class Helper(Document):\n"
-                    "    def run(self):\n"
-                    "        frappe.throw(self.unknown_field)\n"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_tds",
+                doctypes={"Item": ["item_code"]},
+                python_files={
+                    "helpers.py": (
+                        "import frappe\n"
+                        "from frappe.model.document import Document\n"
+                        "\n"
+                        "\n"
+                        "class Helper(Document):\n"
+                        "    def run(self):\n"
+                        "        frappe.throw(self.unknown_field)\n"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
@@ -541,23 +564,25 @@ def test_the_naming_convention_alone_is_not_enough_outside_a_controller(apps_roo
     the result of a query -- a list of dicts -- so ``.sap_movement_code`` is
     a dict key, not a DocType field, and must not be reported.
     """
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Item": ["item_code"]},
-            fixtures={"doctype.json": MOVEMENT_TYPE_FIXTURE},
-            python_files={
-                "batch.py": (
-                    "import frappe\n"
-                    "\n"
-                    "\n"
-                    "def collect():\n"
-                    "    movement_type_doc = frappe.get_all('Movement Type', fields=['name'])\n"
-                    "    return movement_type_doc.sap_movement_code\n"
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Item": ["item_code"]},
+                fixtures={"doctype.json": MOVEMENT_TYPE_FIXTURE},
+                python_files={
+                    "batch.py": (
+                        "import frappe\n"
+                        "\n"
+                        "\n"
+                        "def collect():\n"
+                        "    movement_type_doc = frappe.get_all('Movement Type', fields=['name'])\n"
+                        "    return movement_type_doc.sap_movement_code\n"
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
@@ -569,25 +594,27 @@ def test_a_workflow_state_field_is_not_a_missing_field(apps_root, inventory):
     and ``workflow_state_1`` -- so it is read from the Workflow fixture
     rather than hard-coded.
     """
-    root = apps_root([
-        FakeApp(
-            name="rnd_warehouse_management",
-            doctypes={"Stock Entry": ["item_code"]},
-            fixtures={
-                "workflow.json": [
-                    {
-                        "document_type": "Stock Entry",
-                        "workflow_state_field": "workflow_state_1",
-                    }
-                ],
-            },
-            python_files={
-                "doctype/stock_entry/stock_entry.py": _controller(
-                    "        frappe.throw(self.workflow_state_1)",
-                    doctype="Stock Entry",
-                ),
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="rnd_warehouse_management",
+                doctypes={"Stock Entry": ["item_code"]},
+                fixtures={
+                    "workflow.json": [
+                        {
+                            "document_type": "Stock Entry",
+                            "workflow_state_field": "workflow_state_1",
+                        }
+                    ],
+                },
+                python_files={
+                    "doctype/stock_entry/stock_entry.py": _controller(
+                        "        frappe.throw(self.workflow_state_1)",
+                        doctype="Stock Entry",
+                    ),
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)

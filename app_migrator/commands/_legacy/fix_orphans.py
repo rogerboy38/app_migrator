@@ -12,12 +12,15 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
-@click.command('app-migrator-fix-orphans')
-@click.option('--site', required=True, help='Site name')
-@click.option('--target-module', default=None, help='Target module for orphans')
-@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+
+
+@click.command("app-migrator-fix-orphans")
+@click.option("--site", required=True, help="Site name")
+@click.option("--target-module", default=None, help="Target module for orphans")
+@click.option("--dry-run/--apply", default=True, help="Dry run or apply")
 @pass_context
 def app_migrator_fix_orphans(context, site, target_module, dry_run):
     """[DEPRECATED] Fix orphan doctypes — use 'orphans --fix --apply' instead (will be removed in v11)"""
@@ -51,27 +54,33 @@ def app_migrator_fix_orphans(context, site, target_module, dry_run):
     orphans = []
 
     # 1. DocTypes with empty/null module
-    empty_module = frappe.get_all("DocType",
-        filters=[["module", "in", ["", None]]],
-        fields=["name", "module", "custom"])
-    orphans.extend([{"name": d.name, "module": d.module or "(empty)", "type": "empty_module", "custom": d.custom} for d in empty_module])
+    empty_module = frappe.get_all(
+        "DocType", filters=[["module", "in", ["", None]]], fields=["name", "module", "custom"]
+    )
+    orphans.extend(
+        [
+            {"name": d.name, "module": d.module or "(empty)", "type": "empty_module", "custom": d.custom}
+            for d in empty_module
+        ]
+    )
 
     # 2. DocTypes with module not in valid_modules (excluding custom doctypes)
-    all_doctypes = frappe.get_all("DocType",
-        filters={"custom": 0},
-        fields=["name", "module"])
+    all_doctypes = frappe.get_all("DocType", filters={"custom": 0}, fields=["name", "module"])
 
     for dt in all_doctypes:
         if dt.module and dt.module not in valid_modules:
             orphans.append({"name": dt.name, "module": dt.module, "type": "invalid_module", "custom": 0})
 
     # 3. Custom Fields with orphan dt
-    orphan_custom_fields = frappe.db.sql("""
+    orphan_custom_fields = frappe.db.sql(
+        """
         SELECT cf.name, cf.dt, cf.fieldname
         FROM `tabCustom Field` cf
         LEFT JOIN `tabDocType` dt ON cf.dt = dt.name
         WHERE dt.name IS NULL
-    """, as_dict=True)
+    """,
+        as_dict=True,
+    )
 
     print("\n📊 ORPHAN ANALYSIS:")
     print(f"   DocTypes with empty module: {len([o for o in orphans if o['type'] == 'empty_module'])}")
@@ -98,15 +107,18 @@ def app_migrator_fix_orphans(context, site, target_module, dry_run):
 
         for o in orphans:
             # Fix both empty_module and invalid_module types
-            frappe.db.sql("""
+            frappe.db.sql(
+                """
                 UPDATE `tabDocType` SET module = %s WHERE name = %s
-            """, (target_module, o['name']))
+            """,
+                (target_module, o["name"]),
+            )
             print(f"   📝 Fixed: {o['name']} → {target_module}")
             fixed += 1
 
         # Delete orphan custom fields
         for cf in orphan_custom_fields:
-            frappe.db.sql("DELETE FROM `tabCustom Field` WHERE name = %s", cf['name'])
+            frappe.db.sql("DELETE FROM `tabCustom Field` WHERE name = %s", cf["name"])
 
         frappe.db.commit()
         print(f"\n   ✅ Fixed {fixed} doctypes")
@@ -117,4 +129,3 @@ def app_migrator_fix_orphans(context, site, target_module, dry_run):
         print("\n📋 Run with --apply --target-module <module> to fix")
 
     frappe.db.close()
-

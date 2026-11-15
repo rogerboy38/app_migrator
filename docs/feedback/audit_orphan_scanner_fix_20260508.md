@@ -13,15 +13,15 @@
 Old scanner code at lines 80–115 walked the FS with two unguarded loops:
 
 ```python
-apps_path = os.path.dirname(os.path.dirname(frappe.get_app_path('frappe')))
-for app_name in os.listdir(apps_path):                  # ← any sibling dir
+apps_path = os.path.dirname(os.path.dirname(frappe.get_app_path("frappe")))
+for app_name in os.listdir(apps_path):  # ← any sibling dir
     app_dir = os.path.join(apps_path, app_name)
-    if not os.path.isdir(app_dir) or app_name.startswith('.'):
+    if not os.path.isdir(app_dir) or app_name.startswith("."):
         continue
-    for root, _dirs, files in os.walk(app_dir):         # ← no prune
-        if '/doctype/' in root:
+    for root, _dirs, files in os.walk(app_dir):  # ← no prune
+        if "/doctype/" in root:
             ...
-            filesystem_doctypes[dt_name] = {...}        # ← last-write-wins
+            filesystem_doctypes[dt_name] = {...}  # ← last-write-wins
 ```
 
 Three concrete defects:

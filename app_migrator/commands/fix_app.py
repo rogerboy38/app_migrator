@@ -19,8 +19,10 @@ import click
 class TimeoutError(Exception):
     pass
 
+
 def timeout_handler(signum, frame):
     raise TimeoutError("Command timed out")
+
 
 class AppFixer:
     def __init__(self, app_name, bench_path=".", site_name=None):
@@ -40,13 +42,7 @@ class AppFixer:
             signal.signal(signal.SIGALRM, timeout_handler)
             signal.alarm(timeout)
 
-            result = subprocess.run(
-                cmd,
-                shell=True,
-                cwd=cwd,
-                capture_output=capture_output,
-                text=True
-            )
+            result = subprocess.run(cmd, shell=True, cwd=cwd, capture_output=capture_output, text=True)
 
             signal.alarm(0)
             return result
@@ -121,7 +117,7 @@ class AppFixer:
             try:
                 with open(site_config) as f:
                     config = json.load(f)
-                    installed_apps = config.get('installed_apps', [])
+                    installed_apps = config.get("installed_apps", [])
                     return self.app_name in installed_apps
             except Exception:
                 pass
@@ -138,8 +134,8 @@ class AppFixer:
 
         if self.app_name not in existing_apps:
             existing_apps.append(self.app_name)
-            with open(apps_txt, 'w') as f:
-                f.write('\n'.join(existing_apps) + '\n')
+            with open(apps_txt, "w") as f:
+                f.write("\n".join(existing_apps) + "\n")
             print("✅ Added to apps.txt")
             return True
         return False
@@ -173,14 +169,14 @@ app_version = version
 app_license = "MIT"
 '''
             hooks_py.parent.mkdir(parents=True, exist_ok=True)
-            with open(hooks_py, 'w') as f:
+            with open(hooks_py, "w") as f:
                 f.write(hooks_content)
             print("✅ Created missing hooks.py")
             fixes_applied += 1
 
         if not init_py.exists():
             init_py.parent.mkdir(parents=True, exist_ok=True)
-            with open(init_py, 'w') as f:
+            with open(init_py, "w") as f:
                 f.write('__version__ = "1.0.0"')
             print("✅ Created missing __init__.py")
             fixes_applied += 1
@@ -220,11 +216,12 @@ app_license = "MIT"
             print("❌ No fixes were applied")
             return False
 
-@click.command('fix-app')
-@click.argument('app_name')
-@click.option('--site', help='Site name for installation check')
-@click.option('--bench-path', default='.', help='Path to bench directory')
-@click.option('--quick/--full', default=True, help='Use quick fix mode (recommended)')
+
+@click.command("fix-app")
+@click.argument("app_name")
+@click.option("--site", help="Site name for installation check")
+@click.option("--bench-path", default=".", help="Path to bench directory")
+@click.option("--quick/--full", default=True, help="Use quick fix mode (recommended)")
 def fix_app(app_name, site, bench_path, quick):
     """
     Fix common structural issues in Frappe apps
@@ -252,6 +249,7 @@ def fix_app(app_name, site, bench_path, quick):
     else:
         click.echo("❌ Fix failed!")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     fix_app()

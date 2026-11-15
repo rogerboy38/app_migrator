@@ -9,6 +9,7 @@ point at four DocTypes that exist only in ``amb_w_spc``
 The checks are bench-free: these tests run with no Frappe and no ``bench``
 CLI, which is the point of placing them outside ``app_migrator/commands/``.
 """
+
 from __future__ import annotations
 
 import json
@@ -53,14 +54,21 @@ def _table(doctype: str, fieldname: str) -> Field:
 
 def test_link_to_another_apps_doctype_is_reported_as_medium(apps_root, inventory):
     """The audited case: no required_apps, yet links into another app."""
-    root = apps_root([
-        FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
-        FakeApp(name="amb_w_tds"),
-    ])
-    _write_doctype(root, "amb_w_tds", "TDS Batch", [
-        _link("Batch AMB", "batch_amb_ref"),
-        _link("Batch AMB", "batch_amb_ref_2"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
+            FakeApp(name="amb_w_tds"),
+        ]
+    )
+    _write_doctype(
+        root,
+        "amb_w_tds",
+        "TDS Batch",
+        [
+            _link("Batch AMB", "batch_amb_ref"),
+            _link("Batch AMB", "batch_amb_ref_2"),
+        ],
+    )
     result = run_check(CHECK_ID, inventory(root))
     # One finding per (app, target) pair — not one per field.
     assert len(result.findings) == 1, finding_ids(result)
@@ -85,13 +93,20 @@ def test_link_to_a_doctype_nobody_ships_is_info_without_the_framework(apps_root,
     mistake as reporting every core DocType as missing: the audited tree
     produced 67 such findings, all of them the absence of the framework.
     """
-    root = apps_root([
-        FakeApp(name="amb_w_tds"),
-    ])
-    _write_doctype(root, "amb_w_tds", "TDS Batch", [
-        _link("SPC Batch Parameter", "spc_batch_parameter"),
-        _table("SPC Specification", "spec_rows"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_tds"),
+        ]
+    )
+    _write_doctype(
+        root,
+        "amb_w_tds",
+        "TDS Batch",
+        [
+            _link("SPC Batch Parameter", "spc_batch_parameter"),
+            _table("SPC Specification", "spec_rows"),
+        ],
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 2, finding_ids(result)
     severities = {f.evidence["doctype"]: f.severity for f in result.findings}
@@ -106,14 +121,21 @@ def test_link_to_a_doctype_nobody_ships_is_info_without_the_framework(apps_root,
 
 def test_link_to_a_doctype_nobody_ships_is_high_when_the_framework_is_present(apps_root, inventory):
     """With frappe in the tree the scan root is complete: the link is broken."""
-    root = apps_root([
-        FakeApp(name="frappe"),
-        FakeApp(name="amb_w_tds"),
-    ])
-    _write_doctype(root, "amb_w_tds", "TDS Batch", [
-        _link("SPC Batch Parameter", "spc_batch_parameter"),
-        _table("SPC Specification", "spec_rows"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="frappe"),
+            FakeApp(name="amb_w_tds"),
+        ]
+    )
+    _write_doctype(
+        root,
+        "amb_w_tds",
+        "TDS Batch",
+        [
+            _link("SPC Batch Parameter", "spc_batch_parameter"),
+            _table("SPC Specification", "spec_rows"),
+        ],
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 2, finding_ids(result)
     severities = {f.evidence["doctype"]: f.severity for f in result.findings}
@@ -130,14 +152,21 @@ def test_a_core_doctype_is_never_reported_as_missing(apps_root, inventory):
     findings; every core name among them (``Item``, ``Customer``, ``Batch``,
     ``Workflow`` ...) was the absence of frappe / erpnext, not a defect.
     """
-    root = apps_root([
-        FakeApp(name="amb_w_tds"),
-    ])
-    _write_doctype(root, "amb_w_tds", "TDS Batch", [
-        _link("Item", "item_ref"),
-        _link("Customer", "customer_ref"),
-        _link("Workflow", "workflow_ref"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_tds"),
+        ]
+    )
+    _write_doctype(
+        root,
+        "amb_w_tds",
+        "TDS Batch",
+        [
+            _link("Item", "item_ref"),
+            _link("Customer", "customer_ref"),
+            _link("Workflow", "workflow_ref"),
+        ],
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
@@ -150,14 +179,21 @@ def test_a_doctype_shipped_under_its_folder_slug_is_found(apps_root, inventory):
     ``options`` carries the folder slug. Matching on the name alone reported
     an app as *not shipping* a DocType it ships.
     """
-    root = apps_root([
-        FakeApp(name="amb_w_spc"),
-        FakeApp(name="amb_w_tds"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_spc"),
+            FakeApp(name="amb_w_tds"),
+        ]
+    )
     _write_doctype(root, "amb_w_spc", "SPC Deviation", [("name", "Data", "")])
-    _write_doctype(root, "amb_w_tds", "TDS Batch", [
-        _link("spc_deviation", "deviation_ref"),
-    ])
+    _write_doctype(
+        root,
+        "amb_w_tds",
+        "TDS Batch",
+        [
+            _link("spc_deviation", "deviation_ref"),
+        ],
+    )
     result = run_check(CHECK_ID, inventory(root))
     # Not "nobody ships it" any more: the owning app is found through the
     # folder slug, so what remains is the genuine undeclared-dependency
@@ -171,13 +207,20 @@ def test_a_doctype_shipped_under_its_folder_slug_is_found(apps_root, inventory):
 
 def test_declared_dependency_is_not_reported(apps_root, inventory):
     """The clean case: the dependency is declared, so nothing to report."""
-    root = apps_root([
-        FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
-        FakeApp(name="amb_w_tds", hooks='required_apps = ["amb_w_spc"]\n'),
-    ])
-    _write_doctype(root, "amb_w_tds", "TDS Batch", [
-        _link("Batch AMB", "batch_amb_ref"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
+            FakeApp(name="amb_w_tds", hooks='required_apps = ["amb_w_spc"]\n'),
+        ]
+    )
+    _write_doctype(
+        root,
+        "amb_w_tds",
+        "TDS Batch",
+        [
+            _link("Batch AMB", "batch_amb_ref"),
+        ],
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
     assert result.stats["undeclared_targets"] == 0
@@ -185,12 +228,19 @@ def test_declared_dependency_is_not_reported(apps_root, inventory):
 
 def test_doctype_shipped_by_the_app_itself_is_ignored(apps_root, inventory):
     """Linking to your own DocType is normal — it must stay quiet."""
-    root = apps_root([
-        FakeApp(name="amb_w_tds", doctypes={"TDS Batch": ["name"]}),
-    ])
-    _write_doctype(root, "amb_w_tds", "TDS Batch", [
-        _link("TDS Batch", "parent_batch"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_tds", doctypes={"TDS Batch": ["name"]}),
+        ]
+    )
+    _write_doctype(
+        root,
+        "amb_w_tds",
+        "TDS Batch",
+        [
+            _link("TDS Batch", "parent_batch"),
+        ],
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
 
@@ -201,13 +251,20 @@ def test_target_is_matched_case_insensitively(apps_root, inventory):
     ``Batch AMB`` and ``batch amb`` are the same DocType on a real site: the
     target resolves, so the finding is 'undeclared', not 'nobody ships it'.
     """
-    root = apps_root([
-        FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
-        FakeApp(name="amb_w_tds"),
-    ])
-    _write_doctype(root, "amb_w_tds", "TDS Batch", [
-        _link("batch amb", "batch_amb_ref"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
+            FakeApp(name="amb_w_tds"),
+        ]
+    )
+    _write_doctype(
+        root,
+        "amb_w_tds",
+        "TDS Batch",
+        [
+            _link("batch amb", "batch_amb_ref"),
+        ],
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -217,13 +274,20 @@ def test_target_is_matched_case_insensitively(apps_root, inventory):
 
 def test_required_apps_built_at_runtime_is_not_judged(apps_root, inventory):
     """A ``required_apps`` computed at runtime cannot be judged statically."""
-    root = apps_root([
-        FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
-        FakeApp(name="amb_w_tds", hooks="required_apps = compute_required_apps()\n"),
-    ])
-    _write_doctype(root, "amb_w_tds", "TDS Batch", [
-        _link("Batch AMB", "batch_amb_ref"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
+            FakeApp(name="amb_w_tds", hooks="required_apps = compute_required_apps()\n"),
+        ]
+    )
+    _write_doctype(
+        root,
+        "amb_w_tds",
+        "TDS Batch",
+        [
+            _link("Batch AMB", "batch_amb_ref"),
+        ],
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
     assert result.stats["dynamic_required_apps"] == 1
@@ -231,15 +295,22 @@ def test_required_apps_built_at_runtime_is_not_judged(apps_root, inventory):
 
 def test_stats_report_what_was_scanned(apps_root, inventory):
     """The stats block says how much was looked at, not just what was found."""
-    root = apps_root([
-        FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
-        FakeApp(name="amb_w_tds"),
-    ])
-    _write_doctype(root, "amb_w_tds", "TDS Batch", [
-        _link("Batch AMB", "batch_amb_ref"),
-        _link("Batch AMB", "batch_amb_ref_2"),
-        _link("Nowhere DocType", "ghost_ref"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
+            FakeApp(name="amb_w_tds"),
+        ]
+    )
+    _write_doctype(
+        root,
+        "amb_w_tds",
+        "TDS Batch",
+        [
+            _link("Batch AMB", "batch_amb_ref"),
+            _link("Batch AMB", "batch_amb_ref_2"),
+            _link("Nowhere DocType", "ghost_ref"),
+        ],
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.stats["apps_scanned"] == 2
     assert result.stats["link_fields_scanned"] == 3
@@ -249,13 +320,20 @@ def test_stats_report_what_was_scanned(apps_root, inventory):
 
 def test_finding_ids_are_stable_across_runs(apps_root, inventory):
     """Stable ids are the diff key an agent uses; they must not drift."""
-    root = apps_root([
-        FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
-        FakeApp(name="amb_w_tds"),
-    ])
-    _write_doctype(root, "amb_w_tds", "TDS Batch", [
-        _link("Batch AMB", "batch_amb_ref"),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="amb_w_spc", doctypes={"Batch AMB": ["name"]}),
+            FakeApp(name="amb_w_tds"),
+        ]
+    )
+    _write_doctype(
+        root,
+        "amb_w_tds",
+        "TDS Batch",
+        [
+            _link("Batch AMB", "batch_amb_ref"),
+        ],
+    )
     first = finding_ids(run_check(CHECK_ID, inventory(root)))
     second = finding_ids(run_check(CHECK_ID, inventory(root)))
     assert first == second

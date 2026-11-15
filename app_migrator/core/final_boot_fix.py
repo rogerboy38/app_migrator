@@ -56,7 +56,7 @@ class FinalBootFix:
         safe_apps = [app for app in valid_apps if not self.is_problematic_app(app)]
 
         # Write safe apps to apps.txt
-        with open(apps_file, 'w') as f:
+        with open(apps_file, "w") as f:
             for app in safe_apps:
                 f.write(f"{app}\n")
 
@@ -68,11 +68,11 @@ class FinalBootFix:
     def is_problematic_app(self, app_name):
         """Check if app is problematic"""
         problematic_patterns = [
-            'rnd_nutrition_fixed_v2',
-            'rnd_nutrition_fixed_v3',
-            'rnd_nutrition_fixed_v4',
-            'rnd_nutrition_fixed_v5',
-            'rnd_nutrition_fixed_v6'
+            "rnd_nutrition_fixed_v2",
+            "rnd_nutrition_fixed_v3",
+            "rnd_nutrition_fixed_v4",
+            "rnd_nutrition_fixed_v5",
+            "rnd_nutrition_fixed_v6",
         ]
 
         return any(pattern in app_name for pattern in problematic_patterns)
@@ -90,16 +90,16 @@ class FinalBootFix:
             config = {}
 
         # Remove problematic settings
-        if 'default_site' in config:
-            del config['default_site']
+        if "default_site" in config:
+            del config["default_site"]
             fixes.append("Removed default_site from common config")
 
-        if 'serve_default_site' in config:
-            del config['serve_default_site']
+        if "serve_default_site" in config:
+            del config["serve_default_site"]
             fixes.append("Removed serve_default_site from common config")
 
         # Write back
-        with open(common_config, 'w') as f:
+        with open(common_config, "w") as f:
             json.dump(config, f, indent=2)
 
         return fixes
@@ -129,15 +129,16 @@ class FinalBootFix:
         with open(site_config_path) as f:
             config = json.load(f)
 
-        if 'installed_apps' in config:
-            original_count = len(config['installed_apps'])
-            config['installed_apps'] = [app for app in config['installed_apps']
-                                      if not self.is_problematic_app(app)]
+        if "installed_apps" in config:
+            original_count = len(config["installed_apps"])
+            config["installed_apps"] = [
+                app for app in config["installed_apps"] if not self.is_problematic_app(app)
+            ]
 
-            if len(config['installed_apps']) != original_count:
+            if len(config["installed_apps"]) != original_count:
                 fixes.append(f"Cleaned {site_config_path.parent.name}/site_config.json")
 
-        with open(site_config_path, 'w') as f:
+        with open(site_config_path, "w") as f:
             json.dump(config, f, indent=2)
 
         return fixes
@@ -158,7 +159,7 @@ class FinalBootFix:
         if len(cleaned_lines) != len(lines):
             fixes.append(f"Cleaned {apps_file_path.parent.name}/apps.txt")
 
-        with open(apps_file_path, 'w') as f:
+        with open(apps_file_path, "w") as f:
             f.writelines(cleaned_lines)
 
         return fixes
@@ -178,7 +179,7 @@ class FinalBootFix:
                             [self.bench_path / "env" / "bin" / "pip", "install", "-e", f"apps/{app_name}"],
                             cwd=self.bench_path,
                             capture_output=True,
-                            text=True
+                            text=True,
                         )
 
                         if result.returncode == 0:
@@ -212,11 +213,7 @@ class FinalBootFix:
         try:
             # Test bench --version
             result = subprocess.run(
-                ["bench", "--version"],
-                cwd=self.bench_path,
-                capture_output=True,
-                text=True,
-                timeout=10
+                ["bench", "--version"], cwd=self.bench_path, capture_output=True, text=True, timeout=10
             )
 
             if result.returncode == 0:
@@ -229,6 +226,7 @@ class FinalBootFix:
         except Exception as e:
             print(f"   ❌ Test failed: {e}")
             return False
+
 
 def main():
     import sys
@@ -248,7 +246,7 @@ def main():
     else:
         print("✅ No fixes needed")
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     success = fixer.test_fix()
 
     if success:
@@ -256,6 +254,7 @@ def main():
         print("🚀 App migrator is now ready for robust migrations!")
     else:
         print("⚠️  Some minor issues may remain")
+
 
 if __name__ == "__main__":
     main()

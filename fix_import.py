@@ -9,11 +9,10 @@ with open(file_path) as f:
 if "from cloud_api import SiteAPI" in content:
     print("Fixing import...")
     content = content.replace(
-        "from cloud_api import SiteAPI",
-        "from app_migrator.utils.cloud_api import SiteAPI"
+        "from cloud_api import SiteAPI", "from app_migrator.utils.cloud_api import SiteAPI"
     )
 
-    with open(file_path, 'w') as f:
+    with open(file_path, "w") as f:
         f.write(content)
 
     print("✅ Import fixed!")

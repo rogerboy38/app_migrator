@@ -18,6 +18,7 @@ Public surface:
   - create_skill(target, content) -> sha256 str
   - compute_sha256(content: bytes) -> str
 """
+
 from __future__ import annotations
 
 import hashlib

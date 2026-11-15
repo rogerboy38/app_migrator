@@ -10,6 +10,7 @@ v3 changes (W2 (e) — full pattern_database re-export):
 - Parametrized coverage: each re-exported pattern id is asserted present, carries
   a valid severity, and exposes a working detect(content) callable.
 """
+
 import pytest
 
 # Per coverage-map: skip the whole phase gracefully if module not yet built.
@@ -47,9 +48,7 @@ def test_l394_fixture_drift_pattern_in_database(patterns):
     """L394: pattern_database should include a 'fleet-canonical-fixture drift' pattern."""
     titles = [p.get("title", "").lower() for p in patterns]
     descriptions = [p.get("description", "").lower() for p in patterns]
-    assert any(
-        "fixture" in t and "drift" in t for t in titles
-    ) or any(
+    assert any("fixture" in t and "drift" in t for t in titles) or any(
         "fixture" in d and "drift" in d for d in descriptions
     ), f"L394 fixture-drift radar flag not in pattern_database; titles: {titles}"
 
@@ -58,9 +57,7 @@ def test_l394_symbol_collision_pattern_in_database(patterns):
     """L394: pattern_database should include a 'cross-app symbol collision' pattern."""
     titles = [p.get("title", "").lower() for p in patterns]
     descriptions = [p.get("description", "").lower() for p in patterns]
-    assert any(
-        "symbol" in t and "collision" in t for t in titles
-    ) or any(
+    assert any("symbol" in t and "collision" in t for t in titles) or any(
         "symbol" in d and "collision" in d for d in descriptions
     ), f"L394 symbol-collision radar flag not in pattern_database; titles: {titles}"
 
@@ -68,7 +65,8 @@ def test_l394_symbol_collision_pattern_in_database(patterns):
 def test_l394_radar_flags_have_severity_levels(patterns):
     """Each radar flag must declare a severity level (per L380 4-layer pattern)."""
     radar = [
-        p for p in patterns
+        p
+        for p in patterns
         if "drift" in p.get("title", "").lower() or "collision" in p.get("title", "").lower()
     ]
     assert len(radar) >= 2, (
@@ -84,11 +82,10 @@ def test_l394_radar_flags_have_severity_levels(patterns):
 
 # ---- W2 (e): full re-export coverage ----
 
+
 def test_pattern_database_has_at_least_nine_patterns(patterns):
     """W2(e) goal: re-export brings pattern_database from 3 to >= 9 patterns."""
-    assert len(patterns) >= 9, (
-        f"expected >= 9 patterns after W2(e) re-export; found {len(patterns)}"
-    )
+    assert len(patterns) >= 9, f"expected >= 9 patterns after W2(e) re-export; found {len(patterns)}"
 
 
 def test_all_patterns_have_required_keys(patterns):
@@ -96,9 +93,7 @@ def test_all_patterns_have_required_keys(patterns):
     for p in patterns:
         for key in ("id", "title", "description", "severity"):
             assert key in p and p[key], f"pattern {p.get('id')} missing/empty {key}"
-        assert p["severity"] in VALID_SEVERITIES, (
-            f"pattern {p['id']} has invalid severity: {p['severity']}"
-        )
+        assert p["severity"] in VALID_SEVERITIES, f"pattern {p['id']} has invalid severity: {p['severity']}"
 
 
 def test_pattern_ids_are_unique(patterns):

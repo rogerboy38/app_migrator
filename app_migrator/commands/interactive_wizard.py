@@ -52,6 +52,7 @@ def list_all_sites():
         print(f"❌ Error listing sites: {e!s}")
         return []
 
+
 def select_site_interactive():
     """
     Interactive site selection
@@ -66,7 +67,7 @@ def select_site_interactive():
         try:
             choice = input("\n🎯 Enter site number (or 'q' to quit): ").strip()
 
-            if choice.lower() == 'q':
+            if choice.lower() == "q":
                 print("👋 Exiting...")
                 return None
 
@@ -82,6 +83,7 @@ def select_site_interactive():
         except KeyboardInterrupt:
             print("\n\n👋 Cancelled by user")
             return None
+
 
 def list_apps_in_site(site_name=None):
     """
@@ -120,6 +122,7 @@ def list_apps_in_site(site_name=None):
         print(f"❌ Error listing apps: {e!s}")
         return []
 
+
 def select_app_interactive():
     """
     Interactive app selection
@@ -134,7 +137,7 @@ def select_app_interactive():
         try:
             choice = input("\n🎯 Enter app number (or 'q' to quit): ").strip()
 
-            if choice.lower() == 'q':
+            if choice.lower() == "q":
                 print("👋 Exiting...")
                 return None
 
@@ -150,6 +153,7 @@ def select_app_interactive():
         except KeyboardInterrupt:
             print("\n\n👋 Cancelled by user")
             return None
+
 
 def list_modules_in_app(app_name):
     """
@@ -171,13 +175,14 @@ def list_modules_in_app(app_name):
         # Ask if user wants detailed view
         show_details = input("\n📋 Show detailed classifications? (y/n): ").strip().lower()
 
-        if show_details == 'y':
+        if show_details == "y":
             display_detailed_classifications(classifications)
 
         return classifications
     except Exception as e:
         print(f"❌ Error listing modules: {e!s}")
         return []
+
 
 def select_doctypes_by_status(app_name):
     """
@@ -204,23 +209,23 @@ def select_doctypes_by_status(app_name):
             try:
                 choice = input("\n🎯 Select filter (0-5): ").strip()
 
-                if choice == '0':
+                if choice == "0":
                     print("👋 Cancelled")
                     return []
 
                 filter_map = {
-                    '1': DoctypeStatus.STANDARD,
-                    '2': DoctypeStatus.CUSTOMIZED,
-                    '3': DoctypeStatus.CUSTOM,
-                    '4': DoctypeStatus.ORPHAN,
-                    '5': None  # All
+                    "1": DoctypeStatus.STANDARD,
+                    "2": DoctypeStatus.CUSTOMIZED,
+                    "3": DoctypeStatus.CUSTOM,
+                    "4": DoctypeStatus.ORPHAN,
+                    "5": None,  # All
                 }
 
                 if choice in filter_map:
                     filter_status = filter_map[choice]
 
                     if filter_status:
-                        filtered = [c for c in classifications if c.get('status') == filter_status]
+                        filtered = [c for c in classifications if c.get("status") == filter_status]
                         print(f"\n✅ Filtered to: {filter_status.upper()} doctypes")
                     else:
                         filtered = classifications
@@ -236,15 +241,15 @@ def select_doctypes_by_status(app_name):
                     print("=" * 80)
 
                     for idx, c in enumerate(filtered, 1):
-                        status = c.get('status', 'unknown')
-                        name = c.get('name', 'Unknown')
-                        details = ', '.join(c.get('details', [])) if c.get('details') else 'No customizations'
+                        status = c.get("status", "unknown")
+                        name = c.get("name", "Unknown")
+                        details = ", ".join(c.get("details", [])) if c.get("details") else "No customizations"
 
                         status_icons = {
                             DoctypeStatus.STANDARD: "✅",
                             DoctypeStatus.CUSTOMIZED: "⚙️",
                             DoctypeStatus.CUSTOM: "🔧",
-                            DoctypeStatus.ORPHAN: "⚠️"
+                            DoctypeStatus.ORPHAN: "⚠️",
                         }
 
                         icon = status_icons.get(status, "📋")
@@ -265,6 +270,7 @@ def select_doctypes_by_status(app_name):
     except Exception as e:
         print(f"❌ Error filtering doctypes: {e!s}")
         return []
+
 
 def interactive_migration_wizard():
     """
@@ -358,4 +364,3 @@ def interactive_migration_wizard():
         print(f"   ... and {len(filtered_doctypes) - 10} more")
 
     print("\n" + "=" * 80)
-

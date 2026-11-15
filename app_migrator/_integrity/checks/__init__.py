@@ -8,6 +8,7 @@ Each module is imported inside a guard. A broken optional check must never
 take down the whole package import — that is the lesson behind the P0 break
 where a single stray import made every ``bench app-migrator`` command fail.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -35,9 +36,7 @@ def _register_module(module_name: str) -> None:
     logger.warning("integrity check module %s exposes no CHECK_SPEC; skipping it", module_name)
 
 
-for _module_info in sorted(
-    m.name for m in pkgutil.iter_modules(__path__) if not m.name.startswith("_")
-):
+for _module_info in sorted(m.name for m in pkgutil.iter_modules(__path__) if not m.name.startswith("_")):
     _register_module(_module_info)
 
 # Stable, deterministic order for humans and for the envelope.

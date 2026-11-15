@@ -20,6 +20,7 @@ Usage:
       --app-license "MIT" \\
       --apply
 """
+
 import shutil
 import subprocess
 from pathlib import Path
@@ -30,6 +31,7 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
 
@@ -40,38 +42,48 @@ def _scrub(name):
 
 @click.command("app-migrator-new-fresh-app")
 @click.option("--app-name", required=True, help="App name (e.g., 'payments_core')")
-@click.option("--module-name", required=True,
-              help="Initial module name (e.g., 'Payment Core'). MUST scrub to "
-                   "a value DIFFERENT from app name.")
+@click.option(
+    "--module-name",
+    required=True,
+    help="Initial module name (e.g., 'Payment Core'). MUST scrub to a value DIFFERENT from app name.",
+)
 @click.option("--app-title", help="App title (defaults to humanized app-name)")
 @click.option("--app-description", default="Frappe app", help="App description")
 @click.option("--app-publisher", default="App Migrator", help="App publisher")
 @click.option("--app-email", default="dev@example.com", help="App email")
 @click.option("--app-license", default="mit", help="App license (lowercase: mit, apache-2.0, gpl-3.0, etc.)")
 @click.option("--bench-root", default="/home/frappe/frappe-bench")
-@click.option("--apply", is_flag=True, default=False,
-              help="Actually run bench new-app (default: --dry-run)")
+@click.option("--apply", is_flag=True, default=False, help="Actually run bench new-app (default: --dry-run)")
 @pass_context
-def app_migrator_new_fresh_app(context, app_name, module_name, app_title,
-                                 app_description, app_publisher, app_email,
-                                 app_license, bench_root, apply):
+def app_migrator_new_fresh_app(
+    context,
+    app_name,
+    module_name,
+    app_title,
+    app_description,
+    app_publisher,
+    app_email,
+    app_license,
+    bench_root,
+    apply,
+):
     """Create a Frappe app without the same-name-module antipattern."""
     bench_root = Path(bench_root)
     new_slug = _scrub(module_name)
     mode = "APPLY" if apply else "DRY-RUN"
 
     click.secho("\n" + "=" * 78, fg="cyan")
-    click.secho(f"  NEW-FRESH-APP — '{app_name}' / module '{module_name}'  [{mode}]",
-                fg="cyan", bold=True)
+    click.secho(f"  NEW-FRESH-APP — '{app_name}' / module '{module_name}'  [{mode}]", fg="cyan", bold=True)
     click.secho("=" * 78, fg="cyan")
 
     # Antipattern rule check
     if new_slug == app_name:
         click.secho("\n✗ ANTIPATTERN BLOCKED:", fg="red", bold=True)
-        click.secho(f"  scrub('{module_name}') = '{new_slug}' equals app name "
-                    f"'{app_name}'.", fg="red")
-        click.secho(f"  This would create apps/{app_name}/{app_name}/{app_name}/ "
-                    f"— the same-name-module antipattern.", fg="red")
+        click.secho(f"  scrub('{module_name}') = '{new_slug}' equals app name '{app_name}'.", fg="red")
+        click.secho(
+            f"  This would create apps/{app_name}/{app_name}/{app_name}/ — the same-name-module antipattern.",
+            fg="red",
+        )
         click.secho("\n  Suggestions for --module-name:", fg="cyan")
         click.echo(f"    • '{app_name.replace('_', ' ').title()} Core'")
         click.echo("    • 'Core', 'Main', or a feature-descriptive name")
@@ -82,16 +94,14 @@ def app_migrator_new_fresh_app(context, app_name, module_name, app_title,
     app_path = bench_root / "apps" / app_name
     if app_path.exists():
         click.secho(f"\n✗ App already exists at {app_path}", fg="red")
-        click.secho("  Use a different --app-name or remove the existing app first.",
-                    fg="cyan")
+        click.secho("  Use a different --app-name or remove the existing app first.", fg="cyan")
         raise click.Abort()
 
     if not app_title:
         app_title = app_name.replace("_", " ").title()
 
     # Display plan
-    click.echo(f"\n  ✓ Validation: scrub('{module_name}') = '{new_slug}' "
-                f"(differs from app name)")
+    click.echo(f"\n  ✓ Validation: scrub('{module_name}') = '{new_slug}' (differs from app name)")
     click.echo(f"  ✓ Target path: apps/{app_name}/{app_name}/{new_slug}/")
     click.secho("\n┌── PLAN ────", fg="cyan")
     click.echo(f"│  1. Run: bench new-app {app_name} --no-git")
@@ -108,8 +118,7 @@ def app_migrator_new_fresh_app(context, app_name, module_name, app_title,
     click.echo(f"    License:     {app_license}")
 
     if not apply:
-        click.secho("\n  This was a DRY-RUN. To apply, re-run with --apply.",
-                    fg="yellow")
+        click.secho("\n  This was a DRY-RUN. To apply, re-run with --apply.", fg="yellow")
         return
 
     # APPLY
@@ -126,16 +135,14 @@ def app_migrator_new_fresh_app(context, app_name, module_name, app_title,
         click.secho(f"  ✓ Pre-flight: uv found at {uv_path}", fg="green")
     else:
         click.secho("  ⚠ Pre-flight: 'uv' not found on PATH.", fg="yellow")
-        click.secho("    bench new-app's post-scaffold install step will fail",
-                    fg="yellow")
-        click.secho("    (but scaffold + denest steps still complete cleanly).",
-                    fg="yellow")
+        click.secho("    bench new-app's post-scaffold install step will fail", fg="yellow")
+        click.secho("    (but scaffold + denest steps still complete cleanly).", fg="yellow")
         click.secho("    To install uv:", fg="cyan")
         click.echo("      pip install uv")
         click.echo("      OR  curl -LsSf https://astral.sh/uv/install.sh | sh")
-        if not click.confirm("\n  Proceed without uv? "
-                              "(tool gracefully handles the install failure)",
-                              default=True):
+        if not click.confirm(
+            "\n  Proceed without uv? (tool gracefully handles the install failure)", default=True
+        ):
             click.secho("Aborted.", fg="yellow")
             raise click.Abort()
 
@@ -146,17 +153,23 @@ def app_migrator_new_fresh_app(context, app_name, module_name, app_title,
     #   Create GitHub Workflow [y/N], Branch Name [develop],
     #   Use Frappe DocType prefix [y/N], (and possibly init git)
     # Pad with empty newlines to accept defaults for any extra prompts.
-    answers = "\n".join([
-        app_title,
-        app_description,
-        app_publisher,
-        app_email,
-        app_license,
-        "n",       # GitHub Workflow action for unittests
-        "",        # Branch Name (default: develop)
-        "n",       # Use Frappe DocType prefix
-        "n",       # Init git (defensive — --no-git may not catch all)
-    ]) + "\n" + "\n" * 5  # extra padding for any future prompts
+    answers = (
+        "\n".join(
+            [
+                app_title,
+                app_description,
+                app_publisher,
+                app_email,
+                app_license,
+                "n",  # GitHub Workflow action for unittests
+                "",  # Branch Name (default: develop)
+                "n",  # Use Frappe DocType prefix
+                "n",  # Init git (defensive — --no-git may not catch all)
+            ]
+        )
+        + "\n"
+        + "\n" * 5
+    )  # extra padding for any future prompts
 
     click.echo(f"\n  Running: bench new-app {app_name} --no-git ...")
     ret = subprocess.run(
@@ -192,10 +205,8 @@ def app_migrator_new_fresh_app(context, app_name, module_name, app_title,
     app_pkg = app_path / app_name
     antipattern_folder = app_pkg / app_name
     if not antipattern_folder.exists():
-        click.secho(f"  ⚠ Expected antipattern folder not found at "
-                    f"{antipattern_folder}", fg="yellow")
-        click.secho("  Frappe scaffolder may have changed. Manual review needed.",
-                    fg="yellow")
+        click.secho(f"  ⚠ Expected antipattern folder not found at {antipattern_folder}", fg="yellow")
+        click.secho("  Frappe scaffolder may have changed. Manual review needed.", fg="yellow")
         return
 
     # 3. Rename antipattern folder
@@ -211,8 +222,7 @@ def app_migrator_new_fresh_app(context, app_name, module_name, app_title,
     if modules_txt.exists():
         old_content = modules_txt.read_text()
         modules_txt.write_text(module_name + "\n")
-        click.secho(f"  ✓ Updated modules.txt: {old_content.strip()!r} "
-                    f"→ {module_name!r}", fg="green")
+        click.secho(f"  ✓ Updated modules.txt: {old_content.strip()!r} → {module_name!r}", fg="green")
     else:
         modules_txt.write_text(module_name + "\n")
         click.secho(f"  ✓ Created modules.txt with {module_name!r}", fg="green")
@@ -220,9 +230,18 @@ def app_migrator_new_fresh_app(context, app_name, module_name, app_title,
     # 5. Verify with audit
     click.echo("\n  Verifying with audit-app-for-antipattern...")
     audit_ret = subprocess.run(
-        ["bench", "app-migrator", "audit-app-for-antipattern",
-         "--app", app_name, "--bench-root", str(bench_root)],
-        capture_output=True, text=True, cwd=str(bench_root),
+        [
+            "bench",
+            "app-migrator",
+            "audit-app-for-antipattern",
+            "--app",
+            app_name,
+            "--bench-root",
+            str(bench_root),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=str(bench_root),
     )
     if "0 (0%)" in audit_ret.stdout or "✓ no" in audit_ret.stdout:
         click.secho("  ✓ Audit confirms: NO antipattern", fg="green")
@@ -231,8 +250,7 @@ def app_migrator_new_fresh_app(context, app_name, module_name, app_title,
 
     # Summary
     click.secho(f"\n{'=' * 78}", fg="green")
-    click.secho(f"  ✓ NEW-FRESH-APP COMPLETE — {app_name} created clean",
-                fg="green", bold=True)
+    click.secho(f"  ✓ NEW-FRESH-APP COMPLETE — {app_name} created clean", fg="green", bold=True)
     click.secho("=" * 78, fg="green")
     click.echo(f"  App location:  apps/{app_name}/")
     click.echo(f"  Module folder: apps/{app_name}/{app_name}/{new_slug}/")

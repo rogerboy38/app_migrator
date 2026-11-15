@@ -8,8 +8,8 @@ import click
 import frappe
 
 
-@click.command('module-diagnostic')
-@click.option('--site', required=True, help='Site name')
+@click.command("module-diagnostic")
+@click.option("--site", required=True, help="Site name")
 def module_diagnostic(site):
     """
     Quick diagnostic of module naming and orphan issues
@@ -50,13 +50,13 @@ def module_diagnostic(site):
             name = module["name"]
 
             # Check for "Ai" vs "AI" inconsistency
-            if ' ai ' in name.lower():
-                if ' Ai ' in name or name.endswith(' Ai'):
+            if " ai " in name.lower():
+                if " Ai " in name or name.endswith(" Ai"):
                     click.echo(f"   • Inconsistent 'Ai' in: {name}")
                     issues_found = True
 
             # Check for mixed case issues
-            if name != name.title() and ' ' in name and not name.isupper():
+            if name != name.title() and " " in name and not name.isupper():
                 words = name.split()
                 if any(word[0].islower() for word in words if len(word) > 1):
                     click.echo(f"   • Mixed case in: {name}")
@@ -65,9 +65,7 @@ def module_diagnostic(site):
         # 2. Check for modules without doctypes
         modules_without_doctypes = []
         for module in modules:
-            doctypes = frappe.get_all("DocType",
-                filters={"module": module["name"]},
-                fields=["name"])
+            doctypes = frappe.get_all("DocType", filters={"module": module["name"]}, fields=["name"])
 
             if not doctypes:
                 modules_without_doctypes.append(module["name"])
@@ -87,18 +85,13 @@ def module_diagnostic(site):
         click.echo("\n📈 QUICK STATS:")
 
         # Count by naming pattern
-        patterns = {
-            "Title Case": 0,
-            "snake_case": 0,
-            "UPPERCASE": 0,
-            "Mixed/Other": 0
-        }
+        patterns = {"Title Case": 0, "snake_case": 0, "UPPERCASE": 0, "Mixed/Other": 0}
 
         for module in modules:
             name = module["name"]
-            if ' ' in name and name.istitle():
+            if " " in name and name.istitle():
                 patterns["Title Case"] += 1
-            elif '_' in name and name.islower():
+            elif "_" in name and name.islower():
                 patterns["snake_case"] += 1
             elif name.isupper():
                 patterns["UPPERCASE"] += 1
@@ -115,6 +108,7 @@ def module_diagnostic(site):
     except Exception as e:
         click.echo(f"❌ Error: {e}")
         frappe.destroy()
+
 
 if __name__ == "__main__":
     module_diagnostic()

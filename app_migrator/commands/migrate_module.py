@@ -37,6 +37,7 @@ Limitations (v1):
   - Source app must use STANDARD layout (module folder NOT same name as app).
     If source has antipattern, run denest-app first.
 """
+
 import json
 import re
 import shutil
@@ -50,6 +51,7 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
 
@@ -72,10 +74,10 @@ SKIP_PATH_PATTERNS = (
 )
 
 MODULE_REF_TABLES = [
-    ("tabReport",          False),
-    ("tabPage",            False),
-    ("tabDashboard",       False),
-    ("`tabPrint Format`",  True),
+    ("tabReport", False),
+    ("tabPage", False),
+    ("tabDashboard", False),
+    ("`tabPrint Format`", True),
     ("`tabClient Script`", True),
     ("`tabServer Script`", True),
 ]
@@ -84,23 +86,35 @@ MODULE_REF_TABLES = [
 @click.command("app-migrator-migrate-module")
 @click.option("--site", required=True, help="Site name (for DB updates)")
 @click.option("--source-app", required=True, help="App that currently owns the module")
-@click.option("--source-module", required=True,
-              help="Module to migrate (e.g., 'Payment Gateways')")
-@click.option("--target-app", required=True,
-              help="App to move the module into (must already exist)")
-@click.option("--target-module",
-              help="New module name (optional, defaults to source-module). "
-                   "MUST scrub to a value DIFFERENT from target-app name.")
+@click.option("--source-module", required=True, help="Module to migrate (e.g., 'Payment Gateways')")
+@click.option("--target-app", required=True, help="App to move the module into (must already exist)")
+@click.option(
+    "--target-module",
+    help="New module name (optional, defaults to source-module). "
+    "MUST scrub to a value DIFFERENT from target-app name.",
+)
 @click.option("--apply", is_flag=True, help="Apply changes (default --dry-run)")
 @click.option("--bench-root", default="/home/frappe/frappe-bench")
-@click.option("--snapshot-dir",
-              default="/home/frappe/frappe-bench/sites/snapshots")
-@click.option("--auto-fix-orphans", is_flag=True, default=False,
-              help="Auto-collapse CASE_MISMATCH orphans found during pre-flight")
+@click.option("--snapshot-dir", default="/home/frappe/frappe-bench/sites/snapshots")
+@click.option(
+    "--auto-fix-orphans",
+    is_flag=True,
+    default=False,
+    help="Auto-collapse CASE_MISMATCH orphans found during pre-flight",
+)
 @pass_context
-def app_migrator_migrate_module(context, site, source_app, source_module,
-                                  target_app, target_module, apply,
-                                  bench_root, snapshot_dir, auto_fix_orphans):
+def app_migrator_migrate_module(
+    context,
+    site,
+    source_app,
+    source_module,
+    target_app,
+    target_module,
+    apply,
+    bench_root,
+    snapshot_dir,
+    auto_fix_orphans,
+):
     """Migrate a module from one Frappe app to another (Mode B: cross-app add)."""
     bench_root = Path(bench_root)
     target_module = target_module or source_module
@@ -110,9 +124,11 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
     mode = "DRY-RUN" if dry_run else "APPLY"
 
     click.secho("\n" + "=" * 78, fg="cyan")
-    click.secho(f"  MIGRATE-MODULE — {source_app}.{src_slug}  →  "
-                f"{target_app}.{tgt_slug}  [{mode}]",
-                fg="cyan", bold=True)
+    click.secho(
+        f"  MIGRATE-MODULE — {source_app}.{src_slug}  →  {target_app}.{tgt_slug}  [{mode}]",
+        fg="cyan",
+        bold=True,
+    )
     click.secho("=" * 78, fg="cyan")
 
     # ── Validation ──
@@ -124,39 +140,35 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
         raise click.Abort()
     if not tgt_app_pkg.exists():
         click.secho(f"\n✗ Target app not found: {tgt_app_pkg}", fg="red")
-        click.secho(f"  Tip: bench app-migrator new-fresh-app "
-                    f"--app-name {target_app} ...", fg="cyan")
+        click.secho(f"  Tip: bench app-migrator new-fresh-app --app-name {target_app} ...", fg="cyan")
         raise click.Abort()
 
     if tgt_slug == target_app:
         click.secho("\n✗ ANTIPATTERN BLOCKED:", fg="red", bold=True)
-        click.secho(f"  scrub('{target_module}') = '{tgt_slug}' equals "
-                    f"target app '{target_app}'.", fg="red")
-        click.secho(f"  Use --target-module to pick a different name "
-                    f"(e.g., '{target_module} Core').", fg="cyan")
+        click.secho(f"  scrub('{target_module}') = '{tgt_slug}' equals target app '{target_app}'.", fg="red")
+        click.secho(
+            f"  Use --target-module to pick a different name (e.g., '{target_module} Core').", fg="cyan"
+        )
         raise click.Abort()
 
     src_module_folder = src_app_pkg / src_slug
     if not src_module_folder.exists():
-        click.secho(f"\n✗ Source module folder not found: {src_module_folder}",
-                    fg="red")
+        click.secho(f"\n✗ Source module folder not found: {src_module_folder}", fg="red")
         nested_alt = src_app_pkg / source_app / src_slug
         if nested_alt.exists():
-            click.secho(f"  HINT: source app uses nested layout; module lives at "
-                        f"{nested_alt}", fg="cyan")
-            click.secho(f"  Run denest-app on {source_app} first to fix the "
-                        f"antipattern.", fg="cyan")
+            click.secho(f"  HINT: source app uses nested layout; module lives at {nested_alt}", fg="cyan")
+            click.secho(f"  Run denest-app on {source_app} first to fix the antipattern.", fg="cyan")
         raise click.Abort()
 
     tgt_module_folder = tgt_app_pkg / tgt_slug
     if tgt_module_folder.exists():
-        click.secho(f"\n✗ Target folder already exists: {tgt_module_folder}",
-                    fg="red")
+        click.secho(f"\n✗ Target folder already exists: {tgt_module_folder}", fg="red")
         raise click.Abort()
 
     src_modules_txt = src_app_pkg / "modules.txt"
-    src_modules = [m.strip() for m in src_modules_txt.read_text().splitlines()
-                   if m.strip() and not m.startswith("#")]
+    src_modules = [
+        m.strip() for m in src_modules_txt.read_text().splitlines() if m.strip() and not m.startswith("#")
+    ]
     if source_module not in src_modules:
         click.secho(f"\n✗ '{source_module}' not in {src_modules_txt}", fg="red")
         click.secho(f"  Available: {src_modules}", fg="cyan")
@@ -165,11 +177,11 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
     tgt_modules_txt = tgt_app_pkg / "modules.txt"
     tgt_modules = []
     if tgt_modules_txt.exists():
-        tgt_modules = [m.strip() for m in tgt_modules_txt.read_text().splitlines()
-                       if m.strip() and not m.startswith("#")]
+        tgt_modules = [
+            m.strip() for m in tgt_modules_txt.read_text().splitlines() if m.strip() and not m.startswith("#")
+        ]
     if target_module in tgt_modules:
-        click.secho(f"\n✗ '{target_module}' already exists in {tgt_modules_txt}",
-                    fg="red")
+        click.secho(f"\n✗ '{target_module}' already exists in {tgt_modules_txt}", fg="red")
         raise click.Abort()
 
     frappe.init(site=site)
@@ -183,18 +195,21 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
     involved = {source_module, target_module} if target_module else {source_module}
     involved_scrubbed = {_scrub_pf(m) for m in involved}
 
-    stranded = frappe.db.sql("""
+    stranded = frappe.db.sql(
+        """
         SELECT dt.name, dt.module, dt.app
         FROM `tabDocType` dt
         LEFT JOIN `tabModule Def` md ON md.name = dt.module
         WHERE md.name IS NULL AND dt.module IN %(mods)s
-    """, {"mods": tuple(involved) or ("__none__",)}, as_dict=True)
+    """,
+        {"mods": tuple(involved) or ("__none__",)},
+        as_dict=True,
+    )
 
     md_rows = frappe.db.sql(
         "SELECT name FROM `tabModule Def` WHERE name IN %(mods)s "
         "OR LOWER(REPLACE(REPLACE(name,' ','_'),'-','_')) IN %(scrubbed)s",
-        {"mods": tuple(involved) or ("__none__",),
-         "scrubbed": tuple(involved_scrubbed) or ("__none__",)},
+        {"mods": tuple(involved) or ("__none__",), "scrubbed": tuple(involved_scrubbed) or ("__none__",)},
         as_dict=True,
     )
     by_key = {}
@@ -224,7 +239,9 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
     else:
         click.secho("\n  ⚠ Orphan DocTypes detected on involved modules:", fg="yellow")
         if stranded:
-            click.secho(f"    STRANDED: {len(stranded)} DocType(s) reference a missing Module Def", fg="yellow")
+            click.secho(
+                f"    STRANDED: {len(stranded)} DocType(s) reference a missing Module Def", fg="yellow"
+            )
             for r in stranded[:5]:
                 click.secho(f"      - {r['name']} (module={r['module']}, app={r['app']})", fg="yellow")
         if case_mismatch:
@@ -232,9 +249,14 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
             for key, names in case_mismatch.items():
                 click.secho(f"      - {key}: {names}", fg="yellow")
         if filesystem_orphans:
-            click.secho(f"    FILESYSTEM: {len(filesystem_orphans)} module(s) in DB without source folder", fg="yellow")
+            click.secho(
+                f"    FILESYSTEM: {len(filesystem_orphans)} module(s) in DB without source folder",
+                fg="yellow",
+            )
             for fo in filesystem_orphans:
-                click.secho(f"      - {fo['module']} (app={fo['app']}, doctypes={fo['doctype_count']})", fg="yellow")
+                click.secho(
+                    f"      - {fo['module']} (app={fo['app']}, doctypes={fo['doctype_count']})", fg="yellow"
+                )
 
         if stranded or filesystem_orphans:
             click.secho(
@@ -245,6 +267,7 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
             )
             if apply:
                 import sys as _sys
+
                 _sys.exit(1)
             else:
                 click.secho("    (would abort in --apply mode)", fg="yellow")
@@ -258,6 +281,7 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
             )
             if apply:
                 import sys as _sys
+
                 _sys.exit(1)
             else:
                 click.secho("    (would abort in --apply mode)", fg="yellow")
@@ -275,14 +299,13 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
                     click.secho(f"    collapsing '{drop_name}' → '{keep}'", fg="cyan")
                     frappe.db.sql("UPDATE tabDocType SET module=%s WHERE module=%s", (keep, drop_name))
                     frappe.db.sql("UPDATE `tabCustom Field` SET module=%s WHERE module=%s", (keep, drop_name))
-                    frappe.db.sql("UPDATE `tabProperty Setter` SET module=%s WHERE module=%s", (keep, drop_name))
+                    frappe.db.sql(
+                        "UPDATE `tabProperty Setter` SET module=%s WHERE module=%s", (keep, drop_name)
+                    )
                     frappe.db.sql("DELETE FROM `tabModule Def` WHERE name=%s", drop_name)
             frappe.db.commit()
             click.secho("    ✓ CASE_MISMATCH orphans collapsed", fg="green")
     # ----- end v3 orphan pre-flight ---------------------------------------
-
-
-
 
     # ── Build cascade plan ──
     old_pkg = f"{source_app}.{src_slug}"
@@ -324,20 +347,16 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
     if target_module != source_module:
         click.echo("│    • tabModule Def: rename + change app_name")
     else:
-        click.echo("│    • tabModule Def: change app_name only "
-                   "(name unchanged)")
-    click.echo(f"│    • tabDocType.app: '{source_app}' → '{target_app}' "
-               f"({dt_count} rows max)")
+        click.echo("│    • tabModule Def: change app_name only (name unchanged)")
+    click.echo(f"│    • tabDocType.app: '{source_app}' → '{target_app}' ({dt_count} rows max)")
     if target_module != source_module:
-        click.echo(f"│    • tabDocType.module: '{source_module}' → "
-                   f"'{target_module}' ({dt_count} rows max)")
+        click.echo(f"│    • tabDocType.module: '{source_module}' → '{target_module}' ({dt_count} rows max)")
         click.echo("│    • 6 ancillary tables: rename module column")
     click.echo("│  Clear __pycache__ + bench migrate (retry-once)")
     click.echo("└────")
 
     if dry_run:
-        click.secho("\n  This was a DRY-RUN. To apply, re-run with --apply.",
-                    fg="yellow")
+        click.secho("\n  This was a DRY-RUN. To apply, re-run with --apply.", fg="yellow")
         if dt_names and len(dt_names) <= 30:
             click.secho("\n  DocTypes that will move:", fg="cyan")
             for n in dt_names:
@@ -351,8 +370,7 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
             for f in affected_py_files:
                 click.echo(f"    • {f.relative_to(bench_root)}")
         elif affected_py_files:
-            click.secho(f"\n  Affected .py files (first 15 of "
-                        f"{len(affected_py_files)}):", fg="cyan")
+            click.secho(f"\n  Affected .py files (first 15 of {len(affected_py_files)}):", fg="cyan")
             for f in affected_py_files[:15]:
                 click.echo(f"    • {f.relative_to(bench_root)}")
             click.echo(f"    ... and {len(affected_py_files) - 15} more")
@@ -363,19 +381,24 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
     snap.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     snapshot_file = snap / f"migrate_module_{source_app}_{src_slug}_to_{target_app}_{ts}.json"
-    snapshot_file.write_text(json.dumps({
-        "source_app": source_app,
-        "source_module": source_module,
-        "target_app": target_app,
-        "target_module": target_module,
-        "src_module_folder": str(src_module_folder),
-        "tgt_module_folder": str(tgt_module_folder),
-        "affected_py_files": [str(f) for f in affected_py_files],
-        "src_modules_txt_before": src_modules_txt.read_text(),
-        "tgt_modules_txt_before": tgt_modules_txt.read_text() if tgt_modules_txt.exists() else "",
-        "dt_names": dt_names,
-        "timestamp": ts,
-    }, indent=2))
+    snapshot_file.write_text(
+        json.dumps(
+            {
+                "source_app": source_app,
+                "source_module": source_module,
+                "target_app": target_app,
+                "target_module": target_module,
+                "src_module_folder": str(src_module_folder),
+                "tgt_module_folder": str(tgt_module_folder),
+                "affected_py_files": [str(f) for f in affected_py_files],
+                "src_modules_txt_before": src_modules_txt.read_text(),
+                "tgt_modules_txt_before": tgt_modules_txt.read_text() if tgt_modules_txt.exists() else "",
+                "dt_names": dt_names,
+                "timestamp": ts,
+            },
+            indent=2,
+        )
+    )
     click.secho(f"\n  📦 Snapshot: {snapshot_file}", fg="green")
 
     # 1. Rewrite imports BEFORE move (denest-app v4 lesson)
@@ -390,8 +413,7 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
         if new_content != content:
             f.write_text(new_content)
             rewritten += 1
-    click.secho(f"  ✓ Rewrote imports in {rewritten} of "
-                f"{len(affected_py_files)} file(s)", fg="green")
+    click.secho(f"  ✓ Rewrote imports in {rewritten} of {len(affected_py_files)} file(s)", fg="green")
 
     # 2. Move folder cross-app
     shutil.move(str(src_module_folder), str(tgt_module_folder))
@@ -399,36 +421,33 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
 
     # 3. Update modules.txt files
     new_src_modules = [m for m in src_modules if m != source_module]
-    src_modules_txt.write_text(("\n".join(new_src_modules) + "\n")
-                                if new_src_modules else "")
-    click.secho(f"  ✓ Removed '{source_module}' from {source_app}/modules.txt",
-                fg="green")
+    src_modules_txt.write_text(("\n".join(new_src_modules) + "\n") if new_src_modules else "")
+    click.secho(f"  ✓ Removed '{source_module}' from {source_app}/modules.txt", fg="green")
 
     new_tgt_modules = [*tgt_modules, target_module]
     tgt_modules_txt.write_text("\n".join(new_tgt_modules) + "\n")
-    click.secho(f"  ✓ Added '{target_module}' to {target_app}/modules.txt",
-                fg="green")
+    click.secho(f"  ✓ Added '{target_module}' to {target_app}/modules.txt", fg="green")
 
     # 4. DB updates
     frappe.db.sql("SET SQL_SAFE_UPDATES=0")
     try:
         # tabModule Def
         if target_module != source_module:
-            frappe.db.sql("UPDATE `tabModule Def` SET name=%s, app_name=%s "
-                          "WHERE name=%s",
-                          (target_module, target_app, source_module))
+            frappe.db.sql(
+                "UPDATE `tabModule Def` SET name=%s, app_name=%s WHERE name=%s",
+                (target_module, target_app, source_module),
+            )
         else:
-            frappe.db.sql("UPDATE `tabModule Def` SET app_name=%s WHERE name=%s",
-                          (target_app, source_module))
+            frappe.db.sql("UPDATE `tabModule Def` SET app_name=%s WHERE name=%s", (target_app, source_module))
 
         # tabDocType
         if target_module != source_module:
-            frappe.db.sql("UPDATE tabDocType SET app=%s, module=%s "
-                          "WHERE module=%s",
-                          (target_app, target_module, source_module))
+            frappe.db.sql(
+                "UPDATE tabDocType SET app=%s, module=%s WHERE module=%s",
+                (target_app, target_module, source_module),
+            )
         else:
-            frappe.db.sql("UPDATE tabDocType SET app=%s WHERE module=%s",
-                          (target_app, source_module))
+            frappe.db.sql("UPDATE tabDocType SET app=%s WHERE module=%s", (target_app, source_module))
 
         # Ancillary tables (only if module renamed)
         if target_module != source_module:
@@ -458,15 +477,19 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
     for app_to_export in (source_app, target_app):
         ret_ef = subprocess.run(
             ["bench", "--site", site, "export-fixtures", "--app", app_to_export],
-            capture_output=True, text=True, cwd=str(bench_root),
+            capture_output=True,
+            text=True,
+            cwd=str(bench_root),
         )
         if ret_ef.returncode == 0:
             click.secho(f"  ✓ Exported fixtures for {app_to_export}", fg="green")
         else:
             # Non-fatal: app may not have fixtures configured. Warn and continue.
-            click.secho(f"  ⚠ export-fixtures for {app_to_export} returned non-zero "
-                        f"(may have no fixtures configured — continuing)",
-                        fg="yellow")
+            click.secho(
+                f"  ⚠ export-fixtures for {app_to_export} returned non-zero "
+                f"(may have no fixtures configured — continuing)",
+                fg="yellow",
+            )
 
     # 6. Clear pycache (bench-wide for safety)
     cleared = 0
@@ -478,16 +501,17 @@ def app_migrator_migrate_module(context, site, source_app, source_module,
 
     # 7. bench migrate (with retry-once on cache miss)
     click.secho("\n  Running bench migrate...", fg="cyan")
-    ret = subprocess.run(["bench", "--site", site, "migrate"],
-                         capture_output=True, text=True, cwd=str(bench_root))
+    ret = subprocess.run(
+        ["bench", "--site", site, "migrate"], capture_output=True, text=True, cwd=str(bench_root)
+    )
     combined_output = ret.stdout + ret.stderr
     if ret.returncode != 0 and "ModuleNotFoundError" in combined_output:
-        click.secho("  ⚠ First migrate hit ModuleNotFoundError; "
-                    "clearing pycache + retrying...", fg="yellow")
+        click.secho("  ⚠ First migrate hit ModuleNotFoundError; clearing pycache + retrying...", fg="yellow")
         for cache_dir in bench_root.rglob("__pycache__"):
             shutil.rmtree(cache_dir, ignore_errors=True)
-        ret = subprocess.run(["bench", "--site", site, "migrate"],
-                             capture_output=True, text=True, cwd=str(bench_root))
+        ret = subprocess.run(
+            ["bench", "--site", site, "migrate"], capture_output=True, text=True, cwd=str(bench_root)
+        )
 
     click.echo("\n".join(ret.stdout.splitlines()[-8:]))
     if ret.returncode != 0:

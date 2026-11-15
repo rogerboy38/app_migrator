@@ -14,6 +14,7 @@ Q7 native parametrize: pytest parameterizes test_planner_* across all 5 skills.
 Full LLM-assisted planner logic deferred to W1 close when the new scaffold
 installs as a proper bench app.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,6 +25,7 @@ import click
 try:
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
 
@@ -67,9 +69,9 @@ def _build_plan(workflow: str, execution_mode: str) -> dict:
     }
 
 
-@click.command('app-migrator-planner')
-@click.argument('workflow')
-@click.option('--yes', is_flag=True, help='Bypass dry-run pause for scripted use')
+@click.command("app-migrator-planner")
+@click.argument("workflow")
+@click.option("--yes", is_flag=True, help="Bypass dry-run pause for scripted use")
 @pass_context
 def app_migrator_planner(context, workflow, yes):
     """Generate a workflow plan (dry-run by default). Always emits JSON.

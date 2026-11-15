@@ -32,6 +32,7 @@ is safe to run against production. The detection core
 bench-free so it can be unit-tested in-process; only this click wrapper
 touches the envelope / exit path.
 """
+
 from __future__ import annotations
 
 import time
@@ -47,6 +48,7 @@ except ImportError:  # pragma: no cover - bench-free import path
 try:
     from frappe.commands import pass_context
 except ImportError:  # pragma: no cover - bench-free import path
+
     def pass_context(f):
         return f
 
@@ -118,7 +120,10 @@ class SiteSelectCollector:
             return self._stored_cache[key]
         try:
             values = frappe.get_all(
-                doctype, pluck=fieldname, distinct=True, limit_page_length=0,
+                doctype,
+                pluck=fieldname,
+                distinct=True,
+                limit_page_length=0,
             )
         except Exception as exc:
             self.errors.append(f"{doctype}.{fieldname}: stored values unreadable: {exc}")
@@ -200,13 +205,18 @@ def _resolve_site(site: str | None) -> str | None:
     return str(current) if current else None
 
 
-@click.command('app-migrator-select-option-drift')
-@click.option('--site', default=None, help='Site name (the scan reads a live site)')
-@click.option('--json', 'as_json', is_flag=True, help='Emit v0.5 envelope JSON')
-@click.option('--doctype', default=None, help='Only scan this DocType')
-@click.option('--field', default=None, help='Only scan this fieldname')
-@click.option('--limit', default=DEFAULT_FINDING_LIMIT, show_default=True, type=int,
-              help='Max findings carried in the envelope')
+@click.command("app-migrator-select-option-drift")
+@click.option("--site", default=None, help="Site name (the scan reads a live site)")
+@click.option("--json", "as_json", is_flag=True, help="Emit v0.5 envelope JSON")
+@click.option("--doctype", default=None, help="Only scan this DocType")
+@click.option("--field", default=None, help="Only scan this fieldname")
+@click.option(
+    "--limit",
+    default=DEFAULT_FINDING_LIMIT,
+    show_default=True,
+    type=int,
+    help="Max findings carried in the envelope",
+)
 @pass_context
 def app_migrator_select_option_drift(context, site, as_json, doctype, field, limit):
     """Find stored values a Select field no longer allows. Report-only."""

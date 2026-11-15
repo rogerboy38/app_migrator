@@ -82,12 +82,13 @@ removes accumulated cruft so future work can ship cleanly.
 
   ```python
   from app_migrator.commands.intelligence_engine import MigrationIntelligence
+
   mi = MigrationIntelligence()
-  mi.pattern_database          # 10 entries
-  mi.analysis_workflows        # 1 entry
-  mi.ai_prompts                # 2 entries
-  mi.risk_assessment_rules     # high_risk_factors / medium_risk_factors / severity_actions
-  mi.success_patterns          # 2 entries
+  mi.pattern_database  # 10 entries
+  mi.analysis_workflows  # 1 entry
+  mi.ai_prompts  # 2 entries
+  mi.risk_assessment_rules  # high_risk_factors / medium_risk_factors / severity_actions
+  mi.success_patterns  # 2 entries
   ```
 
   - `pattern_database` — 10 atomic-fact entries (was 2 in v9): payment

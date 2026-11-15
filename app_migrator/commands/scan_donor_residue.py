@@ -20,6 +20,7 @@ Usage:
   bench --site <site> app-migrator scan-donor-residue \\
     --donor amb_w_tds --receiver amb_w_spc --output /tmp/residue.txt
 """
+
 import json
 from pathlib import Path
 
@@ -29,6 +30,7 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
 
@@ -36,16 +38,17 @@ except ImportError:
 @click.command("app-migrator-scan-donor-residue")
 @click.option("--site", required=True, help="Site name")
 @click.option("--donor", required=True, help="Donor app name (where to scan for residue)")
-@click.option("--receiver", help="Receiver app name (where DocTypes now live; "
-                                   "used to auto-detect moved DocTypes)")
-@click.option("--doctypes", help="Comma-separated explicit list of moved DocTypes "
-                                  "(alternative to --receiver auto-detection)")
+@click.option(
+    "--receiver", help="Receiver app name (where DocTypes now live; used to auto-detect moved DocTypes)"
+)
+@click.option(
+    "--doctypes",
+    help="Comma-separated explicit list of moved DocTypes (alternative to --receiver auto-detection)",
+)
 @click.option("--output", help="Write report to file (default: stdout)")
-@click.option("--bench-root", default="/home/frappe/frappe-bench",
-              help="Bench root directory")
+@click.option("--bench-root", default="/home/frappe/frappe-bench", help="Bench root directory")
 @pass_context
-def app_migrator_scan_donor_residue(context, site, donor, receiver, doctypes,
-                                     output, bench_root):
+def app_migrator_scan_donor_residue(context, site, donor, receiver, doctypes, output, bench_root):
     """Scan a donor app for vestiges of DocTypes migrated to a receiver app.
 
     Reports filesystem shadow folders, hooks.py references, utility modules,
@@ -74,12 +77,13 @@ def app_migrator_scan_donor_residue(context, site, donor, receiver, doctypes,
             click.secho(f"Error: receiver app not found at {receiver_root}", fg="red")
             raise click.Abort()
         moved = _find_moved_doctypes(donor_root, receiver_root)
-        moved_source = (f"auto-detected: {receiver} JSON + {donor} filesystem evidence")
+        moved_source = f"auto-detected: {receiver} JSON + {donor} filesystem evidence"
 
     moved_slugs = {dt.lower().replace(" ", "_") for dt in moved}
 
     # Build the report
     lines = []
+
     def emit(s=""):
         lines.append(s)
 
@@ -148,13 +152,16 @@ def app_migrator_scan_donor_residue(context, site, donor, receiver, doctypes,
     if output:
         Path(output).write_text(report)
         click.echo(f"Report written to {output}")
-        click.echo(f"\nSummary: {shadow_count} shadow / {hooks_count} hooks / "
-                   f"{utils_count} utils / {fixtures_count} fixture entries")
+        click.echo(
+            f"\nSummary: {shadow_count} shadow / {hooks_count} hooks / "
+            f"{utils_count} utils / {fixtures_count} fixture entries"
+        )
     else:
         click.echo(report)
 
 
 # ─── Scanners ───
+
 
 def _find_doctypes_in_app(app_root):
     """Auto-detect DocTypes by scanning <app>/<app>/**/doctype/<slug>/<slug>.json"""
@@ -206,10 +213,12 @@ def _scan_filesystem(donor_root, moved_slugs, bench_root, emit):
             has_canonical_json = (path / f"{slug}.json").exists()
             count += 1
             emit(f"\n  📁 {path.relative_to(bench_root)}")
-            emit(f"     __init__.py: {'YES' if has_init else 'no'}  "
-                 f"canonical .py: {'YES' if has_canonical_py else 'no'}  "
-                 f"canonical .json: {'YES' if has_canonical_json else 'no'}  "
-                 f"({len(files)} entries)")
+            emit(
+                f"     __init__.py: {'YES' if has_init else 'no'}  "
+                f"canonical .py: {'YES' if has_canonical_py else 'no'}  "
+                f"canonical .json: {'YES' if has_canonical_json else 'no'}  "
+                f"({len(files)} entries)"
+            )
             if not has_canonical_py and not has_canonical_json:
                 emit("     → SAFE TO DELETE (no canonical files, only backups)")
             else:
@@ -311,8 +320,7 @@ def _scan_fixtures(donor_root, moved, bench_root, emit):
             total += len(hits)
             emit(f"\n  📄 {fxf.relative_to(bench_root)} — {len(hits)} hit(s)")
             for key, dt, item in hits[:8]:
-                extra = (item.get("fieldname") or item.get("property")
-                         or item.get("name") or "")
+                extra = item.get("fieldname") or item.get("property") or item.get("name") or ""
                 emit(f"     {key}={dt!r:35}  {extra!r}")
             if len(hits) > 8:
                 emit(f"     ... and {len(hits) - 8} more")

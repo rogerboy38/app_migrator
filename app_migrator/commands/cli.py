@@ -7,10 +7,12 @@ import click
 # Add app_migrator to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+
 @click.group(help="Frappe Cloud App Migration Tools")
 def app_migrator():
     """Commands for analyzing and migrating Frappe Cloud applications."""
     pass
+
 
 # Import and register all command modules
 from . import analyze, api_keys, cloud_api, setup, site_api

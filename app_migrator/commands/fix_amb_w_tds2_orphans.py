@@ -7,9 +7,9 @@ import click
 import frappe
 
 
-@click.command('fix-amb-w-tds2')
-@click.option('--site', required=True, help='Site name')
-@click.option('--apply', is_flag=True, help='Apply fixes')
+@click.command("fix-amb-w-tds2")
+@click.option("--site", required=True, help="Site name")
+@click.option("--apply", is_flag=True, help="Apply fixes")
 def fix_amb_w_tds2(site, apply):
     """
     Fix amb_w_tds2 orphan module by reassigning doctypes to correct module
@@ -55,18 +55,16 @@ def fix_amb_w_tds2(site, apply):
 
         # Also check for any other doctypes in amb_w_tds2 module
         click.echo("\n🔍 CHECKING FOR OTHER DOCTYPES IN 'amb_w_tds2' MODULE:")
-        other_doctypes = frappe.get_all("DocType",
-            filters={"module": "amb_w_tds2"},
-            fields=["name"])
+        other_doctypes = frappe.get_all("DocType", filters={"module": "amb_w_tds2"}, fields=["name"])
 
         if other_doctypes:
             click.echo(f"   Found {len(other_doctypes)} doctypes in 'amb_w_tds2' module:")
             for dt in other_doctypes:
                 click.echo(f"     • {dt['name']}")
 
-                if dt['name'] not in problem_doctypes and not dry_run:
+                if dt["name"] not in problem_doctypes and not dry_run:
                     # Move them too
-                    dt_doc = frappe.get_doc("DocType", dt['name'])
+                    dt_doc = frappe.get_doc("DocType", dt["name"])
                     dt_doc.module = "Amb W Tds2"
                     dt_doc.save()
                     fixed_count += 1
@@ -84,6 +82,7 @@ def fix_amb_w_tds2(site, apply):
     except Exception as e:
         click.echo(f"❌ Error: {e}")
         frappe.destroy()
+
 
 if __name__ == "__main__":
     fix_amb_w_tds2()

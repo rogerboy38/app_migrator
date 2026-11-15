@@ -24,13 +24,15 @@ class AppDiscovery:
         if os.path.exists(self.apps_path):
             for item in os.listdir(self.apps_path):
                 app_path = os.path.join(self.apps_path, item)
-                if os.path.isdir(app_path) and not item.startswith('.'):
-                    apps.append({
-                        "name": item,
-                        "path": app_path,
-                        "type": "directory",
-                        "installed": self._check_app_installed(item)
-                    })
+                if os.path.isdir(app_path) and not item.startswith("."):
+                    apps.append(
+                        {
+                            "name": item,
+                            "path": app_path,
+                            "type": "directory",
+                            "installed": self._check_app_installed(item),
+                        }
+                    )
 
         # Method 2: Check Python packages
         python_apps = self._discover_python_apps()
@@ -44,6 +46,7 @@ class AppDiscovery:
         """Check if app is installed in current site"""
         try:
             import frappe
+
             installed_apps = frappe.get_installed_apps()
             return app_name in installed_apps
         except Exception:
@@ -66,19 +69,22 @@ class AppDiscovery:
             for path in sys.path:
                 if os.path.exists(path):
                     for item in os.listdir(path):
-                        if (item.endswith('.egg') or
-                            item.endswith('.egg-link') or
-                            os.path.isdir(os.path.join(path, item))):
-
+                        if (
+                            item.endswith(".egg")
+                            or item.endswith(".egg-link")
+                            or os.path.isdir(os.path.join(path, item))
+                        ):
                             # Try to extract app name
-                            app_name = item.replace('.egg', '').replace('.egg-link', '')
-                            if not app_name.startswith('_') and app_name not in ['bin', 'lib', 'include']:
-                                apps.append({
-                                    "name": app_name,
-                                    "path": os.path.join(path, item),
-                                    "type": "python_package",
-                                    "installed": True
-                                })
+                            app_name = item.replace(".egg", "").replace(".egg-link", "")
+                            if not app_name.startswith("_") and app_name not in ["bin", "lib", "include"]:
+                                apps.append(
+                                    {
+                                        "name": app_name,
+                                        "path": os.path.join(path, item),
+                                        "type": "python_package",
+                                        "installed": True,
+                                    }
+                                )
         except Exception as e:
             print(f"⚠️  Error discovering Python apps: {e}")
 
@@ -91,7 +97,7 @@ class AppDiscovery:
             "app_path": app_path,
             "valid": True,
             "issues": [],
-            "structure": {}
+            "structure": {},
         }
 
         required_files = ["__init__.py", "hooks.py", "modules.txt"]
@@ -152,21 +158,23 @@ class AppDiscovery:
             report.append(f"   🔧 Installed: {'✅' if app['installed'] else '❌'}")
 
             # Validate structure if it's a directory app
-            if app['type'] == 'directory':
-                validation = self.validate_app_structure(app['name'], app['path'])
+            if app["type"] == "directory":
+                validation = self.validate_app_structure(app["name"], app["path"])
                 report.append(f"   🏗️  Structure: {'✅ Valid' if validation['valid'] else '❌ Invalid'}")
 
-                if not validation['valid']:
+                if not validation["valid"]:
                     report.append("   ⚠️  Issues:")
-                    for issue in validation['issues']:
+                    for issue in validation["issues"]:
                         report.append(f"      - {issue}")
 
         return "\n".join(report)
+
 
 def discover_apps():
     """CLI command to discover apps"""
     discovery = AppDiscovery()
     print(discovery.generate_discovery_report())
+
 
 if __name__ == "__main__":
     discover_apps()

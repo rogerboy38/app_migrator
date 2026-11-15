@@ -15,16 +15,18 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
 
 from ._envelope import emit_envelope, make_envelope
 
 
-@click.command('app-migrator-scan')
-@click.option('--json', 'as_json', is_flag=True, help='Emit v0.5 envelope JSON (wraps the real scan result)')
-@click.option('--site', default=None, help='Site name (required)')
-@click.option('--output', '-o', help='Output JSON file (full scan result)')
+@click.command("app-migrator-scan")
+@click.option("--json", "as_json", is_flag=True, help="Emit v0.5 envelope JSON (wraps the real scan result)")
+@click.option("--site", default=None, help="Site name (required)")
+@click.option("--output", "-o", help="Output JSON file (full scan result)")
 @pass_context
 def app_migrator_scan(context, as_json, site, output):
     """Scan site for apps, doctypes, custom fields.
@@ -38,18 +40,22 @@ def app_migrator_scan(context, as_json, site, output):
     # error envelope (not a raw exit) so the envelope contract always holds.
     if not site:
         if as_json:
-            emit_envelope(make_envelope(
-                command="scan",
-                status="error",
-                summary="scan failed: no site (pass --site)",
-                findings=[{
-                    "id": "scan-no-site",
-                    "title": "No site specified",
-                    "severity": "high",
-                    "description": "scan requires --site to read apps/doctypes/custom fields.",
-                }],
-                start_time=start,
-            ))
+            emit_envelope(
+                make_envelope(
+                    command="scan",
+                    status="error",
+                    summary="scan failed: no site (pass --site)",
+                    findings=[
+                        {
+                            "id": "scan-no-site",
+                            "title": "No site specified",
+                            "severity": "high",
+                            "description": "scan requires --site to read apps/doctypes/custom fields.",
+                        }
+                    ],
+                    start_time=start,
+                )
+            )
         click.echo("Error: --site is required", err=True)
         sys.exit(2)
 
@@ -62,11 +68,11 @@ def app_migrator_scan(context, as_json, site, output):
         result = {
             "site": site,
             "timestamp": datetime.now().isoformat(),
-            "frappe_version": getattr(frappe, '__version__', 'unknown'),
+            "frappe_version": getattr(frappe, "__version__", "unknown"),
             "apps": frappe.get_installed_apps(),
             "doctypes": [],
             "custom_fields": [],
-            "summary": {}
+            "summary": {},
         }
 
         doctypes = frappe.get_all("DocType", fields=["name", "module", "custom", "istable"])
@@ -80,61 +86,71 @@ def app_migrator_scan(context, as_json, site, output):
             "doctypes": len(result["doctypes"]),
             "custom_doctypes": len([d for d in doctypes if d.custom]),
             "child_tables": len([d for d in doctypes if d.istable]),
-            "custom_fields": len(result["custom_fields"])
+            "custom_fields": len(result["custom_fields"]),
         }
 
         frappe.db.close()
     except Exception as e:
         if as_json:
-            emit_envelope(make_envelope(
-                command="scan",
-                status="error",
-                summary=f"scan failed: {type(e).__name__}",
-                findings=[{
-                    "id": "scan-error",
-                    "title": "Scan failed",
-                    "severity": "high",
-                    "description": str(e),
-                }],
-                site=site,
-                start_time=start,
-            ))
+            emit_envelope(
+                make_envelope(
+                    command="scan",
+                    status="error",
+                    summary=f"scan failed: {type(e).__name__}",
+                    findings=[
+                        {
+                            "id": "scan-error",
+                            "title": "Scan failed",
+                            "severity": "high",
+                            "description": str(e),
+                        }
+                    ],
+                    site=site,
+                    start_time=start,
+                )
+            )
         raise
 
     # Full result goes to --output regardless of mode.
     if output:
-        with open(output, 'w') as f:
+        with open(output, "w") as f:
             json.dump(result, f, indent=2)
 
     if as_json:
         s = result["summary"]
-        emit_envelope(make_envelope(
-            command="scan",
-            status="ok",
-            summary=(
-                f"scan completed: {s['apps']} apps, {s['doctypes']} doctypes "
-                f"({s['custom_doctypes']} custom, {s['child_tables']} child tables), "
-                f"{s['custom_fields']} custom fields"
-            ),
-            findings=[{
-                "id": "scan-summary",
-                "title": "Scan summary",
-                "severity": "info",
-                "description": (
-                    f"{s['apps']} apps / {s['doctypes']} doctypes / "
-                    f"{s['custom_doctypes']} custom / {s['child_tables']} child tables / "
+        emit_envelope(
+            make_envelope(
+                command="scan",
+                status="ok",
+                summary=(
+                    f"scan completed: {s['apps']} apps, {s['doctypes']} doctypes "
+                    f"({s['custom_doctypes']} custom, {s['child_tables']} child tables), "
                     f"{s['custom_fields']} custom fields"
                 ),
-            }],
-            evidence=[{"type": "scan_summary", "data": s}],
-            suggested_next_commands=[{
-                "command": "bench app-migrator diagnose <app> --json",
-                "approval_required": False,
-                "description": "Diagnose the scanned app.",
-            }],
-            site=site,
-            start_time=start,
-        ))
+                findings=[
+                    {
+                        "id": "scan-summary",
+                        "title": "Scan summary",
+                        "severity": "info",
+                        "description": (
+                            f"{s['apps']} apps / {s['doctypes']} doctypes / "
+                            f"{s['custom_doctypes']} custom / {s['child_tables']} child tables / "
+                            f"{s['custom_fields']} custom fields"
+                        ),
+                    }
+                ],
+                evidence=[{"type": "scan_summary", "data": s}],
+                suggested_next_commands=[
+                    {
+                        "command": "bench app-migrator diagnose <app> --json",
+                        "approval_required": False,
+                        "description": "Diagnose the scanned app.",
+                    }
+                ],
+                site=site,
+                start_time=start,
+            )
+        )
 
     # Non-JSON text display.
     print(f"🔍 Scanning site: {site}")

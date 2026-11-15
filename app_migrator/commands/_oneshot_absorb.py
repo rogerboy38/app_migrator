@@ -1,6 +1,7 @@
 """One-shot absorb helpers — production cleanup for the 5 stuck DocTypes.
 Run via: bench execute app_migrator.commands._oneshot_absorb.<func>
 """
+
 import json
 import shutil
 from datetime import datetime
@@ -8,9 +9,19 @@ from pathlib import Path
 
 import frappe
 
-INT_PROPS = {"in_list_view", "in_standard_filter", "reqd", "hidden",
-             "read_only", "bold", "translatable", "no_copy",
-             "print_hide", "report_hide", "allow_in_quick_entry"}
+INT_PROPS = {
+    "in_list_view",
+    "in_standard_filter",
+    "reqd",
+    "hidden",
+    "read_only",
+    "bold",
+    "translatable",
+    "no_copy",
+    "print_hide",
+    "report_hide",
+    "allow_in_quick_entry",
+}
 
 
 def _absorb(dt, json_path_str):
@@ -19,9 +30,7 @@ def _absorb(dt, json_path_str):
     print(f"  ABSORB: {dt}")
     print("=" * 75)
 
-    backup = JSON_PATH.with_suffix(
-        JSON_PATH.suffix + datetime.now().strftime(".bak_%Y%m%d_%H%M%S")
-    )
+    backup = JSON_PATH.with_suffix(JSON_PATH.suffix + datetime.now().strftime(".bak_%Y%m%d_%H%M%S"))
     shutil.copy2(JSON_PATH, backup)
     print(f"backup: {backup}")
 
@@ -34,7 +43,8 @@ def _absorb(dt, json_path_str):
     ps_rows = frappe.db.sql(
         "SELECT name, doctype_or_field, field_name, property, value "
         "FROM `tabProperty Setter` WHERE doc_type=%s",
-        dt, as_dict=True,
+        dt,
+        as_dict=True,
     )
     print(f"\nProcessing {len(ps_rows)} Property Setter row(s):")
 
@@ -79,7 +89,8 @@ def _absorb(dt, json_path_str):
         "reqd, in_list_view, depends_on, fetch_from, `default`, "
         "description, hidden, read_only "
         "FROM `tabCustom Field` WHERE dt=%s",
-        dt, as_dict=True,
+        dt,
+        as_dict=True,
     )
     print(f"\nProcessing {len(cf_rows)} Custom Field row(s):")
 
@@ -90,8 +101,17 @@ def _absorb(dt, json_path_str):
             cf_to_delete.append(cf.name)
             continue
         nf = {"fieldname": cf.fieldname, "label": cf.label, "fieldtype": cf.fieldtype}
-        for k in ["options", "reqd", "in_list_view", "depends_on", "fetch_from",
-                  "default", "description", "hidden", "read_only"]:
+        for k in [
+            "options",
+            "reqd",
+            "in_list_view",
+            "depends_on",
+            "fetch_from",
+            "default",
+            "description",
+            "hidden",
+            "read_only",
+        ]:
             v = cf.get(k)
             if v not in (None, "", 0):
                 nf[k] = v
@@ -150,6 +170,7 @@ def absorb_tds_settings():
 
 def verify_all_5():
     from frappe.model.base_document import import_controller
+
     targets = [
         "Container Barrels",
         "Batch Processing History",
@@ -163,10 +184,7 @@ def verify_all_5():
     print("=" * 95)
     rows_ok = 0
     for dt in targets:
-        row = frappe.db.sql(
-            "SELECT custom, app FROM tabDocType WHERE name=%s",
-            dt, as_dict=True
-        )
+        row = frappe.db.sql("SELECT custom, app FROM tabDocType WHERE name=%s", dt, as_dict=True)
         if not row:
             print(f"  {dt:30} (NOT FOUND IN DB)")
             continue
@@ -175,12 +193,11 @@ def verify_all_5():
         ps = frappe.db.count("Property Setter", {"doc_type": dt})
         ctrl = import_controller(dt)
         is_proper = ctrl.__module__ != "frappe.model.document"
-        is_ok = (r.custom == 0 and cf == 0 and ps == 0 and is_proper)
+        is_ok = r.custom == 0 and cf == 0 and ps == 0 and is_proper
         if is_ok:
             rows_ok += 1
         status = "OK" if is_ok else "FIX"
-        print(f"  {dt:30} {r.custom!s:4} {(r.app or '-'):12} {cf:>3} {ps:>3} "
-              f"{ctrl.__name__:30} {status}")
+        print(f"  {dt:30} {r.custom!s:4} {(r.app or '-'):12} {cf:>3} {ps:>3} {ctrl.__name__:30} {status}")
     print("=" * 95)
     print(f"\n  {rows_ok}/{len(targets)} DocTypes pass all checks")
 
@@ -211,6 +228,6 @@ def cleanup_and_export():
         "Batch AMB",
         "/home/frappe/frappe-bench/apps/amb_w_spc/amb_w_spc/sfc_manufacturing/doctype/batch_amb/batch_amb.json",
     )
-    print("\n" + "="*75)
+    print("\n" + "=" * 75)
     print("  All absorbs complete. Run bench export-fixtures next.")
-    print("="*75)
+    print("=" * 75)

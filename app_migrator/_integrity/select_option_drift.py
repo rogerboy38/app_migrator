@@ -32,6 +32,7 @@ it applies to ``Select`` fields only (a ``Link`` always constrains: its target
 records are the allowed set, and a stored link to a deleted record is drift
 even when the target holds no records at all).
 """
+
 from __future__ import annotations
 
 import re
@@ -189,12 +190,9 @@ def build_findings(
         app = str(entry.get("app") or "") or None
 
         if fieldtype == "Link":
-            problem = (
-                f"stores a link to a record that no longer exists ({', '.join(stored)})"
-            )
+            problem = f"stores a link to a record that no longer exists ({', '.join(stored)})"
             impact = (
-                "Frappe cannot resolve the link, so every non-cancel save of the "
-                "affected documents raises."
+                "Frappe cannot resolve the link, so every non-cancel save of the affected documents raises."
             )
         else:
             problem = (

@@ -13,11 +13,7 @@ class SSHManager:
 
     def check_ssh_status(self):
         """Check SSH key status and GitHub connectivity"""
-        status = {
-            "has_ssh_keys": False,
-            "github_connected": False,
-            "keys": []
-        }
+        status = {"has_ssh_keys": False, "github_connected": False, "keys": []}
 
         # Check for SSH keys
         key_patterns = ["id_ed25519", "id_rsa", "id_ecdsa", "id_dsa"]
@@ -27,11 +23,9 @@ class SSHManager:
 
             if private_key.exists() and public_key.exists():
                 status["has_ssh_keys"] = True
-                status["keys"].append({
-                    "type": pattern,
-                    "private": str(private_key),
-                    "public": str(public_key)
-                })
+                status["keys"].append(
+                    {"type": pattern, "private": str(private_key), "public": str(public_key)}
+                )
 
         # Test GitHub connection
         status["github_connected"] = self.test_github_connection()
@@ -46,12 +40,7 @@ class SSHManager:
             if key_path:
                 cmd = ["ssh", "-i", key_path, "-T", "git@github.com"]
 
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
 
             # GitHub returns success even with "Hi username!" message
             if result.returncode == 1 and "successfully authenticated" in result.stderr:
@@ -81,10 +70,14 @@ class SSHManager:
         # Create key
         cmd = [
             "ssh-keygen",
-            "-t", key_type,
-            "-C", f"{comment}-{subprocess.getoutput('date +%Y%m%d')}",
-            "-f", str(key_path),
-            "-N", ""  # No passphrase for automation
+            "-t",
+            key_type,
+            "-C",
+            f"{comment}-{subprocess.getoutput('date +%Y%m%d')}",
+            "-f",
+            str(key_path),
+            "-N",
+            "",  # No passphrase for automation
         ]
 
         try:
@@ -110,11 +103,7 @@ class SSHManager:
             subprocess.run(["ssh-add", "-l"], capture_output=True)
 
             # Add the key
-            result = subprocess.run(
-                ["ssh-add", key_path],
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run(["ssh-add", key_path], capture_output=True, text=True)
 
             if result.returncode == 0:
                 click.echo("✅ Added key to ssh-agent")
@@ -155,6 +144,7 @@ class SSHManager:
 
         # Copy private key
         import shutil
+
         shutil.copy2(source_key_path, target_key_path)
         os.chmod(target_key_path, 0o600)
 

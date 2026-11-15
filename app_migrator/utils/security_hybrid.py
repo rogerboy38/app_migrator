@@ -33,20 +33,20 @@ class APIManager:
             if self.config_file.exists():
                 with open(self.config_file) as f:
                     config = json.load(f)
-                    self._storage_method = config.get('storage_method', 'auto')
+                    self._storage_method = config.get("storage_method", "auto")
                     print(f"🔧 DEBUG: Loaded config, storage_method: {self._storage_method}")
             else:
-                self._storage_method = 'auto'
+                self._storage_method = "auto"
                 print("🔧 DEBUG: No config file, using auto")
         except Exception as e:
-            self._storage_method = 'auto'
+            self._storage_method = "auto"
             print(f"🔧 DEBUG: Config load error: {e}, using auto")
 
     def _save_config(self):
         """Save storage preference"""
         try:
-            config = {'storage_method': self._storage_method}
-            with open(self.config_file, 'w') as f:
+            config = {"storage_method": self._storage_method}
+            with open(self.config_file, "w") as f:
                 json.dump(config, f)
             os.chmod(self.config_file, 0o600)
             print(f"🔧 DEBUG: Saved config, storage_method: {self._storage_method}")
@@ -68,7 +68,7 @@ class APIManager:
         keyring_success = self._try_keyring_store(api_key)
 
         if keyring_success:
-            self._storage_method = 'keyring'
+            self._storage_method = "keyring"
             self._save_config()
             print("✅ API key stored in secure system keyring")
             return True
@@ -78,7 +78,7 @@ class APIManager:
         file_success = self._try_file_store(api_key)
 
         if file_success:
-            self._storage_method = 'file'
+            self._storage_method = "file"
             self._save_config()
             print(f"✅ API key stored in encrypted file: {self.storage_file}")
             return True
@@ -88,7 +88,7 @@ class APIManager:
         simple_success = self._try_simple_store(api_key)
 
         if simple_success:
-            self._storage_method = 'simple'
+            self._storage_method = "simple"
             self._save_config()
             print(f"⚠️  API key stored in plain file (less secure): {self.storage_dir}/api_keys.json")
             return True
@@ -104,11 +104,11 @@ class APIManager:
 
             # Check if keyring backend is available and working
             backend = keyring.get_keyring()
-            backend_name = backend.name if hasattr(backend, 'name') else str(backend)
+            backend_name = backend.name if hasattr(backend, "name") else str(backend)
             print(f"🔧 DEBUG: Keyring backend: {backend_name}")
 
             # Skip problematic backends
-            skip_backends = ['fail', 'null', 'plaintext']
+            skip_backends = ["fail", "null", "plaintext"]
             if any(skip in backend_name.lower() for skip in skip_backends):
                 print(f"🔧 DEBUG: Skipping problematic backend: {backend_name}")
                 return False
@@ -149,7 +149,7 @@ class APIManager:
             if self.storage_file.exists():
                 try:
                     print("🔧 DEBUG: Reading existing encrypted file...")
-                    with open(self.storage_file, 'rb') as f:
+                    with open(self.storage_file, "rb") as f:
                         file_data = f.read()
                     if file_data:
                         file_key = self._generate_file_key()
@@ -170,7 +170,7 @@ class APIManager:
             file_cipher = Fernet(file_key)
             encrypted_file = file_cipher.encrypt(json.dumps(data).encode())
 
-            with open(self.storage_file, 'wb') as f:
+            with open(self.storage_file, "wb") as f:
                 f.write(encrypted_file)
 
             os.chmod(self.storage_file, 0o600)
@@ -204,7 +204,7 @@ class APIManager:
             encoded = base64.b64encode(api_key.encode()).decode()
             data[bench_id] = encoded
 
-            with open(simple_file, 'w') as f:
+            with open(simple_file, "w") as f:
                 json.dump(data, f)
 
             os.chmod(simple_file, 0o600)
@@ -224,33 +224,33 @@ class APIManager:
             return self._current_key
 
         # Try methods in order of preference
-        if self._storage_method in ['keyring', 'auto']:
+        if self._storage_method in ["keyring", "auto"]:
             print("🔧 DEBUG: Trying keyring retrieval...")
             key = self._try_keyring_get()
             if key:
-                self._storage_method = 'keyring'
+                self._storage_method = "keyring"
                 self._current_key = key
                 print(f"🔧 DEBUG: Retrieved from keyring, length: {len(key)}")
                 return key
             else:
                 print("🔧 DEBUG: Keyring retrieval failed")
 
-        if self._storage_method in ['file', 'auto']:
+        if self._storage_method in ["file", "auto"]:
             print("🔧 DEBUG: Trying encrypted file retrieval...")
             key = self._try_file_get()
             if key:
-                self._storage_method = 'file'
+                self._storage_method = "file"
                 self._current_key = key
                 print(f"🔧 DEBUG: Retrieved from encrypted file, length: {len(key)}")
                 return key
             else:
                 print("🔧 DEBUG: Encrypted file retrieval failed")
 
-        if self._storage_method in ['simple', 'auto']:
+        if self._storage_method in ["simple", "auto"]:
             print("🔧 DEBUG: Trying simple file retrieval...")
             key = self._try_simple_get()
             if key:
-                self._storage_method = 'simple'
+                self._storage_method = "simple"
                 self._current_key = key
                 print(f"🔧 DEBUG: Retrieved from simple file, length: {len(key)}")
                 return key
@@ -264,6 +264,7 @@ class APIManager:
         """Try to get from keyring"""
         try:
             import keyring
+
             print("🔧 DEBUG: Getting from keyring...")
             key = keyring.get_password(self.service_name, self.username)
             if key:
@@ -283,7 +284,7 @@ class APIManager:
                 return None
 
             print("🔧 DEBUG: Reading encrypted file...")
-            with open(self.storage_file, 'rb') as f:
+            with open(self.storage_file, "rb") as f:
                 encrypted_file = f.read()
 
             if not encrypted_file:
@@ -371,8 +372,8 @@ class APIManager:
         # Common patterns: account:key or fc_ prefix or just a long string
 
         # Pattern 1: account:key (most common)
-        if ':' in api_key:
-            parts = api_key.split(':')
+        if ":" in api_key:
+            parts = api_key.split(":")
             if len(parts) == 2 and len(parts[1]) > 10:
                 account = parts[0]
                 print(f"🔧 DEBUG: Valid account:key format for account: {account}")
@@ -381,18 +382,18 @@ class APIManager:
                     "email": f"user@{account}.frappe.cloud",
                     "account": account,
                     "role": "full",
-                    "source": "format_validation"
+                    "source": "format_validation",
                 }
 
         # Pattern 2: fc_ prefix (legacy)
-        elif api_key.startswith('fc_') and len(api_key) > 20:
+        elif api_key.startswith("fc_") and len(api_key) > 20:
             print("🔧 DEBUG: Valid fc_ prefix format")
             return {
                 "status": "valid",
                 "email": "user@frappe.cloud",
                 "account": "frappe_cloud_user",
                 "role": "full",
-                "source": "fc_prefix"
+                "source": "fc_prefix",
             }
 
         # Pattern 3: Generic long key
@@ -403,7 +404,7 @@ class APIManager:
                 "email": "verified@frappe.cloud",
                 "account": "verified_account",
                 "role": "full",
-                "source": "length_validation"
+                "source": "length_validation",
             }
 
         # Pattern 4: Test key
@@ -414,7 +415,7 @@ class APIManager:
                 "email": "test@example.com",
                 "account": "test-account",
                 "role": "full",
-                "source": "test_key"
+                "source": "test_key",
             }
 
         print("🔧 DEBUG: Key validation failed - doesn't match any pattern")
@@ -427,12 +428,7 @@ class APIManager:
 
         if not api_key:
             print("🔧 DEBUG: No API key found")
-            return {
-                "status": "not_set",
-                "user": None,
-                "storage": "none",
-                "key_preview": None
-            }
+            return {"status": "not_set", "user": None, "storage": "none", "key_preview": None}
 
         validation = self.validate_api_key(api_key)
 
@@ -446,7 +442,7 @@ class APIManager:
                 "user": validation.get("email", "Verified User"),
                 "storage": self._storage_method or "unknown",
                 "key_preview": key_preview,
-                "source": validation.get("source", "unknown")
+                "source": validation.get("source", "unknown"),
             }
         else:
             print("🔧 DEBUG: Key is invalid")
@@ -454,7 +450,7 @@ class APIManager:
                 "status": "invalid",
                 "user": None,
                 "storage": self._storage_method or "unknown",
-                "key_preview": None
+                "key_preview": None,
             }
 
     def get_storage_info(self):
@@ -464,15 +460,16 @@ class APIManager:
             "method": self._storage_method or "auto",
             "keyring_available": False,
             "file_available": self.storage_file.exists(),
-            "simple_available": (self.storage_dir / "api_keys.json").exists()
+            "simple_available": (self.storage_dir / "api_keys.json").exists(),
         }
 
         # Check if keyring is available
         try:
             import keyring
+
             backend = keyring.get_keyring()
             info["keyring_available"] = True
-            info["keyring_backend"] = backend.name if hasattr(backend, 'name') else str(backend)
+            info["keyring_backend"] = backend.name if hasattr(backend, "name") else str(backend)
             print(f"🔧 DEBUG: Keyring available: {info['keyring_backend']}")
         except Exception as e:
             print(f"🔧 DEBUG: Keyring check failed: {e}")
@@ -518,6 +515,7 @@ class APIManager:
         print("🔧 DEBUG: Generated file key")
         return key
 
+
 class SecurityManager:
     @staticmethod
     def get_user_role(api_status):
@@ -550,7 +548,7 @@ class SecurityManager:
                 "push_changes": True,
                 "cross_bench_sync": True,
                 "automated_migration": True,
-            }
+            },
         }
         result = permissions.get(role, permissions["guest"])
         print(f"🔧 DEBUG: Permissions for {role}: {result}")

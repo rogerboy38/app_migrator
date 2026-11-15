@@ -9,6 +9,7 @@ touched in the same commit.
 The check is bench-free: these tests run with no Frappe and no ``bench``
 CLI, which is the point of placing them outside ``app_migrator/commands/``.
 """
+
 from __future__ import annotations
 
 from conftest import FakeApp, finding_ids, run_check
@@ -136,10 +137,12 @@ def test_single_copy_is_not_reported(apps_root, inventory):
 
 def test_same_module_in_two_apps_is_not_a_duplicate(apps_root, inventory):
     """Two apps may both ship an ``api`` package — that is not a duplicate."""
-    root = apps_root([
-        FakeApp(name="app_a", python_files={"api/__init__.py": "", "api/x.py": "X\n"}),
-        FakeApp(name="app_b", python_files={"api/__init__.py": "", "api/x.py": "X\n"}),
-    ])
+    root = apps_root(
+        [
+            FakeApp(name="app_a", python_files={"api/__init__.py": "", "api/x.py": "X\n"}),
+            FakeApp(name="app_b", python_files={"api/__init__.py": "", "api/x.py": "X\n"}),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert result.findings == [], finding_ids(result)
     assert result.stats["duplicate_modules"] == 0
@@ -152,16 +155,18 @@ def test_file_missing_from_one_copy_is_high(apps_root, inventory):
     not. Which copy is imported decides whether that file exists at all, so
     the pair is ``high``.
     """
-    root = apps_root([
-        FakeApp(
-            name="amb_w_tds",
-            python_files={
-                "api/__init__.py": "",
-                "api/batch_api.py": "PACKAGE VERSION\n",
-                "../api/__init__.py": "",
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_tds",
+                python_files={
+                    "api/__init__.py": "",
+                    "api/batch_api.py": "PACKAGE VERSION\n",
+                    "../api/__init__.py": "",
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]
@@ -179,17 +184,19 @@ def test_file_missing_from_one_copy_is_high(apps_root, inventory):
 
 def test_nested_module_suffix_is_reported(apps_root, inventory):
     """A duplicated nested package is the same defect, one level deeper."""
-    root = apps_root([
-        FakeApp(
-            name="amb_w_tds",
-            python_files={
-                "doctype/item/__init__.py": "",
-                "doctype/item/item.py": "ITEM\n",
-                "../doctype/item/__init__.py": "",
-                "../doctype/item/item.py": "DIVERGED ITEM\n",
-            },
-        ),
-    ])
+    root = apps_root(
+        [
+            FakeApp(
+                name="amb_w_tds",
+                python_files={
+                    "doctype/item/__init__.py": "",
+                    "doctype/item/item.py": "ITEM\n",
+                    "../doctype/item/__init__.py": "",
+                    "../doctype/item/item.py": "DIVERGED ITEM\n",
+                },
+            ),
+        ]
+    )
     result = run_check(CHECK_ID, inventory(root))
     assert len(result.findings) == 1, finding_ids(result)
     finding = result.findings[0]

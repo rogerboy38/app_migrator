@@ -7,9 +7,9 @@ import click
 import frappe
 
 
-@click.command('fix-orphan-modules')
-@click.option('--site', required=True, help='Site name')
-@click.option('--apply', is_flag=True, help='Apply fixes')
+@click.command("fix-orphan-modules")
+@click.option("--site", required=True, help="Site name")
+@click.option("--apply", is_flag=True, help="Apply fixes")
 def fix_orphan_modules(site, apply):
     """
     Fix orphan modules by reassigning doctypes to correct modules
@@ -30,7 +30,7 @@ def fix_orphan_modules(site, apply):
         module_remappings = {
             # Module in DB -> Should be (based on apps/modules.txt)
             "amb_w_tds2": "Amb W Tds2",  # Should match modules.txt
-            "RND": "RND Nutrition",      # Likely should be RND Nutrition
+            "RND": "RND Nutrition",  # Likely should be RND Nutrition
             "RND Nutrition": "RND Nutrition",  # Already correct, just ensure
         }
 
@@ -43,9 +43,7 @@ def fix_orphan_modules(site, apply):
                 continue
 
             # Get doctypes in this module
-            doctypes = frappe.get_all("DocType",
-                filters={"module": old_module},
-                fields=["name", "custom"])
+            doctypes = frappe.get_all("DocType", filters={"module": old_module}, fields=["name", "custom"])
 
             if not doctypes:
                 click.echo(f"📋 Module '{old_module}' has no doctypes")
@@ -97,7 +95,9 @@ def fix_orphan_modules(site, apply):
 
                 if target_module and target_module != current_module:
                     if dry_run:
-                        click.echo(f"   📝 Would fix: {doctype_name} ('{current_module}' → '{target_module}')")
+                        click.echo(
+                            f"   📝 Would fix: {doctype_name} ('{current_module}' → '{target_module}')"
+                        )
                     else:
                         dt.module = target_module
                         dt.save()
@@ -118,6 +118,7 @@ def fix_orphan_modules(site, apply):
     except Exception as e:
         click.echo(f"❌ Error: {e}")
         frappe.destroy()
+
 
 if __name__ == "__main__":
     fix_orphan_modules()

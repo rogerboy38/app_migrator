@@ -1,6 +1,7 @@
 """
 Analyze apps in current bench
 """
+
 import json
 import os
 from pathlib import Path
@@ -9,9 +10,9 @@ import click
 
 
 @click.command()
-@click.option('--output', '-o', help='Output file (JSON format)')
-@click.option('--detailed', '-d', is_flag=True, help='Show detailed analysis')
-@click.option('--test', is_flag=True, help='Test mode')
+@click.option("--output", "-o", help="Output file (JSON format)")
+@click.option("--detailed", "-d", is_flag=True, help="Show detailed analysis")
+@click.option("--test", is_flag=True, help="Test mode")
 @click.pass_context
 def analyze_apps(ctx, output, detailed, test):
     """Analyze all apps in current bench"""
@@ -28,7 +29,7 @@ def analyze_apps(ctx, output, detailed, test):
     bench_root = current_path
 
     # If we're in sites directory, go up one level
-    if current_path.endswith('/sites'):
+    if current_path.endswith("/sites"):
         bench_root = os.path.dirname(current_path)
 
     apps_path = os.path.join(bench_root, "apps")
@@ -59,7 +60,7 @@ def analyze_apps(ctx, output, detailed, test):
             "bench": os.path.basename(bench_root),
             "path": apps_path,
             "total_apps": total_apps,
-            "apps": []
+            "apps": [],
         }
 
         click.echo(f"🔍 Found {total_apps} apps")
@@ -85,6 +86,7 @@ def analyze_apps(ctx, output, detailed, test):
                     with open(setup_py) as f:
                         content = f.read()
                         import re
+
                         version_match = re.search(r"version\s*=\s*['\"]([^'\"]+)['\"]", content)
                         if version_match:
                             version = version_match.group(1)
@@ -97,15 +99,15 @@ def analyze_apps(ctx, output, detailed, test):
             if app_info["has_git"]:
                 try:
                     import subprocess
+
                     # Get git remote
                     result = subprocess.run(
-                        ["git", "remote", "-v"],
-                        cwd=app_path,
-                        capture_output=True,
-                        text=True
+                        ["git", "remote", "-v"], cwd=app_path, capture_output=True, text=True
                     )
                     if result.stdout:
-                        app_info["git_remote"] = result.stdout.strip().split('\n')[0] if result.stdout else "no remote"
+                        app_info["git_remote"] = (
+                            result.stdout.strip().split("\n")[0] if result.stdout else "no remote"
+                        )
                 except Exception:
                     app_info["git_remote"] = "error"
 
@@ -133,7 +135,7 @@ def analyze_apps(ctx, output, detailed, test):
 
         # Save to file if requested
         if output:
-            with open(output, 'w') as f:
+            with open(output, "w") as f:
                 json.dump(analysis_results, f, indent=2)
             click.echo(f"✅ Analysis saved to: {output}")
 
@@ -141,8 +143,9 @@ def analyze_apps(ctx, output, detailed, test):
         click.echo()
         click.echo("💡 RECOMMENDATIONS:")
 
-        non_git_apps = [app["name"] for app in analysis_results["apps"]
-                       if not app["is_core"] and not app["has_git"]]
+        non_git_apps = [
+            app["name"] for app in analysis_results["apps"] if not app["is_core"] and not app["has_git"]
+        ]
 
         if non_git_apps:
             click.echo(f"   ⚠️  {len(non_git_apps)} custom apps without Git:")
@@ -160,4 +163,5 @@ def analyze_apps(ctx, output, detailed, test):
     except Exception as e:
         click.echo(f"❌ Analysis error: {e}")
         import traceback
+
         traceback.print_exc()

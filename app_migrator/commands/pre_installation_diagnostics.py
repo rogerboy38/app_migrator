@@ -15,7 +15,8 @@ class PreInstallationAnalyzer:
 
     def __init__(self):
         import os
-        self.bench_path = os.getenv('BENCH_PATH', os.path.expanduser('~/frappe-bench'))
+
+        self.bench_path = os.getenv("BENCH_PATH", os.path.expanduser("~/frappe-bench"))
         self.checks_performed = []
 
     def auto_fix_app_structure(self, app_path: str) -> dict[str, Any]:
@@ -26,14 +27,14 @@ class PreInstallationAnalyzer:
         # Fix 1: Create __init__.py if missing
         init_file = os.path.join(app_path, "__init__.py")
         if not os.path.exists(init_file):
-            with open(init_file, 'w') as f:
+            with open(init_file, "w") as f:
                 f.write(f'# {app_name} app\n__version__ = "1.0.0"\n')
             fixes_applied.append("Created __init__.py")
 
         # Fix 2: Create hooks.py if missing
         hooks_file = os.path.join(app_path, "hooks.py")
         if not os.path.exists(hooks_file):
-            with open(hooks_file, 'w') as f:
+            with open(hooks_file, "w") as f:
                 f.write(f'''app_name = "{app_name}"
 app_title = "{app_name.title()}"
 app_publisher = "Your Name"
@@ -49,15 +50,11 @@ required_apps = ["frappe"]
         # Fix 3: Create modules.txt if missing
         modules_file = os.path.join(app_path, "modules.txt")
         if not os.path.exists(modules_file):
-            with open(modules_file, 'w') as f:
+            with open(modules_file, "w") as f:
                 f.write(f"{app_name.title()}\n")
             fixes_applied.append("Created modules.txt")
 
-        return {
-            "fixes_applied": fixes_applied,
-            "app_name": app_name,
-            "app_path": app_path
-        }
+        return {"fixes_applied": fixes_applied, "app_name": app_name, "app_path": app_path}
 
     def analyze_app_health(self, app_path: str) -> dict[str, Any]:
         """
@@ -77,7 +74,7 @@ required_apps = ["frappe"]
             "dependency_check": self.check_dependencies(app_path),
             "installation_blockers": self.diagnose_installation_blockers(app_path),
             "health_score": 0,
-            "fix_recommendations": []
+            "fix_recommendations": [],
         }
 
         # Calculate health score
@@ -101,7 +98,7 @@ required_apps = ["frappe"]
             "checks": checks,
             "passed_checks": sum(checks.values()),
             "total_checks": len(checks),
-            "structure_score": int((sum(checks.values()) / len(checks)) * 100)
+            "structure_score": int((sum(checks.values()) / len(checks)) * 100),
         }
 
     def analyze_hook_files(self, app_path: str) -> dict[str, Any]:
@@ -110,7 +107,7 @@ required_apps = ["frappe"]
             "hooks_file_exists": False,
             "hooks_file_path": "",
             "required_variables": {},
-            "hooks_valid": False
+            "hooks_valid": False,
         }
 
         hooks_file = os.path.join(app_path, "hooks.py")
@@ -127,7 +124,7 @@ required_apps = ["frappe"]
                     "app_name": "app_name" in content,
                     "app_title": "app_title" in content,
                     "app_publisher": "app_publisher" in content,
-                    "app_description": "app_description" in content
+                    "app_description": "app_description" in content,
                 }
 
                 hooks_analysis["required_variables"] = required_vars
@@ -169,7 +166,7 @@ required_apps = ["frappe"]
             "dependencies_found": False,
             "dependency_sources": [],
             "dependencies": [],
-            "potential_issues": []
+            "potential_issues": [],
         }
 
         # Check requirements.txt
@@ -178,7 +175,9 @@ required_apps = ["frappe"]
             dependency_analysis["dependency_sources"].append("requirements.txt")
             try:
                 with open(requirements_path) as f:
-                    deps = [line.strip() for line in f.readlines() if line.strip() and not line.startswith('#')]
+                    deps = [
+                        line.strip() for line in f.readlines() if line.strip() and not line.startswith("#")
+                    ]
                 dependency_analysis["dependencies"].extend(deps)
             except Exception:
                 pass
@@ -276,7 +275,7 @@ required_apps = ["frappe"]
             "has_pyproject_toml": False,
             "has_nested_package": False,
             "detected_modules": [],
-            "app_metadata": {}
+            "app_metadata": {},
         }
 
         # Check for modern indicators
@@ -285,7 +284,9 @@ required_apps = ["frappe"]
         nested_package_path = os.path.join(app_path, app_name)
 
         analysis["has_pyproject_toml"] = os.path.exists(pyproject_path)
-        analysis["has_nested_package"] = os.path.exists(nested_package_path) and os.path.exists(os.path.join(nested_package_path, "__init__.py"))
+        analysis["has_nested_package"] = os.path.exists(nested_package_path) and os.path.exists(
+            os.path.join(nested_package_path, "__init__.py")
+        )
         analysis["is_modern_structure"] = analysis["has_pyproject_toml"] or analysis["has_nested_package"]
 
         if analysis["is_modern_structure"]:
@@ -310,16 +311,18 @@ required_apps = ["frappe"]
             for root, _dirs, files in os.walk(nested_app_path):
                 if "__init__.py" in files:
                     rel_path = os.path.relpath(root, app_path)
-                    module_name = rel_path.replace('/', '.')
-                    if module_name != '.':
+                    module_name = rel_path.replace("/", ".")
+                    if module_name != ".":
                         modules.append(module_name)
 
         # Also check for traditional modules in root
         for item in os.listdir(app_path):
             item_path = os.path.join(app_path, item)
-            if (os.path.isdir(item_path) and
-                os.path.exists(os.path.join(item_path, "__init__.py")) and
-                item != app_name):  # Avoid duplicating the nested package
+            if (
+                os.path.isdir(item_path)
+                and os.path.exists(os.path.join(item_path, "__init__.py"))
+                and item != app_name
+            ):  # Avoid duplicating the nested package
                 modules.append(f"{app_name}.{item}")
 
         return list(set(modules))  # Remove duplicates
@@ -333,27 +336,33 @@ required_apps = ["frappe"]
         if os.path.exists(pyproject_path):
             try:
                 import tomli
-                with open(pyproject_path, 'rb') as f:
+
+                with open(pyproject_path, "rb") as f:
                     data = tomli.load(f)
 
-                if 'project' in data:
-                    project = data['project']
-                    metadata.update({
-                        'app_name': project.get('name', ''),
-                        'app_title': project.get('name', '').title(),
-                        'app_description': project.get('description', ''),
-                        'app_publisher': ', '.join([author.get('name', '') for author in project.get('authors', [])]),
-                        'dependencies': project.get('dependencies', [])
-                    })
+                if "project" in data:
+                    project = data["project"]
+                    metadata.update(
+                        {
+                            "app_name": project.get("name", ""),
+                            "app_title": project.get("name", "").title(),
+                            "app_description": project.get("description", ""),
+                            "app_publisher": ", ".join(
+                                [author.get("name", "") for author in project.get("authors", [])]
+                            ),
+                            "dependencies": project.get("dependencies", []),
+                        }
+                    )
             except ImportError:
                 # Fallback: simple string parsing
                 with open(pyproject_path) as f:
                     content = f.read()
                     if 'name = "' in content:
                         import re
+
                         name_match = re.search(r'name\s*=\s*"([^"]+)"', content)
                         if name_match:
-                            metadata['app_name'] = name_match.group(1)
+                            metadata["app_name"] = name_match.group(1)
             except Exception:
                 pass
 
@@ -368,8 +377,9 @@ required_apps = ["frappe"]
             **basic_analysis,
             "modern_structure_detected": modern_analysis["is_modern_structure"],
             "modern_modules_detected": modern_analysis["detected_modules"],
-            "total_modules_detected": len(basic_analysis["modules_list"]) + len(modern_analysis["detected_modules"]),
-            "app_metadata": modern_analysis["app_metadata"]
+            "total_modules_detected": len(basic_analysis["modules_list"])
+            + len(modern_analysis["detected_modules"]),
+            "app_metadata": modern_analysis["app_metadata"],
         }
 
         return enhanced_analysis

@@ -35,6 +35,7 @@ The comparison is module code only (``.py`` files). Content folders such as
 the scan, so the developer handouts that live in the repo-root ``scripts/``
 folder never show up as a "duplicated module".
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -53,9 +54,21 @@ PACKAGE_MARKER = "__init__.py"
 #: Directories that hold app content, not importable module code. They are
 #: never treated as a copy of a module and never descended into.
 NON_MODULE_DIRS = {
-    "scripts", "docs", "test", "tests", "fixtures", "patches", "migrations",
-    "templates", "public", "www", "locale", "config",
-    "node_modules", "__pycache__", ".git",
+    "scripts",
+    "docs",
+    "test",
+    "tests",
+    "fixtures",
+    "patches",
+    "migrations",
+    "templates",
+    "public",
+    "www",
+    "locale",
+    "config",
+    "node_modules",
+    "__pycache__",
+    ".git",
 }
 
 #: Every directory name the scan never descends into.
@@ -75,10 +88,7 @@ def _is_inside(parent: str, child: str) -> bool:
 
 def _holds_app_content(dirpath: str) -> bool:
     """True when ``dirpath`` holds the app's real content (``doctype/``/``fixtures/``)."""
-    return (
-        os.path.isdir(os.path.join(dirpath, "doctype"))
-        or os.path.isdir(os.path.join(dirpath, "fixtures"))
-    )
+    return os.path.isdir(os.path.join(dirpath, "doctype")) or os.path.isdir(os.path.join(dirpath, "fixtures"))
 
 
 def _module_root(app: Any) -> str:
@@ -237,13 +247,15 @@ def _compare_copies(copies_abs: list[str], display: dict[str, str]) -> dict[str,
         present = [abs_path for abs_path in copies_abs if name in per_copy[abs_path]]
         digests = {display[abs_path]: per_copy[abs_path].get(name) for abs_path in copies_abs}
         if len(present) != len(copies_abs):
-            one_sided.append({
-                "file": name,
-                "present_in": sorted(display[abs_path] for abs_path in present),
-                "missing_from": sorted(
-                    display[abs_path] for abs_path in copies_abs if abs_path not in present
-                ),
-            })
+            one_sided.append(
+                {
+                    "file": name,
+                    "present_in": sorted(display[abs_path] for abs_path in present),
+                    "missing_from": sorted(
+                        display[abs_path] for abs_path in copies_abs if abs_path not in present
+                    ),
+                }
+            )
             diverged.append({"file": name, "sha256": digests})
             continue
         values = set(digests.values())

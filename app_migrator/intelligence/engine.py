@@ -20,6 +20,7 @@ from each source pattern's ``risk_score`` via the L380 4-layer mapping:
 Each pattern's ``detect(content: str) -> bool`` lets the data-quality / preflight
 layers match a source blob against the pattern without re-deriving the signature.
 """
+
 from __future__ import annotations
 
 import re
@@ -192,10 +193,17 @@ class MigrationIntelligence:
                 "risk_score": 0.6,
                 "auto_fix_available": False,
                 "severity": severity_for_risk(0.6),
-                "detect": _regex_detector([
-                    r"payment.*gateway", r"gateway.*payment",
-                    r"stripe", r"razorpay", r"paypal", r"mpesa", r"braintree",
-                ]),
+                "detect": _regex_detector(
+                    [
+                        r"payment.*gateway",
+                        r"gateway.*payment",
+                        r"stripe",
+                        r"razorpay",
+                        r"paypal",
+                        r"mpesa",
+                        r"braintree",
+                    ]
+                ),
             },
             {
                 "id": "hardcoded_secrets",
@@ -216,9 +224,13 @@ class MigrationIntelligence:
                 "risk_score": 0.95,
                 "auto_fix_available": False,
                 "severity": severity_for_risk(0.95),
-                "detect": _regex_detector([
-                    r"sk_[\w]+", r"rzp_[\w]+", r"AKIA[0-9A-Z]{16}",
-                ]),
+                "detect": _regex_detector(
+                    [
+                        r"sk_[\w]+",
+                        r"rzp_[\w]+",
+                        r"AKIA[0-9A-Z]{16}",
+                    ]
+                ),
             },
             {
                 "id": "webhook_dependency",
@@ -234,9 +246,13 @@ class MigrationIntelligence:
                 "risk_score": 0.5,
                 "auto_fix_available": False,
                 "severity": severity_for_risk(0.5),
-                "detect": _regex_detector([
-                    r"webhook_url", r"callback_url", r"webhook",
-                ]),
+                "detect": _regex_detector(
+                    [
+                        r"webhook_url",
+                        r"callback_url",
+                        r"webhook",
+                    ]
+                ),
             },
             {
                 "id": "encryption_compatibility",
@@ -252,9 +268,14 @@ class MigrationIntelligence:
                 "risk_score": 0.5,
                 "auto_fix_available": False,
                 "severity": severity_for_risk(0.5),
-                "detect": _regex_detector([
-                    r"encrypt\(", r"decrypt\(", r"cryptography", r"fernet",
-                ]),
+                "detect": _regex_detector(
+                    [
+                        r"encrypt\(",
+                        r"decrypt\(",
+                        r"cryptography",
+                        r"fernet",
+                    ]
+                ),
             },
             {
                 "id": "frappe_cloud_dependency",
@@ -278,9 +299,13 @@ class MigrationIntelligence:
                 "risk_score": 0.55,
                 "auto_fix_available": False,
                 "severity": severity_for_risk(0.55),
-                "detect": _regex_detector([
-                    r"FRAPPE_CLOUD_API_KEY", r"frappe_cloud_session",
-                    r"press\.api", r"fc_(test|dev)_key_",
-                ]),
+                "detect": _regex_detector(
+                    [
+                        r"FRAPPE_CLOUD_API_KEY",
+                        r"frappe_cloud_session",
+                        r"press\.api",
+                        r"fc_(test|dev)_key_",
+                    ]
+                ),
             },
         ]

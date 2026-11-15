@@ -13,9 +13,9 @@ import click
 import frappe
 
 
-@click.command('fix-alexa-orphan')
-@click.option('--site', required=True, help='Site name')
-@click.option('--apply', is_flag=True, help='Apply fixes')
+@click.command("fix-alexa-orphan")
+@click.option("--site", required=True, help="Site name")
+@click.option("--apply", is_flag=True, help="Apply fixes")
 def fix_alexa_orphan(site, apply):
     """
     Fix specific orphan doctype: Alexa User Mapping
@@ -53,13 +53,13 @@ def fix_alexa_orphan(site, apply):
         potential_matches = []
 
         # 1. Check for 'Raven' related modules
-        raven_modules = [m for m in module_names if 'raven' in m.lower()]
+        raven_modules = [m for m in module_names if "raven" in m.lower()]
         if raven_modules:
             click.echo(f"🔍 Raven-related modules: {raven_modules}")
             potential_matches.extend(raven_modules)
 
         # 2. Check for 'AI' or 'Agent' related modules
-        ai_modules = [m for m in module_names if any(word in m.lower() for word in ['ai', 'agent', 'alexa'])]
+        ai_modules = [m for m in module_names if any(word in m.lower() for word in ["ai", "agent", "alexa"])]
         if ai_modules:
             click.echo(f"🤖 AI/Agent-related modules: {ai_modules}")
             potential_matches.extend(ai_modules)
@@ -80,7 +80,7 @@ def fix_alexa_orphan(site, apply):
             "Raven AI Agent",  # Most likely correct
             "raven_ai_agent",  # snake_case version
             "Raven Ai Agent",  # Current (wrong case)
-            "Raven",           # Parent module
+            "Raven",  # Parent module
         ]
 
         for candidate in target_module_candidates:
@@ -105,9 +105,9 @@ def fix_alexa_orphan(site, apply):
                 click.echo(f"✅ Fixed: {doctype_name} ('{current_module}' → '{best_match}')")
 
                 # Also check if there are custom fields to update
-                custom_fields = frappe.get_all("Custom Field",
-                    filters={"dt": doctype_name},
-                    fields=["fieldname", "name"])
+                custom_fields = frappe.get_all(
+                    "Custom Field", filters={"dt": doctype_name}, fields=["fieldname", "name"]
+                )
 
                 if custom_fields:
                     click.echo(f"📝 Also updated {len(custom_fields)} custom fields")
@@ -118,7 +118,7 @@ def fix_alexa_orphan(site, apply):
         orphan_custom_fields = [
             {"dt": "COA AMB2", "field": "workflow_state"},
             {"dt": "Freight Location", "field": "custom_freight_cost_amb"},
-            {"dt": "Freight Location", "field": "custom_lead_time_to_delivery"}
+            {"dt": "Freight Location", "field": "custom_lead_time_to_delivery"},
         ]
 
         for cf_info in orphan_custom_fields:
@@ -154,8 +154,10 @@ def fix_alexa_orphan(site, apply):
     except Exception as e:
         click.echo(f"❌ Error: {e}")
         import traceback
+
         traceback.print_exc()
         frappe.destroy()
+
 
 if __name__ == "__main__":
     fix_alexa_orphan()

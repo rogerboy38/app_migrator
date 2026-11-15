@@ -63,7 +63,7 @@ class UltimateBootFixer:
                             content = f.read()
 
                         # Remove if it references any nutrition apps
-                        if any(app in content for app in ['rnd_nutrition', 'nutrition']):
+                        if any(app in content for app in ["rnd_nutrition", "nutrition"]):
                             pth_file.unlink()
                             fixes.append(f"Removed {pth_file}")
                             print(f"      ✅ Removed: {pth_file}")
@@ -117,13 +117,13 @@ class UltimateBootFixer:
 
             # Remove default_site and serve_default_site
             original_config = config.copy()
-            if 'default_site' in config:
-                del config['default_site']
-            if 'serve_default_site' in config:
-                del config['serve_default_site']
+            if "default_site" in config:
+                del config["default_site"]
+            if "serve_default_site" in config:
+                del config["serve_default_site"]
 
             if config != original_config:
-                with open(common_config, 'w') as f:
+                with open(common_config, "w") as f:
                     json.dump(config, f, indent=2)
                 fixes.append("Reset common_site_config.json")
 
@@ -141,9 +141,7 @@ class UltimateBootFixer:
 
             # Install Frappe in development mode
             result = subprocess.run(
-                ["./env/bin/pip", "install", "-e", "apps/frappe"],
-                capture_output=True,
-                text=True
+                ["./env/bin/pip", "install", "-e", "apps/frappe"], capture_output=True, text=True
             )
 
             if result.returncode == 0:
@@ -166,6 +164,7 @@ class UltimateBootFixer:
         try:
             # Clear importlib caches
             import importlib
+
             importlib.invalidate_caches()
             fixes.append("Cleared Python import caches")
         except Exception:
@@ -184,7 +183,7 @@ class UltimateBootFixer:
                 cwd=self.bench_path,
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
             )
 
             if result.returncode == 0:
@@ -200,6 +199,7 @@ class UltimateBootFixer:
         except Exception as e:
             print(f"      ❌ Bench helper error: {e}")
             return False
+
 
 def main():
     """CLI entry point"""
@@ -227,13 +227,14 @@ def main():
             print("✅ No fixes needed")
 
         # Test the fix
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         success = fixer.test_boot_fix()
 
         if success:
             print("🎉 ULTIMATE BOOT FIX COMPLETED SUCCESSFULLY!")
         else:
             print("⚠️  Boot issues may still exist, but significant improvements made")
+
 
 if __name__ == "__main__":
     main()

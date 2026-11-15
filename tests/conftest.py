@@ -14,12 +14,12 @@ Provides:
 - require_app_migrator: opt-in fixture that skips if scaffold not built yet.
 - autouse bench-on-PATH guard: skip whole session if `bench` CLI not available.
 """
+
 import os
 import shutil
 from pathlib import Path
 
 import pytest
-
 
 # Per v0.5 coverage-map design principle: "tests skip gracefully if phase not built yet".
 # Without this guard, every test hard-fails on missing scaffold.
@@ -43,8 +43,9 @@ def pytest_configure(config):
 def _require_bench_on_path():
     """Skip any test if `bench` CLI is not on PATH (Windows host, etc.)."""
     if shutil.which("bench") is None:
-        pytest.skip("`bench` CLI not on PATH (tests target VM2 substrate; "
-                    "run pytest inside the VM2 bench container)")
+        pytest.skip(
+            "`bench` CLI not on PATH (tests target VM2 substrate; run pytest inside the VM2 bench container)"
+        )
 
 
 def _resolve_bench_cwd():
@@ -62,6 +63,7 @@ def _resolve_bench_cwd():
 def bench_cwd():
     """Session-scoped: the bench install dir to cd into before `bench ...`."""
     return _resolve_bench_cwd()
+
 
 @pytest.fixture(scope="session")
 def app_migrator_root():
@@ -85,11 +87,14 @@ def skills_dir(app_migrator_root):
 def require_app_migrator(app_migrator_root):
     """Skip if the scaffold doesn't exist yet (per coverage-map: skip gracefully)."""
     if not app_migrator_root.exists():
-        pytest.skip(f"app_migrator scaffold not built at {app_migrator_root} "
-                    f"(set APP_MIGRATOR_ROOT env var to override)")
+        pytest.skip(
+            f"app_migrator scaffold not built at {app_migrator_root} "
+            f"(set APP_MIGRATOR_ROOT env var to override)"
+        )
 
 
 # ---------- Verifier T-VERIFY-002 probe (a): conftest env-var actually drives path ----------
+
 
 def test_app_migrator_root_env_var_override(monkeypatch, app_migrator_root_factory):
     """Verify APP_MIGRATOR_ROOT env var actually drives path resolution.
@@ -114,6 +119,7 @@ def test_app_migrator_root_default_when_env_var_unset(monkeypatch, app_migrator_
 
 
 # ---------- Verifier T-VERIFY-002 boundary check: corrupt SQLite sessions DB ----------
+
 
 def test_sessions_persistence_corrupt_db_skipped(app_migrator_root, tmp_path):
     """If sessions.sqlite3 exists but is corrupt, test_sessions_persistence_sqlite must skip cleanly.

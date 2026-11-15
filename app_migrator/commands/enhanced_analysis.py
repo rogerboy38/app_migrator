@@ -35,7 +35,7 @@ def analyze_app_comprehensive_modern(source_app: str, detailed: bool = False) ->
         "health_score": health_analysis.get("health_score", 0),
         "structure_validation": health_analysis.get("structure_validation", {}),
         "installation_blockers": health_analysis.get("installation_blockers", []),
-        "dependencies": app_metadata.get("dependencies", [])
+        "dependencies": app_metadata.get("dependencies", []),
     }
 
     # Display results
@@ -53,7 +53,7 @@ def analyze_app_comprehensive_modern(source_app: str, detailed: bool = False) ->
         print(f"  • Health Score: {health_analysis.get('health_score', 0)}%")
 
     print(f"\n🔧 INSTALLATION BLOCKERS: {len(health_analysis.get('installation_blockers', []))}")
-    for blocker in health_analysis.get('installation_blockers', [])[:5]:
+    for blocker in health_analysis.get("installation_blockers", [])[:5]:
         print(f"  • {blocker}")
 
     print("\n📊 ENHANCED SUMMARY")

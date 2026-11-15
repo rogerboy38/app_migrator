@@ -15,6 +15,7 @@ asked for, reduced to the smallest form that catches the P0 class of break.
 It also pins the audit-derived commands to the CLI, so a rename or a dropped
 registration fails here instead of on a production bench.
 """
+
 from __future__ import annotations
 
 import _frappe_stub
@@ -58,14 +59,10 @@ def test_audit_integrity_exposes_the_json_flag():
     _install_stub()
     from app_migrator.commands.audit_integrity import app_migrator_audit_integrity
 
-    flags = {flag for param in app_migrator_audit_integrity.params
-             for flag in getattr(param, "opts", [])}
+    flags = {flag for param in app_migrator_audit_integrity.params for flag in getattr(param, "opts", [])}
     assert "--json" in flags, sorted(flags)
-    json_params = [p for p in app_migrator_audit_integrity.params
-                   if "--json" in getattr(p, "opts", [])]
-    assert json_params[0].name == "as_json", (
-        f"--json binds to {json_params[0].name!r}, expected 'as_json'"
-    )
+    json_params = [p for p in app_migrator_audit_integrity.params if "--json" in getattr(p, "opts", [])]
+    assert json_params[0].name == "as_json", f"--json binds to {json_params[0].name!r}, expected 'as_json'"
 
 
 def test_every_registered_check_is_unique_and_kebab_case():

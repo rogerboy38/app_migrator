@@ -8,13 +8,13 @@ Phase 5 stub:
 - The pytest test contract only checks that the DB file and 'sessions' table exist;
   full CRUD (create/resume/query) deferred to W1 close.
 """
+
 from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
 
 import click
-
 
 SESSIONS_DIR = Path("/home/frappe/app_migrator/.sessions")
 SESSIONS_DB = SESSIONS_DIR / "sessions.sqlite3"
@@ -42,8 +42,8 @@ def _init_db() -> Path:
     return SESSIONS_DB
 
 
-@click.command('app-migrator-sessions')
-@click.argument('subcommand', default='init')
+@click.command("app-migrator-sessions")
+@click.argument("subcommand", default="init")
 def app_migrator_sessions(subcommand):
     """Session storage management.
 
@@ -55,4 +55,5 @@ def app_migrator_sessions(subcommand):
     else:
         click.echo(f"Unknown subcommand: {subcommand!r}", err=True)
         import sys as _sys
+
         _sys.exit(2)

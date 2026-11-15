@@ -4,6 +4,7 @@ These bypass the bench CLI (which hangs on this substrate, L433) by driving the
 collision core and the click command directly against a synthetic apps_root, so
 the detection logic + envelope contract are verified without a live bench.
 """
+
 import json
 import os
 import types
@@ -17,8 +18,16 @@ from app_migrator.commands import module_conflicts as mc
 from app_migrator.commands._envelope import SCHEMA_VERSION
 
 REQUIRED_ENVELOPE_KEYS = {
-    "schema_version", "command", "site", "status", "summary",
-    "findings", "risks", "suggested_next_commands", "evidence", "meta",
+    "schema_version",
+    "command",
+    "site",
+    "status",
+    "summary",
+    "findings",
+    "risks",
+    "suggested_next_commands",
+    "evidence",
+    "meta",
 }
 
 
@@ -34,10 +43,18 @@ def _make_app(apps_root, app, rel_path, source):
 def two_app_root(tmp_path):
     """Two apps sharing class `SharedThing` and constant `SHARED_CONST`."""
     root = str(tmp_path / "apps")
-    _make_app(root, "app_one", "mod_a.py",
-              "class SharedThing:\n    pass\n\nSHARED_CONST = 1\n\ndef only_in_one():\n    pass\n")
-    _make_app(root, "app_two", "sub/mod_b.py",
-              "class SharedThing:\n    pass\n\nSHARED_CONST = 2\n\ndef only_in_two():\n    pass\n")
+    _make_app(
+        root,
+        "app_one",
+        "mod_a.py",
+        "class SharedThing:\n    pass\n\nSHARED_CONST = 1\n\ndef only_in_one():\n    pass\n",
+    )
+    _make_app(
+        root,
+        "app_two",
+        "sub/mod_b.py",
+        "class SharedThing:\n    pass\n\nSHARED_CONST = 2\n\ndef only_in_two():\n    pass\n",
+    )
     # apps.txt manifest so _iter_app_names finds them deterministically.
     with open(os.path.join(root, "apps.txt"), "w") as fh:
         fh.write("app_one\napp_two\n")
@@ -118,7 +135,8 @@ def test_command_clean_root_is_ok(tmp_path):
     with open(os.path.join(root, "apps.txt"), "w") as fh:
         fh.write("solo\n")
     result = CliRunner().invoke(
-        mc.app_migrator_module_conflicts, ["--json", "--apps-root", root],
+        mc.app_migrator_module_conflicts,
+        ["--json", "--apps-root", root],
         obj=_CTX_OBJ,
     )
     assert result.exit_code == 0, f"rc={result.exit_code}; out={result.output[:300]}"
@@ -130,7 +148,9 @@ def test_command_clean_root_is_ok(tmp_path):
 def test_default_apps_root_env_var_fallback(monkeypatch):
     """L433 spirit: env var BENCH_APPS_ROOT overrides hardcoded default."""
     import importlib
+
     import app_migrator.commands.module_conflicts as mc
+
     # Clear env var first
     monkeypatch.delenv("BENCH_APPS_ROOT", raising=False)
     importlib.reload(mc)

@@ -9,6 +9,7 @@ v2 changes (per T-VERIFY-001 Verifier review):
 - Added NEGATIVE CASES for L381, L398, L413 (function must NOT flag when input is clean).
 - Each test has pytest.importorskip or require_app_migrator guard for portability.
 """
+
 import subprocess
 
 import pytest
@@ -93,6 +94,7 @@ def test_l381_no_drift_when_hashes_match(monkeypatch, require_app_migrator):
 
 # ---------- L398: blanket inspection_required_before_delivery rejected ----------
 
+
 def test_l398_blanket_enable_is_flagged(monkeypatch, require_app_migrator):
     """L398: blanket inspection_required_before_delivery=1 must be flagged.
 
@@ -107,8 +109,7 @@ def test_l398_blanket_enable_is_flagged(monkeypatch, require_app_migrator):
     ]
     result = data_quality.verify_data_integrity(app="test_app", doctypes=blanket_enabled)
     flagged = [
-        d for d in result.get("flagged", [])
-        if "inspection_required_before_delivery" in d.get("reason", "")
+        d for d in result.get("flagged", []) if "inspection_required_before_delivery" in d.get("reason", "")
     ]
     assert len(flagged) >= len(blanket_enabled), (
         f"L398: all {len(blanket_enabled)} blanket-enabled doctypes should be flagged; "
@@ -126,7 +127,8 @@ def test_l398_selective_enable_not_flagged_as_blanket(monkeypatch, require_app_m
     ]
     result = data_quality.verify_data_integrity(app="test_app", doctypes=selective)
     blanket_flagged = [
-        d for d in result.get("flagged", [])
+        d
+        for d in result.get("flagged", [])
         if any(kw in d.get("reason", "").upper() for kw in ["BLANKET", "ALL DOCTYPES", "MASS"])
     ]
     assert len(blanket_flagged) == 0, (
@@ -135,6 +137,7 @@ def test_l398_selective_enable_not_flagged_as_blanket(monkeypatch, require_app_m
 
 
 # ---------- L413: multi-host branch guard ----------
+
 
 def test_l413_branch_mismatch_flagged(monkeypatch, require_app_migrator):
     """L413: bench on wrong branch must be flagged with branch_warning."""
@@ -150,8 +153,7 @@ def test_l413_branch_mismatch_flagged(monkeypatch, require_app_migrator):
     flagged = [b for b in benches if b.get("branch_warning")]
     on_main = [b for b in flagged if b.get("current_branch") == "main"]
     assert len(on_main) >= 1, (
-        f"L413: bench on 'main' should be flagged when 'release/v10.2.0' expected; "
-        f"got benches={benches}"
+        f"L413: bench on 'main' should be flagged when 'release/v10.2.0' expected; got benches={benches}"
     )
 
 
@@ -167,12 +169,11 @@ def test_l413_branch_match_not_flagged(monkeypatch, require_app_migrator):
     monkeypatch.setattr(subprocess, "run", fake_run)
     benches = multi_bench.detect_available_benches_simple(expected_branch="release/v10.2.0")
     flagged = [b for b in benches if b.get("branch_warning")]
-    assert len(flagged) == 0, (
-        f"L413 negative: matching branch should NOT be flagged; got {flagged}"
-    )
+    assert len(flagged) == 0, f"L413 negative: matching branch should NOT be flagged; got {flagged}"
 
 
 # ---------- L419: flt-coercion pattern in pattern_database ----------
+
 
 def test_l419_flt_coercion_pattern_registered(require_app_migrator):
     """L419: pattern_database must include a flt/unit-coercion pattern.
@@ -186,9 +187,12 @@ def test_l419_flt_coercion_pattern_registered(require_app_migrator):
     intel = MigrationIntelligence()
     patterns = intel.pattern_database
     matches = [
-        p for p in patterns
-        if any(kw in (p.get("title", "") + " " + p.get("description", "")).lower()
-               for kw in ["flt", "unit", "coerc", "value-parse"])
+        p
+        for p in patterns
+        if any(
+            kw in (p.get("title", "") + " " + p.get("description", "")).lower()
+            for kw in ["flt", "unit", "coerc", "value-parse"]
+        )
     ]
     assert len(matches) >= 1, (
         f"L419: pattern_database missing flt-coercion pattern; "

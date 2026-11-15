@@ -14,6 +14,7 @@ Two things this conftest does that the parent ``tests/conftest.py`` does not:
    found, so a regression is a test failure rather than a surprise on a
    production bench.
 """
+
 from __future__ import annotations
 
 import json
@@ -154,10 +155,7 @@ def find_check(check_id: str):
     for spec in CHECKS:
         if spec.check_id == check_id:
             return spec
-    raise AssertionError(
-        f"check {check_id!r} is not registered; available: "
-        f"{[s.check_id for s in CHECKS]}"
-    )
+    raise AssertionError(f"check {check_id!r} is not registered; available: {[s.check_id for s in CHECKS]}")
 
 
 def run_check(check_id: str, inv):

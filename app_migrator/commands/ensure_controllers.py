@@ -18,8 +18,11 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
+
 from ._shared import (
     MigrationSession,
     ProgressTracker,
@@ -74,7 +77,7 @@ def ensure_controller_files(app_name, module_name=None, dry_run=True):
             item_path = os.path.join(doctype_path, item)
 
             # Skip non-directories and __pycache__
-            if not os.path.isdir(item_path) or item.startswith('__'):
+            if not os.path.isdir(item_path) or item.startswith("__"):
                 continue
 
             doctype_name = item
@@ -85,19 +88,19 @@ def ensure_controller_files(app_name, module_name=None, dry_run=True):
             if os.path.exists(json_file) and not os.path.exists(py_file):
                 # Convert doctype_name to PascalCase class name
                 # e.g., 'third_party_api' -> 'ThirdPartyApi'
-                class_name = ''.join(word.capitalize() for word in doctype_name.split('_'))
+                class_name = "".join(word.capitalize() for word in doctype_name.split("_"))
 
-                controller_content = f'''import frappe
+                controller_content = f"""import frappe
 from frappe.model.document import Document
 
 class {class_name}(Document):
     pass
-'''
+"""
 
                 if dry_run:
                     print(f"   Would create: {py_file}")
                 else:
-                    with open(py_file, 'w') as f:
+                    with open(py_file, "w") as f:
                         f.write(controller_content)
                     print(f"   ✅ Created: {py_file}")
 
@@ -106,10 +109,10 @@ class {class_name}(Document):
     return created_files
 
 
-@click.command('app-migrator-ensure-controllers')
-@click.argument('app_name')
-@click.option('--module', default=None, help='Module name (defaults to app name)')
-@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+@click.command("app-migrator-ensure-controllers")
+@click.argument("app_name")
+@click.option("--module", default=None, help="Module name (defaults to app name)")
+@click.option("--dry-run/--apply", default=True, help="Dry run or apply")
 @pass_context
 def app_migrator_ensure_controllers(context, app_name, module, dry_run):
     """
@@ -135,5 +138,3 @@ def app_migrator_ensure_controllers(context, app_name, module, dry_run):
             print("\n📋 Run with --apply to create the files")
     else:
         print("\n✅ All DocTypes already have controller files")
-
-

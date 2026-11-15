@@ -34,6 +34,7 @@ def detect_python_modules(app_path: str) -> list[str]:
 
     return modules
 
+
 def _find_modules_traditional(app_path: str, app_name: str) -> list[str]:
     """Find modules in traditional Frappe app structure"""
     modules = []
@@ -42,6 +43,7 @@ def _find_modules_traditional(app_path: str, app_name: str) -> list[str]:
         if os.path.isdir(item_path) and os.path.exists(os.path.join(item_path, "__init__.py")):
             modules.append(f"{app_name}.{item}")
     return modules
+
 
 def _find_modules_modern(app_path: str, app_name: str) -> list[str]:
     """Find modules in modern Frappe app structure with nested Python package"""
@@ -57,11 +59,12 @@ def _find_modules_modern(app_path: str, app_name: str) -> list[str]:
         for root, _dirs, files in os.walk(nested_app_path):
             if "__init__.py" in files:
                 rel_path = os.path.relpath(root, app_path)
-                module_name = rel_path.replace('/', '.')
-                if module_name != '.':
+                module_name = rel_path.replace("/", ".")
+                if module_name != ".":
                     modules.append(module_name)
 
     return modules
+
 
 def _find_modules_hybrid(app_path: str, app_name: str) -> list[str]:
     """Find modules in hybrid or unknown structure"""
@@ -71,13 +74,14 @@ def _find_modules_hybrid(app_path: str, app_name: str) -> list[str]:
     for root, _dirs, files in os.walk(app_path):
         if "__init__.py" in files:
             rel_path = os.path.relpath(root, app_path)
-            if rel_path == '.':
+            if rel_path == ".":
                 modules.append(app_name)
             else:
                 module_name = f"{app_name}.{rel_path.replace('/', '.')}"
                 modules.append(module_name)
 
     return modules
+
 
 def detect_app_metadata(app_path: str) -> dict[str, Any]:
     """Detect app metadata from various sources (app.json, pyproject.toml, hooks.py)"""
@@ -89,6 +93,7 @@ def detect_app_metadata(app_path: str) -> dict[str, Any]:
         try:
             with open(app_json_path) as f:
                 import json
+
                 metadata.update(json.load(f))
         except Exception:
             pass
@@ -105,37 +110,45 @@ def detect_app_metadata(app_path: str) -> dict[str, Any]:
 
     return metadata
 
+
 def _parse_pyproject_toml(pyproject_path: str) -> dict[str, Any]:
     """Parse pyproject.toml for app metadata"""
     metadata = {}
     try:
         import tomli
-        with open(pyproject_path, 'rb') as f:
+
+        with open(pyproject_path, "rb") as f:
             data = tomli.load(f)
 
-        if 'project' in data:
-            project = data['project']
-            metadata.update({
-                'app_name': project.get('name', ''),
-                'app_title': project.get('name', '').title(),
-                'app_description': project.get('description', ''),
-                'app_publisher': ', '.join([author.get('name', '') for author in project.get('authors', [])]),
-                'app_version': '1.0.0',  # pyproject.toml uses dynamic version
-                'dependencies': project.get('dependencies', [])
-            })
+        if "project" in data:
+            project = data["project"]
+            metadata.update(
+                {
+                    "app_name": project.get("name", ""),
+                    "app_title": project.get("name", "").title(),
+                    "app_description": project.get("description", ""),
+                    "app_publisher": ", ".join(
+                        [author.get("name", "") for author in project.get("authors", [])]
+                    ),
+                    "app_version": "1.0.0",  # pyproject.toml uses dynamic version
+                    "dependencies": project.get("dependencies", []),
+                }
+            )
     except ImportError:
         # Fallback: simple string parsing
         with open(pyproject_path) as f:
             content = f.read()
             if 'name = "' in content:
                 import re
+
                 name_match = re.search(r'name\s*=\s*"([^"]+)"', content)
                 if name_match:
-                    metadata['app_name'] = name_match.group(1)
+                    metadata["app_name"] = name_match.group(1)
     except Exception:
         pass
 
     return metadata
+
 
 def _parse_hooks_py(hooks_path: str) -> dict[str, Any]:
     """Parse hooks.py for basic app metadata"""
@@ -146,11 +159,12 @@ def _parse_hooks_py(hooks_path: str) -> dict[str, Any]:
 
         # Simple string extraction for common variables
         import re
+
         patterns = {
-            'app_name': r'app_name\s*=\s*["\']([^"\']+)["\']',
-            'app_title': r'app_title\s*=\s*["\']([^"\']+)["\']',
-            'app_publisher': r'app_publisher\s*=\s*["\']([^"\']+)["\']',
-            'app_description': r'app_description\s*=\s*["\']([^"\']+)["\']'
+            "app_name": r'app_name\s*=\s*["\']([^"\']+)["\']',
+            "app_title": r'app_title\s*=\s*["\']([^"\']+)["\']',
+            "app_publisher": r'app_publisher\s*=\s*["\']([^"\']+)["\']',
+            "app_description": r'app_description\s*=\s*["\']([^"\']+)["\']',
         }
 
         for key, pattern in patterns.items():
@@ -162,6 +176,7 @@ def _parse_hooks_py(hooks_path: str) -> dict[str, Any]:
         pass
 
     return metadata
+
 
 # Test the functions
 if __name__ == "__main__":

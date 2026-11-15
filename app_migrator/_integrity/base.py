@@ -11,6 +11,7 @@ Design contract (inherited from W1 Phase 4 / W3):
 The finding ``id`` is **stable across runs** because it is the diff key an
 agent uses to tell "the same problem again" from "a new problem".
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

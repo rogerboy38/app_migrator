@@ -40,7 +40,7 @@ class ProgressTracker:
                 "🔍 Validating migration",
                 "📥 Downloading app",
                 "⚙️ Installing app",
-                "✅ Finalizing"
+                "✅ Finalizing",
             ]
 
         self.start_time = time.time()
@@ -57,20 +57,26 @@ class ProgressTracker:
         elapsed = int(time.time() - self.start_time)
 
         # Record step time
-        self.step_times.append({
-            'step': self.current_step,
-            'elapsed': elapsed,
-            'timestamp': datetime.now().isoformat()
-        })
+        self.step_times.append(
+            {"step": self.current_step, "elapsed": elapsed, "timestamp": datetime.now().isoformat()}
+        )
 
         if message:
             print(f"\r🔄 [{self.current_step}/{self.total_steps}] {message} ({elapsed}s)", end="", flush=True)
         else:
             if self.current_step <= len(self.steps):
                 step_msg = self.steps[self.current_step - 1]
-                print(f"\r🔄 [{self.current_step}/{self.total_steps}] {step_msg} ({elapsed}s)", end="", flush=True)
+                print(
+                    f"\r🔄 [{self.current_step}/{self.total_steps}] {step_msg} ({elapsed}s)",
+                    end="",
+                    flush=True,
+                )
             else:
-                print(f"\r🔄 [{self.current_step}/{self.total_steps}] Processing... ({elapsed}s)", end="", flush=True)
+                print(
+                    f"\r🔄 [{self.current_step}/{self.total_steps}] Processing... ({elapsed}s)",
+                    end="",
+                    flush=True,
+                )
 
     def complete(self):
         """Mark progress as completed"""
@@ -82,11 +88,11 @@ class ProgressTracker:
             print("\n⏱️  Step Timing:")
             for i, step_time in enumerate(self.step_times):
                 if i == 0:
-                    duration = step_time['elapsed']
+                    duration = step_time["elapsed"]
                 else:
-                    duration = step_time['elapsed'] - self.step_times[i-1]['elapsed']
+                    duration = step_time["elapsed"] - self.step_times[i - 1]["elapsed"]
 
-                step_name = self.steps[i] if i < len(self.steps) else f"Step {i+1}"
+                step_name = self.steps[i] if i < len(self.steps) else f"Step {i + 1}"
                 print(f"  {step_name}: {duration}s")
 
     def fail(self, error):
@@ -118,7 +124,7 @@ class ProgressTracker:
         """
         percentage = self.get_progress_percentage()
         filled = int(width * self.current_step / self.total_steps)
-        bar = '█' * filled + '░' * (width - filled)
+        bar = "█" * filled + "░" * (width - filled)
         elapsed = self.get_elapsed_time()
 
         print(f"\r[{bar}] {percentage:.1f}% ({elapsed}s)", end="", flush=True)
@@ -160,12 +166,9 @@ class MultiStepProgressTracker:
             step = self.steps[step_index]
             elapsed = int(time.time() - self.start_time)
 
-            self.completed_steps.append({
-                'index': step_index,
-                'name': step['name'],
-                'elapsed': elapsed,
-                'message': message
-            })
+            self.completed_steps.append(
+                {"index": step_index, "name": step["name"], "elapsed": elapsed, "message": message}
+            )
 
             if message:
                 print(f"  ✅ {step['name']}: {message}")
@@ -178,12 +181,9 @@ class MultiStepProgressTracker:
             step = self.steps[step_index]
             elapsed = int(time.time() - self.start_time)
 
-            self.failed_steps.append({
-                'index': step_index,
-                'name': step['name'],
-                'elapsed': elapsed,
-                'error': error
-            })
+            self.failed_steps.append(
+                {"index": step_index, "name": step["name"], "elapsed": elapsed, "error": error}
+            )
 
             print(f"  ❌ {step['name']}: {error}")
 
@@ -206,7 +206,7 @@ class MultiStepProgressTracker:
         print("\n✅ Completed Steps:")
         for step in self.completed_steps:
             print(f"  {step['index'] + 1}. {step['name']} ({step['elapsed']}s)")
-            if step.get('message'):
+            if step.get("message"):
                 print(f"      {step['message']}")
 
         if self.failed_steps:
@@ -259,10 +259,10 @@ if __name__ == "__main__":
     print("\n\n🧪 Testing Multi-Step Progress Tracker\n")
 
     steps = [
-        {'name': 'Analyze app'},
-        {'name': 'Validate migration'},
-        {'name': 'Execute migration'},
-        {'name': 'Verify results'}
+        {"name": "Analyze app"},
+        {"name": "Validate migration"},
+        {"name": "Execute migration"},
+        {"name": "Verify results"},
     ]
 
     multi_tracker = MultiStepProgressTracker("Migration Process", steps)

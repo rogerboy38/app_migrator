@@ -14,6 +14,7 @@ The detection cores are **import-safe and bench-free** so they can be
 unit-tested in-process; only this click wrapper touches the envelope/exit
 path. That split is inherited from ``module_conflicts.py`` (W2(d)).
 """
+
 from __future__ import annotations
 
 import time
@@ -24,8 +25,10 @@ import click
 try:
     from frappe.commands import pass_context
 except ImportError:  # pragma: no cover - bench-free import path
+
     def pass_context(f):
         return f
+
 
 from .._integrity import (
     DEFAULT_FINDING_LIMIT,
@@ -57,8 +60,7 @@ def _selected_checks(check_names: list[str]):
     unknown = [name for name in wanted if name not in by_id]
     if unknown:
         raise click.BadParameter(
-            f"unknown check(s): {', '.join(sorted(set(unknown)))}. "
-            f"Available: {', '.join(sorted(by_id))}"
+            f"unknown check(s): {', '.join(sorted(set(unknown)))}. Available: {', '.join(sorted(by_id))}"
         )
     # Preserve registry order, not request order, so output is stable.
     return [spec for spec in CHECKS if spec.check_id in set(wanted)]
@@ -94,10 +96,7 @@ def run_checks(
 
     for spec in specs:
         result = spec.run(inventory)
-        kept = [
-            f for f in result.findings
-            if SEVERITY_RANK.get(f.severity, 99) <= cutoff
-        ]
+        kept = [f for f in result.findings if SEVERITY_RANK.get(f.severity, 99) <= cutoff]
         total += len(kept)
         per_check[spec.check_id] = {
             "title": spec.title,
@@ -137,19 +136,34 @@ def _status_for(findings: list[Any]) -> str:
     return "warn"
 
 
-@click.command('app-migrator-audit-integrity')
-@click.option('--site', default=None, help='Site name (informational; not required)')
-@click.option('--json', 'as_json', is_flag=True, help='Emit v0.5 envelope JSON')
-@click.option('--apps-root', default=None,
-              help='bench apps/ directory to scan. Default: discovered from '
-                   'FRAPPE_BENCH / BENCH_PATH / the current directory.')
-@click.option('--check', 'check_names', multiple=True,
-              help='Only run this check (repeatable, or comma-separated). Default: all.')
-@click.option('--severity', default='info',
-              type=click.Choice(['high', 'medium', 'low', 'info'], case_sensitive=False),
-              help='Only report findings at or above this severity.')
-@click.option('--limit', default=DEFAULT_FINDING_LIMIT, show_default=True, type=int,
-              help='Max findings carried in the envelope')
+@click.command("app-migrator-audit-integrity")
+@click.option("--site", default=None, help="Site name (informational; not required)")
+@click.option("--json", "as_json", is_flag=True, help="Emit v0.5 envelope JSON")
+@click.option(
+    "--apps-root",
+    default=None,
+    help="bench apps/ directory to scan. Default: discovered from "
+    "FRAPPE_BENCH / BENCH_PATH / the current directory.",
+)
+@click.option(
+    "--check",
+    "check_names",
+    multiple=True,
+    help="Only run this check (repeatable, or comma-separated). Default: all.",
+)
+@click.option(
+    "--severity",
+    default="info",
+    type=click.Choice(["high", "medium", "low", "info"], case_sensitive=False),
+    help="Only report findings at or above this severity.",
+)
+@click.option(
+    "--limit",
+    default=DEFAULT_FINDING_LIMIT,
+    show_default=True,
+    type=int,
+    help="Max findings carried in the envelope",
+)
 @pass_context
 def app_migrator_audit_integrity(context, site, as_json, apps_root, check_names, severity, limit):
     """Cross-app integrity checks derived from the amb_w_tds / rnd_warehouse_management audits."""
@@ -194,11 +208,13 @@ def app_migrator_audit_integrity(context, site, as_json, apps_root, check_names,
             findings=findings,
             evidence=[
                 {"kind": "per_check", "checks": outcome["per_check"]},
-                {"kind": "scan_params",
-                 "apps_root": resolved_root,
-                 "checks": outcome["checks_run"],
-                 "severity": severity,
-                 "findings_truncated": max(truncated, 0)},
+                {
+                    "kind": "scan_params",
+                    "apps_root": resolved_root,
+                    "checks": outcome["checks_run"],
+                    "severity": severity,
+                    "findings_truncated": max(truncated, 0),
+                },
                 {"kind": "scan_stats", **inventory.stats()},
             ],
             suggested_next_commands=[
