@@ -138,9 +138,13 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip'
 
-      - name: Install Frappe
-        run: |
-          pip install frappe==${{ env.FRAPPE_VERSION }}
+      - name: Install bench CLI
+        # The `bench` CLI is the Frappe Bench package on PyPI.  It was never
+        # installed here, so every `bench ...` step below ran against a
+        # missing command.  Frappe itself is NOT on PyPI - `pip install
+        # frappe==16` could only ever fail, and the bench itself installs
+        # frappe from git in the `bench init` step that follows.
+        run: pip install frappe-bench
 
       - name: Set up test site
         env:
@@ -149,7 +153,6 @@ jobs:
         run: |
           bench init frappe-bench --frappe-branch version-${{ env.FRAPPE_VERSION }} --python python${{ env.PYTHON_VERSION }}
           cd frappe-bench
-          bench get-app frappe --branch version-${{ env.FRAPPE_VERSION }}
           bench new-site ${{ env.SITE_NAME }} --db-name test_frappe --admin-password admin
           bench --site ${{ env.SITE_NAME }} install-app frappe
           # Copy test files
