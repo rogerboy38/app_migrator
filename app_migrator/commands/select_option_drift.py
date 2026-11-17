@@ -42,8 +42,14 @@ import click
 
 try:
     import frappe
+
+    FRAPPE_AVAILABLE = True
 except ImportError:  # pragma: no cover - bench-free import path
+    # `frappe` stays bound to None so an accidental use raises AttributeError
+    # rather than NameError; the flag is what callers test.  This is the same
+    # pattern as intelligence.py / migration_commands.py / commands/__init__.py.
     frappe = None  # type: ignore[assignment]
+    FRAPPE_AVAILABLE = False
 
 try:
     from frappe.commands import pass_context
@@ -238,7 +244,7 @@ def app_migrator_select_option_drift(context, site, as_json, doctype, field, lim
         click.echo(f"Error: {summary}", err=True)
         raise SystemExit(EXIT_CODE_MAPPING.get("error", 40))
 
-    if frappe is None:
+    if not FRAPPE_AVAILABLE:
         _fail(
             "select-option-drift needs a Frappe site: the 'frappe' module is not "
             "importable in this interpreter. Run it from the bench "
