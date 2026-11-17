@@ -92,7 +92,7 @@ def test_all_patterns_have_required_keys(patterns):
     """Every pattern carries the envelope-shaped keys the radar layer consumes."""
     for p in patterns:
         for key in ("id", "title", "description", "severity"):
-            assert key in p and p[key], f"pattern {p.get('id')} missing/empty {key}"
+            assert p.get(key), f"pattern {p.get('id')} missing/empty {key}"
         assert p["severity"] in VALID_SEVERITIES, f"pattern {p['id']} has invalid severity: {p['severity']}"
 
 

@@ -22,7 +22,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          # The project requires Python >=3.14 (see pyproject.toml), and
+          # ruff-format applies PEP 758 there, so `except A, B:` without
+          # parentheses. The check-ast and debug-statements hooks parse the
+          # tree with this interpreter, so it has to be the same one the
+          # code targets - on 3.10 those files are reported as syntax
+          # errors.
+          python-version: '3.14'
           cache: pip
       - uses: pre-commit/action@v3.0.0
 

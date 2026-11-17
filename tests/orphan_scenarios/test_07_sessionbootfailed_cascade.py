@@ -227,7 +227,7 @@ def test_orphan_scanner_replay_against_test_site():
     Validates Pattern 1.13: a forensic chain captured in production must
     reproduce identically when replayed against an isolated bench site.
     """
-    import frappe  # noqa: I900 — frappe only required for integration path
+    import frappe  # frappe only required for the integration path
 
     site = os.environ["APP_MIGRATOR_TEST_SITE"]
     frappe.init(site=site)
@@ -255,8 +255,8 @@ def test_orphan_scanner_replay_against_test_site():
         for stmt in (s.strip() for s in scan_sql.split(";") if s.strip()):
             try:
                 rows = frappe.db.sql(stmt)
-            except Exception:  # noqa: BLE001 — captured SQL can include known-failing
-                continue  # statements (e.g. tabSingles column shape mismatch)
+            except Exception:  # captured SQL can include known-failing statements
+                continue  # (e.g. tabSingles column shape mismatch)
             for r in rows:
                 if len(r) >= 3 and r[2] == "Repost Accounting Ledger Settings":
                     hits.add((r[0], r[1], r[2]))

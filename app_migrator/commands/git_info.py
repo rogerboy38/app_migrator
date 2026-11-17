@@ -11,10 +11,10 @@ from ._shared import find_bench_root
 from .git_utils import FrappeCloudAPI, get_app_info
 
 
-@click.command('git-info')
-@click.option('--app', '-a', help='Specific app to check (default: all apps)')
-@click.option('--api-key', help='Frappe Cloud API key (for getting git info)')
-@click.option('--verbose', '-v', is_flag=True, help='Show detailed information')
+@click.command("git-info")
+@click.option("--app", "-a", help="Specific app to check (default: all apps)")
+@click.option("--api-key", help="Frappe Cloud API key (for getting git info)")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed information")
 def git_info(app=None, api_key=None, verbose=False):
     """
     Show Git Information for Frappe Apps
@@ -30,15 +30,15 @@ def git_info(app=None, api_key=None, verbose=False):
     from frappe import _
 
     click.echo("🔍 App Migrator Git Information")
-    click.echo("="*32)
+    click.echo("=" * 32)
 
     # Set API key from environment if not provided
     if not api_key:
-        api_key = os.getenv('FRAPPE_CLOUD_API_KEY')
+        api_key = os.getenv("FRAPPE_CLOUD_API_KEY")
 
     # Get apps
     bench_path = Path(find_bench_root())
-    apps_path = bench_path / 'apps'
+    apps_path = bench_path / "apps"
 
     if app:
         apps_to_check = [app] if (apps_path / app).exists() else []
@@ -46,8 +46,9 @@ def git_info(app=None, api_key=None, verbose=False):
             click.echo(f"❌ App '{app}' not found")
             return
     else:
-        apps_to_check = sorted([d.name for d in apps_path.iterdir()
-                               if d.is_dir() and not d.name.startswith('.')])
+        apps_to_check = sorted(
+            [d.name for d in apps_path.iterdir() if d.is_dir() and not d.name.startswith(".")]
+        )
 
     if not apps_to_check:
         click.echo("❌ No apps found")
@@ -64,15 +65,15 @@ def git_info(app=None, api_key=None, verbose=False):
     for app_name in apps_to_check:
         app_info = get_app_info(app_name, api_key)
 
-        if app_info['is_git_repo']:
+        if app_info["is_git_repo"]:
             git_repos.append(app_info)
         else:
             non_git_apps.append(app_info)
 
-        if app_info['public_git_url']:
+        if app_info["public_git_url"]:
             apps_with_public_git.append(app_info)
 
-        if app_info['frappe_cloud_info'] and app_info['frappe_cloud_info'].get('git_url'):
+        if app_info["frappe_cloud_info"] and app_info["frappe_cloud_info"].get("git_url"):
             apps_with_cloud_git.append(app_info)
 
     # Summary
@@ -86,10 +87,10 @@ def git_info(app=None, api_key=None, verbose=False):
     if git_repos:
         click.echo(f"\n✅ GIT REPOSITORIES ({len(git_repos)}):")
         click.echo("  App Name          Branch          Remote")
-        click.echo("  " + "-"*50)
+        click.echo("  " + "-" * 50)
         for info in git_repos:
-            branch_display = info['branch'] or 'no branch'
-            remote_display = info['remote_url'] or 'no remote'
+            branch_display = info["branch"] or "no branch"
+            remote_display = info["remote_url"] or "no remote"
             if len(remote_display) > 30:
                 remote_display = remote_display[:27] + "..."
             click.echo(f"  {info['name']:18} {branch_display:15} {remote_display}")
@@ -98,17 +99,22 @@ def git_info(app=None, api_key=None, verbose=False):
     if apps_with_public_git or apps_with_cloud_git:
         click.echo("\n🔗 NON-GIT APPS WITH AVAILABLE GIT URLs:")
         for info in non_git_apps:
-            if info['public_git_url'] or (info['frappe_cloud_info'] and info['frappe_cloud_info'].get('git_url')):
+            if info["public_git_url"] or (
+                info["frappe_cloud_info"] and info["frappe_cloud_info"].get("git_url")
+            ):
                 click.echo(f"  • {info['name']}:")
-                if info['public_git_url']:
+                if info["public_git_url"]:
                     click.echo(f"      Public: {info['public_git_url']}")
-                if info['frappe_cloud_info'] and info['frappe_cloud_info'].get('git_url'):
+                if info["frappe_cloud_info"] and info["frappe_cloud_info"].get("git_url"):
                     click.echo(f"      Frappe Cloud: {info['frappe_cloud_info']['git_url']}")
 
     # Show pure non-git apps
-    pure_non_git = [info for info in non_git_apps
-                   if not info['public_git_url'] and
-                   not (info['frappe_cloud_info'] and info['frappe_cloud_info'].get('git_url'))]
+    pure_non_git = [
+        info
+        for info in non_git_apps
+        if not info["public_git_url"]
+        and not (info["frappe_cloud_info"] and info["frappe_cloud_info"].get("git_url"))
+    ]
 
     if pure_non_git:
         click.echo(f"\n📦 PURE NON-GIT DIRECTORIES ({len(pure_non_git)}):")
@@ -119,18 +125,19 @@ def git_info(app=None, api_key=None, verbose=False):
         click.echo("\n🔍 VERBOSE DETAILS:")
         for info in apps_to_check:
             app_info = get_app_info(info, api_key)
-            click.echo(f"\n{'='*40}")
+            click.echo(f"\n{'=' * 40}")
             click.echo(f"APP: {app_info['name']}")
             click.echo(f"Path: {app_info['path']}")
             click.echo(f"Exists: {app_info['exists']}")
             click.echo(f"Is Git Repo: {app_info['is_git_repo']}")
-            if app_info['is_git_repo']:
+            if app_info["is_git_repo"]:
                 click.echo(f"  Remote: {app_info['remote_url']}")
                 click.echo(f"  Branch: {app_info['branch']}")
-            if app_info['public_git_url']:
+            if app_info["public_git_url"]:
                 click.echo(f"Public Git URL: {app_info['public_git_url']}")
-            if app_info['frappe_cloud_info']:
+            if app_info["frappe_cloud_info"]:
                 click.echo(f"Frappe Cloud Info: {app_info['frappe_cloud_info']}")
+
 
     # Recommendations
     if non_git_apps:

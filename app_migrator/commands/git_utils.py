@@ -18,7 +18,7 @@ class FrappeCloudAPI:
     """Interface to Frappe Cloud API for getting app git info"""
 
     def __init__(self, api_key: str | None = None):
-        self.api_key = api_key or os.getenv('FRAPPE_CLOUD_API_KEY')
+        self.api_key = api_key or os.getenv("FRAPPE_CLOUD_API_KEY")
         self.base_url = "https://frappecloud.com"
 
     def get_app_git_info(self, app_name: str) -> dict | None:
@@ -27,27 +27,20 @@ class FrappeCloudAPI:
             return None
 
         try:
-            headers = {
-                'Authorization': f'token {self.api_key}',
-                'Content-Type': 'application/json'
-            }
+            headers = {"Authorization": f"token {self.api_key}", "Content-Type": "application/json"}
 
             # Try to get app info from Frappe Cloud marketplace
-            response = requests.get(
-                f'{self.base_url}/api/method/apps',
-                headers=headers,
-                timeout=10
-            )
+            response = requests.get(f"{self.base_url}/api/method/apps", headers=headers, timeout=10)
 
             if response.status_code == 200:
-                apps_data = response.json().get('message', [])
+                apps_data = response.json().get("message", [])
                 for app in apps_data:
-                    if app.get('name') == app_name:
+                    if app.get("name") == app_name:
                         return {
-                            'git_url': app.get('git_url'),
-                            'branch': app.get('branch', 'main'),
-                            'version': app.get('version'),
-                            'is_public': app.get('is_public', False)
+                            "git_url": app.get("git_url"),
+                            "branch": app.get("branch", "main"),
+                            "version": app.get("version"),
+                            "is_public": app.get("is_public", False),
                         }
         except Exception as e:
             click.echo(f"⚠️  Frappe Cloud API error: {e!s}")
@@ -58,19 +51,19 @@ class FrappeCloudAPI:
         """Get git URL for public Frappe apps (no API key needed)"""
         # Common public app repositories
         public_apps = {
-            'erpnext': 'https://github.com/frappe/erpnext',
-            'hrms': 'https://github.com/frappe/hrms',
-            'payments': 'https://github.com/frappe/payments',
-            'frappe': 'https://github.com/frappe/frappe',
-            'crm': 'https://github.com/frappe/crm',
-            'insights': 'https://github.com/frappe/insights',
-            'lms': 'https://github.com/frappe/lms',
-            'helpdesk': 'https://github.com/frappe/helpdesk',
-            'raven': 'https://github.com/frappe/raven',
-            'print_designer': 'https://github.com/frappe/print_designer',
-            'builder': 'https://github.com/frappe/builder',
-            'telephony': 'https://github.com/frappe/telephony',
-            'drive': 'https://github.com/frappe/drive',
+            "erpnext": "https://github.com/frappe/erpnext",
+            "hrms": "https://github.com/frappe/hrms",
+            "payments": "https://github.com/frappe/payments",
+            "frappe": "https://github.com/frappe/frappe",
+            "crm": "https://github.com/frappe/crm",
+            "insights": "https://github.com/frappe/insights",
+            "lms": "https://github.com/frappe/lms",
+            "helpdesk": "https://github.com/frappe/helpdesk",
+            "raven": "https://github.com/frappe/raven",
+            "print_designer": "https://github.com/frappe/print_designer",
+            "builder": "https://github.com/frappe/builder",
+            "telephony": "https://github.com/frappe/telephony",
+            "drive": "https://github.com/frappe/drive",
         }
 
         return public_apps.get(app_name)
@@ -79,52 +72,48 @@ class FrappeCloudAPI:
 def get_app_info(app_name: str, api_key: str | None = None) -> dict:
     """Get comprehensive information about an app"""
     bench_path = Path(find_bench_root())
-    app_path = bench_path / 'apps' / app_name
+    app_path = bench_path / "apps" / app_name
 
     info = {
-        'name': app_name,
-        'path': str(app_path),
-        'exists': app_path.exists(),
-        'is_git_repo': False,
-        'has_remote': False,
-        'remote_url': None,
-        'branch': None,
-        'git_available': False,
-        'frappe_cloud_info': None,
-        'public_git_url': None
+        "name": app_name,
+        "path": str(app_path),
+        "exists": app_path.exists(),
+        "is_git_repo": False,
+        "has_remote": False,
+        "remote_url": None,
+        "branch": None,
+        "git_available": False,
+        "frappe_cloud_info": None,
+        "public_git_url": None,
     }
 
     if not app_path.exists():
         return info
 
     # Check if it's a git repo
-    git_dir = app_path / '.git'
-    info['is_git_repo'] = git_dir.exists()
+    git_dir = app_path / ".git"
+    info["is_git_repo"] = git_dir.exists()
 
-    if info['is_git_repo']:
+    if info["is_git_repo"]:
         # Get git remote
         try:
             result = subprocess.run(
-                ['git', 'config', '--get', 'remote.origin.url'],
+                ["git", "config", "--get", "remote.origin.url"],
                 cwd=app_path,
                 capture_output=True,
                 text=True,
-                check=False
+                check=False,
             )
-            info['remote_url'] = result.stdout.strip() if result.stdout.strip() else None
-            info['has_remote'] = bool(info['remote_url'])
+            info["remote_url"] = result.stdout.strip() if result.stdout.strip() else None
+            info["has_remote"] = bool(info["remote_url"])
 
             # Get current branch
             result = subprocess.run(
-                ['git', 'branch', '--show-current'],
-                cwd=app_path,
-                capture_output=True,
-                text=True,
-                check=False
+                ["git", "branch", "--show-current"], cwd=app_path, capture_output=True, text=True, check=False
             )
-            info['branch'] = result.stdout.strip() if result.stdout.strip() else None
+            info["branch"] = result.stdout.strip() if result.stdout.strip() else None
 
-            info['git_available'] = True
+            info["git_available"] = True
 
         except Exception:
             pass
@@ -132,19 +121,19 @@ def get_app_info(app_name: str, api_key: str | None = None) -> dict:
     # Get Frappe Cloud info if API key available
     if api_key:
         cloud_api = FrappeCloudAPI(api_key)
-        info['frappe_cloud_info'] = cloud_api.get_app_git_info(app_name)
+        info["frappe_cloud_info"] = cloud_api.get_app_git_info(app_name)
 
     # Get public git URL
     cloud_api = FrappeCloudAPI()
-    info['public_git_url'] = cloud_api.get_public_app_git_url(app_name)
+    info["public_git_url"] = cloud_api.get_public_app_git_url(app_name)
 
     return info
 
 
-def clone_app_from_git(app_name: str, git_url: str, branch: str = 'main') -> bool:
+def clone_app_from_git(app_name: str, git_url: str, branch: str = "main") -> bool:
     """Clone an app from git repository"""
     bench_path = Path(find_bench_root())
-    app_path = bench_path / 'apps' / app_name
+    app_path = bench_path / "apps" / app_name
 
     if app_path.exists():
         click.echo(f"⚠️  App directory already exists: {app_name}")
@@ -155,10 +144,10 @@ def clone_app_from_git(app_name: str, git_url: str, branch: str = 'main') -> boo
 
         # Clone the repository
         result = subprocess.run(
-            ['git', 'clone', '-b', branch, git_url, str(app_path)],
+            ["git", "clone", "-b", branch, git_url, str(app_path)],
             capture_output=True,
             text=True,
-            check=False
+            check=False,
         )
 
         if result.returncode == 0:
@@ -176,14 +165,14 @@ def clone_app_from_git(app_name: str, git_url: str, branch: str = 'main') -> boo
 def convert_to_git_repo(app_name: str, git_url: str | None = None) -> bool:
     """Convert a non-git app directory to a git repository"""
     bench_path = Path(find_bench_root())
-    app_path = bench_path / 'apps' / app_name
+    app_path = bench_path / "apps" / app_name
 
     if not app_path.exists():
         click.echo(f"❌ App directory not found: {app_name}")
         return False
 
     # Check if already a git repo
-    if (app_path / '.git').exists():
+    if (app_path / ".git").exists():
         click.echo(f"⚠️  {app_name} is already a git repository")
         return True
 
@@ -191,13 +180,13 @@ def convert_to_git_repo(app_name: str, git_url: str | None = None) -> bool:
         click.echo(f"🔄 Converting {app_name} to git repository...")
 
         # Initialize git repo
-        subprocess.run(['git', 'init'], cwd=app_path, check=True)
-        subprocess.run(['git', 'add', '.'], cwd=app_path, check=True)
-        subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=app_path, check=True)
+        subprocess.run(["git", "init"], cwd=app_path, check=True)
+        subprocess.run(["git", "add", "."], cwd=app_path, check=True)
+        subprocess.run(["git", "commit", "-m", "Initial commit"], cwd=app_path, check=True)
 
         # Add remote if URL provided
         if git_url:
-            subprocess.run(['git', 'remote', 'add', 'origin', git_url], cwd=app_path, check=True)
+            subprocess.run(["git", "remote", "add", "origin", git_url], cwd=app_path, check=True)
             click.echo(f"✅ Added remote: {git_url}")
 
         click.echo(f"✅ Successfully converted {app_name} to git repository")

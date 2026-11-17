@@ -10,15 +10,16 @@ class GitHelper:
         cmd = "git remote -v"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         remotes = {}
-        for line in result.stdout.strip().split('\n'):
+        for line in result.stdout.strip().split("\n"):
             if line:
                 parts = line.split()
                 if len(parts) >= 2:
                     remote_name = parts[0]
                     remote_url = parts[1]
-                    if '(push)' in line:
+                    if "(push)" in line:
                         remotes[remote_name] = remote_url
         return remotes
+
     # Add to your existing git_helper.py in app_migrator/utils/
     @staticmethod
     def has_uncommitted_changes() -> bool:
@@ -97,10 +98,10 @@ class GitHelper:
         remote_hash = result_remote.stdout.strip() if result_remote.returncode == 0 else None
 
         if not remote_hash:
-            return {'status': 'no_remote', 'local': local_hash, 'remote': None}
+            return {"status": "no_remote", "local": local_hash, "remote": None}
 
         if local_hash == remote_hash:
-            return {'status': 'same', 'local': local_hash, 'remote': remote_hash}
+            return {"status": "same", "local": local_hash, "remote": remote_hash}
 
         # Check if we can fast-forward (local is ahead)
         cmd_ahead = f"git rev-list --count {remote_hash}..{local_hash}"
@@ -113,11 +114,16 @@ class GitHelper:
         behind_count = int(result_behind.stdout.strip()) if result_behind.returncode == 0 else 0
 
         if ahead_count > 0 and behind_count == 0:
-            return {'status': 'ahead', 'local': local_hash, 'remote': remote_hash, 'count': ahead_count}
+            return {"status": "ahead", "local": local_hash, "remote": remote_hash, "count": ahead_count}
         elif behind_count > 0 and ahead_count == 0:
-            return {'status': 'behind', 'local': local_hash, 'remote': remote_hash, 'count': behind_count}
+            return {"status": "behind", "local": local_hash, "remote": remote_hash, "count": behind_count}
         elif ahead_count > 0 and behind_count > 0:
-            return {'status': 'diverged', 'local': local_hash, 'remote': remote_hash,
-                    'ahead': ahead_count, 'behind': behind_count}
+            return {
+                "status": "diverged",
+                "local": local_hash,
+                "remote": remote_hash,
+                "ahead": ahead_count,
+                "behind": behind_count,
+            }
 
-        return {'status': 'unknown', 'local': local_hash, 'remote': remote_hash}
+        return {"status": "unknown", "local": local_hash, "remote": remote_hash}

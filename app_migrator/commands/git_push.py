@@ -11,16 +11,18 @@ try:
 except ImportError:
     import os
     import sys
+
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
     from app_migrator.utils.git_helper import GitHelper
 
-@click.command('git-push')
-@click.option('--app', help='Specific app to push (default: all apps)')
-@click.option('--message', '-m', help='Commit message for uncommitted changes')
-@click.option('--dry-run', is_flag=True, help='Show what would be pushed without actually pushing')
-@click.option('--force', '-f', is_flag=True, help='Force push (use with caution)')
-@click.option('--pull-first', is_flag=True, help='Pull from remote before pushing')
-@click.option('--skip-diverged', is_flag=True, help='Skip apps with diverged branches')
+
+@click.command("git-push")
+@click.option("--app", help="Specific app to push (default: all apps)")
+@click.option("--message", "-m", help="Commit message for uncommitted changes")
+@click.option("--dry-run", is_flag=True, help="Show what would be pushed without actually pushing")
+@click.option("--force", "-f", is_flag=True, help="Force push (use with caution)")
+@click.option("--pull-first", is_flag=True, help="Pull from remote before pushing")
+@click.option("--skip-diverged", is_flag=True, help="Skip apps with diverged branches")
 @pass_context
 def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
     """Enhanced Git Push Helper with multi-remote support"""
@@ -36,7 +38,7 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
             "ssh -o BatchMode=yes -o ConnectTimeout=5 git@github.com 2>&1",
             shell=True,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Check for any response (even permission denied means SSH works)
@@ -62,7 +64,7 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
     bench_path = None
 
     # Method 1: Use ctx.bench_path if available
-    if hasattr(ctx, 'bench_path') and ctx.bench_path:
+    if hasattr(ctx, "bench_path") and ctx.bench_path:
         bench_path = Path(ctx.bench_path)
     else:
         # Method 2: Try to find bench from current directory
@@ -136,13 +138,10 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
 
             # Check for uncommitted changes
             status_result = subprocess.run(
-                "git status --porcelain",
-                shell=True,
-                capture_output=True,
-                text=True
+                "git status --porcelain", shell=True, capture_output=True, text=True
             )
 
-            uncommitted_changes = [line for line in status_result.stdout.strip().split('\n') if line]
+            uncommitted_changes = [line for line in status_result.stdout.strip().split("\n") if line]
 
             if uncommitted_changes and message:
                 click.echo(f"  📝 Found {len(uncommitted_changes)} uncommitted change(s)")
@@ -159,20 +158,22 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
                 # Check branch status
                 status = GitHelper.get_branch_status(remote_name, current_branch)
 
-                if status['status'] == 'no_remote':
+                if status["status"] == "no_remote":
                     click.echo(f"    ℹ️  Remote branch {current_branch} doesn't exist on {remote_name}")
                     # Create remote branch if force option is enabled
                     if force and not dry_run:
-                        subprocess.run(f"git push --set-upstream {remote_name} {current_branch}",
-                                      shell=True, check=True)
+                        subprocess.run(
+                            f"git push --set-upstream {remote_name} {current_branch}", shell=True, check=True
+                        )
                         click.secho(f"    ✅ Created remote branch on {remote_name}", fg="green")
 
-                elif status['status'] == 'behind':
-                    click.echo(f"    ⬇️  Local branch is {status.get('count', 0)} commit(s) behind {remote_name}")
+                elif status["status"] == "behind":
+                    click.echo(
+                        f"    ⬇️  Local branch is {status.get('count', 0)} commit(s) behind {remote_name}"
+                    )
                     if pull_first and not dry_run:
                         try:
-                            subprocess.run(f"git pull {remote_name} {current_branch}",
-                                         shell=True, check=True)
+                            subprocess.run(f"git pull {remote_name} {current_branch}", shell=True, check=True)
                             click.secho(f"    ✅ Pulled from {remote_name}", fg="green")
                         except subprocess.CalledProcessError:
                             click.secho(f"    ❌ Failed to pull from {remote_name}", fg="red")
@@ -180,9 +181,9 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
                                 failed.append(f"{app_name} ({remote_name})")
                                 continue
 
-                elif status['status'] == 'diverged':
-                    ahead = status.get('ahead', 0)
-                    behind = status.get('behind', 0)
+                elif status["status"] == "diverged":
+                    ahead = status.get("ahead", 0)
+                    behind = status.get("behind", 0)
                     click.echo(f"    ⚠️  Branch has diverged ({ahead} ahead, {behind} behind)")
                     if skip_diverged:
                         click.echo(f"    ⏭️  Skipping {remote_name} due to divergence")
@@ -193,16 +194,18 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
                         push_cmd = f"git push --force {remote_name} {current_branch}"
                     else:
                         click.secho(f"    ❌ Cannot push to {remote_name} (branches have diverged)", fg="red")
-                        click.secho("    💡 Use --force to force push or --skip-diverged to skip", fg="yellow")
+                        click.secho(
+                            "    💡 Use --force to force push or --skip-diverged to skip", fg="yellow"
+                        )
                         failed.append(f"{app_name} ({remote_name})")
                         continue
 
-                elif status['status'] == 'ahead':
-                    count = status.get('count', 0)
+                elif status["status"] == "ahead":
+                    count = status.get("count", 0)
                     click.echo(f"    ⬆️  Local branch is {count} commit(s) ahead of {remote_name}")
                     push_cmd = f"git push {remote_name} {current_branch}"
 
-                elif status['status'] == 'same':
+                elif status["status"] == "same":
                     click.echo(f"    ✅ Already up to date with {remote_name}")
                     continue
 
@@ -230,7 +233,7 @@ def git_push(ctx, app, message, dry_run, force, pull_first, skip_diverged):
             os.chdir(original_cwd)
 
     # Summary
-    click.secho("\n" + "="*50, fg="cyan")
+    click.secho("\n" + "=" * 50, fg="cyan")
     click.secho("📊 Push Summary:", fg="cyan", bold=True)
     click.echo(f"  • Total apps processed: {len(apps)}")
     click.echo(f"  • Successful pushes: {len(successful)}")

@@ -61,7 +61,7 @@ def run_verifier(*cli_args):
     if result.returncode != 0:
         pytest.skip(f"verifier not yet implemented (rc={result.returncode}): {result.stderr[:200]}")
     if not result.stdout.strip():
-        pytest.skip(f"verifier returned empty stdout (WIP)")
+        pytest.skip("verifier returned empty stdout (WIP)")
     try:
         return json.loads(result.stdout)
     except json.JSONDecodeError:
