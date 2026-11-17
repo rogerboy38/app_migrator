@@ -414,12 +414,12 @@ def git_pull(
     click.echo(f"  • Failed to pull: {len(categories['pull_failed'])}")
     click.echo(f"  • Need --force (uncommitted): {len(categories['has_uncommitted'])}")
 
-
     if total_non_git > 0:
         click.echo("\n💡 Tip: Use --show-all to see all apps")
         click.echo("💡 Tip: Use --convert-non-git to convert non-git apps to git repos")
         click.echo("💡 Tip: Setup API key for Frappe Cloud git info:")
         click.echo("      bench app-migrator api-key-setup")
+
 
 # Add to commands list
 commands = [git_pull]

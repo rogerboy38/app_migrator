@@ -34,10 +34,10 @@ def test_branch_status():
     remote_hash = result.stdout.strip()
     print(f"upstream/main (rev-parse): {remote_hash}")
 
-
     # 5. Alternative: use git ls-remote
     result = subprocess.run("git ls-remote upstream main", shell=True, capture_output=True, text=True)
     print(f"ls-remote upstream main: {result.stdout.strip()}")
+
 
 if __name__ == "__main__":
     test_branch_status()

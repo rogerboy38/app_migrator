@@ -138,7 +138,6 @@ def git_info(app=None, api_key=None, verbose=False):
             if app_info["frappe_cloud_info"]:
                 click.echo(f"Frappe Cloud Info: {app_info['frappe_cloud_info']}")
 
-
     # Recommendations
     if non_git_apps:
         click.echo("\n💡 RECOMMENDATIONS:")
@@ -149,6 +148,7 @@ def git_info(app=None, api_key=None, verbose=False):
         click.echo("     bench app-migrator git-pull --convert-non-git")
         click.echo("  4. Clone missing git repos:")
         click.echo("     bench get-app app_name --branch version-15")
+
 
 # Add to commands list
 commands = [git_info]
