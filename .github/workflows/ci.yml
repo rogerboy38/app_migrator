@@ -146,12 +146,26 @@ jobs:
         # frappe from git in the `bench init` step that follows.
         run: pip install frappe-bench
 
+      - name: Install redis-server
+        # `bench init` asks the local `redis-server` for its version before
+        # it writes the bench's redis config; the runner image has no such
+        # binary, so the check exits 127 and the init aborts.  The redis the
+        # bench actually talks to is the service container on 6379 - only the
+        # binary is needed here, and the local service is stopped so it does
+        # not fight the container for the port.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends redis-server
+          sudo systemctl stop redis-server.service || true
+          sudo systemctl disable redis-server.service || true
+          redis-server --version
+
       - name: Set up test site
         env:
           MYSQL_ROOT_PASSWORD: root_password
           SITE_NAME: test.frappe.test
         run: |
-          bench init frappe-bench --frappe-branch version-${{ env.FRAPPE_VERSION }} --python python${{ env.PYTHON_VERSION }}
+          bench init frappe-bench --frappe-branch version-${{ env.FRAPPE_VERSION }} --python python${{ env.PYTHON_VERSION }} --skip-assets --no-procfile --no-backups
           cd frappe-bench
           bench new-site ${{ env.SITE_NAME }} --db-name test_frappe --admin-password admin
           bench --site ${{ env.SITE_NAME }} install-app frappe
