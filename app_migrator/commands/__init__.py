@@ -1,10 +1,10 @@
 """
 App Migrator Commands
-Version: 10.0.0-rc1
+Version: 10.1.0-rc1
 Merged: Original analysis + multi-bench + Session management
 """
 
-__version__ = "10.0.0-rc1"
+__version__ = "10.1.0-rc1"
 
 import logging
 
@@ -35,11 +35,15 @@ import click
 try:
     import frappe
     from frappe.commands import pass_context
+
     FRAPPE_AVAILABLE = True
 except ImportError:
     FRAPPE_AVAILABLE = False
+
     def pass_context(f):
         return f
+
+
 # ==================== UTILITIES ====================
 # Helpers extracted to _shared.py in T1.8.1
 # ==================== FIX ORPHAN DOCTYPES [DEPRECATED] (T1.8.5 → _legacy/fix_orphans.py) ====================
@@ -57,15 +61,20 @@ from .analyze_cmd import app_migrator_analyze
 
 # ==================== LIST APPS (DOWNLOADED VS INSTALLED) (T1.8.2 → apps.py) ====================
 from .apps import app_migrator_apps
+from .audit_integrity import app_migrator_audit_integrity  # audit-derived integrity checks (2026-11-05)
+from .audit_modules_disk_vs_db import app_migrator_audit_modules_disk_vs_db
+from .audit_orphan_doctypes import app_migrator_audit_orphan_doctypes
 
 # ==================== LIST BENCHES (T1.8.2 → benches.py) ====================
 from .benches import app_migrator_benches
+from .clean_donor_residue import app_migrator_clean_donor_residue
 
 # ==================== DETECT CONFLICTS COMMAND (T1.8.2 → conflicts.py) ====================
 from .conflicts import app_migrator_conflicts
 
 # ==================== CREATE HOST COMMAND (T1.8.3 → create_host.py) ====================
 from .create_host import app_migrator_create_host
+from .denest_app import app_migrator_denest_app
 
 # ==================== ENSURE CONTROLLERS COMMAND (T1.8.3 → ensure_controllers.py) ====================
 from .ensure_controllers import app_migrator_ensure_controllers
@@ -84,31 +93,44 @@ from .fix_structure import app_migrator_fix_structure
 
 # ==================== HEALTH COMMAND (T1.8.2 → health.py) ====================
 from .health import app_migrator_health
+from .migrate_module import app_migrator_migrate_module
+from .module_conflicts import app_migrator_module_conflicts  # v0.5-alpha W1 (Coder 2026-06-24)
+from .new_fresh_app import app_migrator_new_fresh_app
 
 # ==================== ORPHANS COMMAND (T1.8.3 → orphans.py) ====================
 from .orphans import app_migrator_orphans
 
 # ==================== GENERATE PLAN COMMAND (T1.8.2 → plan.py) ====================
 from .plan import app_migrator_plan
+from .planner import app_migrator_planner  # v0.5-alpha W1 (Coder 2026-06-24)
+from .promote_custom_doctype import app_migrator_promote_custom_doctype
 
 # ==================== RESOLVE DUPLICATES COMMAND (T1.8.3 → resolve_duplicates.py) ====================
 from .resolve_duplicates import app_migrator_resolve_duplicates
 
 # ==================== SCAN SITE COMMAND (T1.8.2 → scan.py) ====================
 from .scan import app_migrator_scan
+from .scan_donor_residue import app_migrator_scan_donor_residue
+from .select_option_drift import (
+    app_migrator_select_option_drift,  # audit-derived integrity checks (2026-11-05)
+)
 
 # ==================== SESSION MANAGEMENT (T1.8.3 → session.py) ====================
 from .session import app_migrator_session_start, app_migrator_session_status
+from .sessions import app_migrator_sessions  # v0.5-alpha W1 (Coder 2026-06-24)
 
 # ==================== STAGE COMMAND (T1.8.3 → stage.py) ====================
 from .stage import app_migrator_stage
 
 # ==================== UNSTAGE COMMAND (T1.8.3 → unstage.py) ====================
 from .unstage import app_migrator_unstage
+from .verifier import app_migrator_verifier  # v0.5-alpha W1 (Coder 2026-06-24)
+from .verify_donor_cleanup_readiness import app_migrator_verify_donor_cleanup_readiness
 
 # ==================== MAIN GROUP COMMAND ====================
 
-@click.group('app-migrator', invoke_without_command=True)
+
+@click.group("app-migrator", invoke_without_command=True)
 @click.pass_context
 def app_migrator(ctx):
     """App Migrator - Multi-bench migration toolkit"""
@@ -163,6 +185,7 @@ Usage: bench app-migrator <command> [options]
 Help:  bench app-migrator <command> --help
 """)
 
+
 # ==================== INTELLIGENCE COMMANDS ====================
 
 from .analyze.apps import analyze_apps
@@ -183,26 +206,38 @@ from .setup.wizard import setup_wizard
 from .simple_api_setup import quick_setup, simple_api_setup
 
 # Add subcommands to the group
-app_migrator.add_command(app_migrator_health, 'health')
-app_migrator.add_command(app_migrator_scan, 'scan')
-app_migrator.add_command(app_migrator_conflicts, 'conflicts')
-app_migrator.add_command(app_migrator_plan, 'plan')
-app_migrator.add_command(app_migrator_execute, 'execute')
-app_migrator.add_command(app_migrator_benches, 'benches')
-app_migrator.add_command(app_migrator_session_start, 'session-start')
-app_migrator.add_command(app_migrator_session_status, 'session-status')
-app_migrator.add_command(app_migrator_apps, 'apps')
-app_migrator.add_command(app_migrator_fix_orphans, 'fix-orphans')
-app_migrator.add_command(app_migrator_analyze, 'analyze')
-app_migrator.add_command(app_migrator_create_host, 'create-host')
-app_migrator.add_command(app_migrator_stage, 'stage')
-app_migrator.add_command(app_migrator_unstage, 'unstage')
-app_migrator.add_command(app_migrator_fix_structure, 'fix-structure')
-app_migrator.add_command(app_migrator_ensure_controllers, 'ensure-controllers')
-app_migrator.add_command(app_migrator_fix_app_field, 'fix-app-field')
-app_migrator.add_command(app_migrator_fix_json_app, 'fix-json-app')
-app_migrator.add_command(app_migrator_resolve_duplicates, 'resolve-duplicates')
-app_migrator.add_command(app_migrator_orphans, 'orphans')
+app_migrator.add_command(app_migrator_health, "health")
+app_migrator.add_command(app_migrator_scan, "scan")
+app_migrator.add_command(app_migrator_conflicts, "conflicts")
+app_migrator.add_command(
+    app_migrator_module_conflicts, "module-conflicts"
+)  # v0.5-alpha W1 (Coder 2026-06-24)
+app_migrator.add_command(
+    app_migrator_audit_integrity, "audit-integrity"
+)  # audit-derived integrity checks (2026-11-05)
+app_migrator.add_command(
+    app_migrator_select_option_drift, "select-option-drift"
+)  # audit-derived integrity checks (2026-11-05)
+app_migrator.add_command(app_migrator_planner, "planner")  # v0.5-alpha W1 (Coder 2026-06-24)
+app_migrator.add_command(app_migrator_verifier, "verifier")  # v0.5-alpha W1 (Coder 2026-06-24)
+app_migrator.add_command(app_migrator_sessions, "sessions")  # v0.5-alpha W1 (Coder 2026-06-24)
+app_migrator.add_command(app_migrator_plan, "plan")
+app_migrator.add_command(app_migrator_execute, "execute")
+app_migrator.add_command(app_migrator_benches, "benches")
+app_migrator.add_command(app_migrator_session_start, "session-start")
+app_migrator.add_command(app_migrator_session_status, "session-status")
+app_migrator.add_command(app_migrator_apps, "apps")
+app_migrator.add_command(app_migrator_fix_orphans, "fix-orphans")
+app_migrator.add_command(app_migrator_analyze, "analyze")
+app_migrator.add_command(app_migrator_create_host, "create-host")
+app_migrator.add_command(app_migrator_stage, "stage")
+app_migrator.add_command(app_migrator_unstage, "unstage")
+app_migrator.add_command(app_migrator_fix_structure, "fix-structure")
+app_migrator.add_command(app_migrator_ensure_controllers, "ensure-controllers")
+app_migrator.add_command(app_migrator_fix_app_field, "fix-app-field")
+app_migrator.add_command(app_migrator_fix_json_app, "fix-json-app")
+app_migrator.add_command(app_migrator_resolve_duplicates, "resolve-duplicates")
+app_migrator.add_command(app_migrator_orphans, "orphans")
 app_migrator.add_command(fix_module_names, "fix-module-names")
 app_migrator.add_command(standardize_modules, "standardize-modules")
 app_migrator.add_command(module_diagnostic, "module-diagnostic")
@@ -211,20 +246,30 @@ app_migrator.add_command(fix_orphan_modules, "fix-modules")
 app_migrator.add_command(fix_amb_w_tds2, "fix-amb-w-tds2")
 app_migrator.add_command(fix_kpi_factors, "fix-kpi-factors")
 
-app_migrator.add_command(predict_success, 'predict-success')
-app_migrator.add_command(generate_intelligent_plan, 'generate-plan')
-app_migrator.add_command(diagnose_app, 'diagnose')
-app_migrator.add_command(modernize_app, 'modernize')
+app_migrator.add_command(predict_success, "predict-success")
+app_migrator.add_command(generate_intelligent_plan, "generate-plan")
+app_migrator.add_command(diagnose_app, "diagnose")
+app_migrator.add_command(modernize_app, "modernize")
 app_migrator.add_command(git_push, "git-push")
 app_migrator.add_command(git_pull, "git-pull")
 app_migrator.add_command(api_key_cleanup, "api-key-cleanup")
 app_migrator.add_command(api_key_status, "api-key-status")
 app_migrator.add_command(api_key_setup, "api-key-setup")
 app_migrator.add_command(git_info, "git-info")
-app_migrator.add_command(setup_wizard,"setup-wizard")
-app_migrator.add_command(simple_api_setup, 'simple-api-setup')
-app_migrator.add_command(analyze_apps, 'analyze-apps')
-app_migrator.add_command(quick_setup, 'quick-setup')
+app_migrator.add_command(setup_wizard, "setup-wizard")
+app_migrator.add_command(simple_api_setup, "simple-api-setup")
+app_migrator.add_command(analyze_apps, "analyze-apps")
+app_migrator.add_command(quick_setup, "quick-setup")
+app_migrator.add_command(app_migrator_promote_custom_doctype, "promote-custom-doctype")
+app_migrator.add_command(app_migrator_scan_donor_residue, "scan-donor-residue")
+app_migrator.add_command(app_migrator_verify_donor_cleanup_readiness, "verify-donor-cleanup-readiness")
+app_migrator.add_command(app_migrator_audit_app_for_antipattern, "audit-app-for-antipattern")
+app_migrator.add_command(app_migrator_audit_orphan_doctypes, "audit-orphan-doctypes")
+app_migrator.add_command(app_migrator_audit_modules_disk_vs_db, "audit-modules-disk-vs-db")
+app_migrator.add_command(app_migrator_clean_donor_residue, "clean-donor-residue")
+app_migrator.add_command(app_migrator_new_fresh_app, "new-fresh-app")
+app_migrator.add_command(app_migrator_migrate_module, "migrate-module")
+app_migrator.add_command(app_migrator_denest_app, "denest-app")
 
 # ==================== EXPORT ALL COMMANDS ====================
 
@@ -250,18 +295,29 @@ commands = [
     app_migrator_fix_json_app,
     app_migrator_orphans,
     app_migrator_resolve_duplicates,
+    app_migrator_module_conflicts,  # v0.5-alpha W1 (Coder 2026-06-24)
+    app_migrator_audit_integrity,  # audit-derived integrity checks (2026-11-05)
+    app_migrator_select_option_drift,  # audit-derived integrity checks (2026-11-05)
+    app_migrator_planner,  # v0.5-alpha W1 (Coder 2026-06-24)
+    app_migrator_verifier,  # v0.5-alpha W1 (Coder 2026-06-24)
+    app_migrator_sessions,  # v0.5-alpha W1 (Coder 2026-06-24)
     # Intelligence commands
     predict_success,
     generate_intelligent_plan,
     diagnose_app,
     modernize_app,
-
     setup_wizard,
     app_migrator_audit_app_for_antipattern,
-    ]
+    app_migrator_promote_custom_doctype,
+    app_migrator_scan_donor_residue,
+    app_migrator_verify_donor_cleanup_readiness,
+]
 
 logger.debug("App Migrator v%s ready", __version__)
 
 # Git push command
 
 # Analyze commands
+from . import skills  # v0.5-alpha W1 (Coder 2026-06-23)
+
+app_migrator.add_command(skills.skills)  # v0.5-alpha W1 (Coder 2026-06-23)

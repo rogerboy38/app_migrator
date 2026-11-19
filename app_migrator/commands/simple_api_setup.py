@@ -1,14 +1,15 @@
 """
 Simple API key setup - no keyring issues
 """
+
 import os
 
 import click
 
 
 @click.command()
-@click.option('--api-key', help='Frappe Cloud API key')
-@click.option('--test', is_flag=True, help='Test mode')
+@click.option("--api-key", help="Frappe Cloud API key")
+@click.option("--test", is_flag=True, help="Test mode")
 @click.pass_context
 def simple_api_setup(ctx, api_key, test):
     """Simple API key setup (no keyring)"""
@@ -26,10 +27,7 @@ def simple_api_setup(ctx, api_key, test):
             api_key = "fc_test_key_12345"
             click.echo("🧪 TEST: Using test API key")
         else:
-            api_key = click.prompt(
-                "Enter Frappe Cloud API key (or 'skip' for guest mode)",
-                default="skip"
-            )
+            api_key = click.prompt("Enter Frappe Cloud API key (or 'skip' for guest mode)", default="skip")
 
             if api_key.lower() == "skip":
                 click.echo("✅ Skipped API key setup (guest mode)")
@@ -42,6 +40,7 @@ def simple_api_setup(ctx, api_key, test):
 
     # Test validation
     from app_migrator.utils.security import APIManager
+
     api_manager = APIManager()
 
     click.echo("⏳ Validating key...")
@@ -57,6 +56,7 @@ def simple_api_setup(ctx, api_key, test):
     click.echo("💡 Note: Key is stored in environment only")
     click.echo("   It will be lost when terminal closes")
     click.echo("   For permanent storage, use the full api-key-setup command")
+
 
 @click.command()
 @click.pass_context

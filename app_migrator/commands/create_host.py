@@ -18,8 +18,11 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
+
 from ._shared import (
     MigrationSession,
     ProgressTracker,
@@ -29,8 +32,8 @@ from ._shared import (
 )
 
 
-@click.command('app-migrator-create-host')
-@click.argument('host_app_name')
+@click.command("app-migrator-create-host")
+@click.argument("host_app_name")
 @pass_context
 def app_migrator_create_host(context, host_app_name):
     """Create a staging/host app for ping-pong migration"""
@@ -62,7 +65,7 @@ def app_migrator_create_host(context, host_app_name):
             app_email="migrator@localhost",
             app_license="mit",
             create_github_workflow=False,
-            branch_name="develop"
+            branch_name="develop",
         )
 
         _create_app_boilerplate(apps_dir, hooks, no_git=True)
@@ -82,4 +85,3 @@ def app_migrator_create_host(context, host_app_name):
         print("     App Publisher: Your Name")
         print("     App Email: your@email.com")
         print("     App License: mit")
-

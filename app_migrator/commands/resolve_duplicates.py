@@ -18,8 +18,11 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
+
 from ._shared import (
     MigrationSession,
     ProgressTracker,
@@ -29,11 +32,11 @@ from ._shared import (
 )
 
 
-@click.command('app-migrator-resolve-duplicates')
-@click.option('--keep', required=True, help='App to KEEP doctypes in (authoritative)')
-@click.option('--remove-from', required=True, help='App to REMOVE duplicate doctypes from')
-@click.option('--add-dependency/--no-dependency', default=True, help='Add dependency in hooks.py')
-@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+@click.command("app-migrator-resolve-duplicates")
+@click.option("--keep", required=True, help="App to KEEP doctypes in (authoritative)")
+@click.option("--remove-from", required=True, help="App to REMOVE duplicate doctypes from")
+@click.option("--add-dependency/--no-dependency", default=True, help="Add dependency in hooks.py")
+@click.option("--dry-run/--apply", default=True, help="Dry run or apply")
 def app_migrator_resolve_duplicates(keep, remove_from, add_dependency, dry_run):
     """
     Resolve duplicate doctypes between two apps.
@@ -68,21 +71,21 @@ def app_migrator_resolve_duplicates(keep, remove_from, add_dependency, dry_run):
     def get_doctypes(app_path, app_name):
         doctypes = {}
         for root, _dirs, files in os.walk(app_path):
-            if '/doctype/' in root or '\\doctype\\' in root:
+            if "/doctype/" in root or "\\doctype\\" in root:
                 for f in files:
-                    if f.endswith('.json') and not f.startswith('_'):
+                    if f.endswith(".json") and not f.startswith("_"):
                         json_path = os.path.join(root, f)
                         try:
                             with open(json_path) as jf:
                                 data = json.load(jf)
-                                if data.get('doctype') == 'DocType':
-                                    dt_name = data.get('name')
+                                if data.get("doctype") == "DocType":
+                                    dt_name = data.get("name")
                                     if dt_name:
                                         doctypes[dt_name] = {
-                                            'path': os.path.dirname(json_path),
-                                            'app': data.get('app'),
-                                            'custom': data.get('custom', 0),
-                                            'fields': len(data.get('fields', []))
+                                            "path": os.path.dirname(json_path),
+                                            "app": data.get("app"),
+                                            "custom": data.get("custom", 0),
+                                            "fields": len(data.get("fields", [])),
                                         }
                         except Exception:
                             pass
@@ -120,7 +123,7 @@ def app_migrator_resolve_duplicates(keep, remove_from, add_dependency, dry_run):
         print(f"\n🔧 REMOVING DUPLICATES FROM {remove_from}...")
         removed = 0
         for dt in duplicates:
-            dt_path = remove_doctypes[dt]['path']
+            dt_path = remove_doctypes[dt]["path"]
             try:
                 shutil.rmtree(dt_path)
                 print(f"   ✅ Removed: {dt}")
@@ -136,28 +139,25 @@ def app_migrator_resolve_duplicates(keep, remove_from, add_dependency, dry_run):
                     hooks_content = f.read()
 
                 # Check if required_apps already exists
-                if 'required_apps' in hooks_content:
+                if "required_apps" in hooks_content:
                     # Check if keep app is already in required_apps
                     if keep not in hooks_content:
                         # Add to existing required_apps
                         import re
-                        hooks_content = re.sub(
-                            r'(required_apps\s*=\s*\[)',
-                            f'\\1"{keep}", ',
-                            hooks_content
-                        )
-                        with open(hooks_path, 'w') as f:
+
+                        hooks_content = re.sub(r"(required_apps\s*=\s*\[)", f'\\1"{keep}", ', hooks_content)
+                        with open(hooks_path, "w") as f:
                             f.write(hooks_content)
                         print(f"   ✅ Added {keep} to required_apps in hooks.py")
                 else:
                     # Add required_apps after app_name
                     hooks_content = hooks_content.replace(
                         f'app_name = "{remove_from}"',
-                        f'app_name = "{remove_from}"\nrequired_apps = ["{keep}"]'
+                        f'app_name = "{remove_from}"\nrequired_apps = ["{keep}"]',
                     )
-                    with open(hooks_path, 'w') as f:
+                    with open(hooks_path, "w") as f:
                         f.write(hooks_content)
-                    print(f"   ✅ Added required_apps = [\"{keep}\"] to hooks.py")
+                    print(f'   ✅ Added required_apps = ["{keep}"] to hooks.py')
 
         print(f"\n✅ Removed {removed}/{len(duplicates)} duplicate doctypes")
         print("\n📋 NEXT STEPS:")
@@ -166,5 +166,3 @@ def app_migrator_resolve_duplicates(keep, remove_from, add_dependency, dry_run):
         print("   3. git push")
     else:
         print("\n📋 Run with --apply to remove duplicates and add dependency")
-
-

@@ -1,4 +1,10 @@
-exclude: 'node_modules|.git'
+# The dot must be escaped. As `node_modules|.git` the pattern matched ANY
+# character before "git", which silently excluded every path containing
+# "git" - git_info.py, git_pull.py, git_push.py, git_utils.py,
+# git_helper.py, git_helper_fix.py and eight more - from every hook in
+# this file. `\.git` still excludes the .git directory and the
+# .git_backup_* tree, and nothing else.
+exclude: 'node_modules|\.git'
 default_stages: [pre-commit]
 fail_fast: false
 
@@ -18,7 +24,7 @@ repos:
       - id: debug-statements
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.1
+    rev: v0.17.4
     hooks:
       - id: ruff
         name: "Run ruff import sorter"

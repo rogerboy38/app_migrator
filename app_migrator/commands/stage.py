@@ -16,8 +16,11 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
+
 from ._shared import (
     MigrationSession,
     ProgressTracker,
@@ -27,13 +30,13 @@ from ._shared import (
 )
 
 
-@click.command('app-migrator-stage')
-@click.option('--site', default=None, help='Site name (uses current site if not specified)')
-@click.option('--source', required=True, help='Source app name')
-@click.option('--host', required=True, help='Host/staging app name')
-@click.option('--doctypes', default=None, help='Comma-separated doctype names (or all)')
-@click.option('--prefix', default='STAGE_', help='Prefix for staged doctypes')
-@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+@click.command("app-migrator-stage")
+@click.option("--site", default=None, help="Site name (uses current site if not specified)")
+@click.option("--source", required=True, help="Source app name")
+@click.option("--host", required=True, help="Host/staging app name")
+@click.option("--doctypes", default=None, help="Comma-separated doctype names (or all)")
+@click.option("--prefix", default="STAGE_", help="Prefix for staged doctypes")
+@click.option("--dry-run/--apply", default=True, help="Dry run or apply")
 @pass_context
 def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
     """Stage doctypes from source app to host app with prefix"""
@@ -56,15 +59,15 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
     # Get doctypes from source app - try DB first, then filesystem
     source_doctypes = []
     if doctypes:
-        dt_list = [d.strip() for d in doctypes.split(',')]
-        source_doctypes = frappe.get_all("DocType",
-            filters={"name": ["in", dt_list]},
-            fields=["name", "module"])
+        dt_list = [d.strip() for d in doctypes.split(",")]
+        source_doctypes = frappe.get_all(
+            "DocType", filters={"name": ["in", dt_list]}, fields=["name", "module"]
+        )
     else:
         # Try database first
-        source_doctypes = frappe.get_all("DocType",
-            filters={"module": source_module_title},
-            fields=["name", "module"])
+        source_doctypes = frappe.get_all(
+            "DocType", filters={"module": source_module_title}, fields=["name", "module"]
+        )
 
         # If no DB results, scan filesystem for all modules in the app
         if not source_doctypes:
@@ -91,8 +94,8 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
     staged = []
 
     for dt in source_doctypes:
-        dt_name = dt.get('name') if isinstance(dt, dict) else dt.name
-        dt_module = dt.get('module') if isinstance(dt, dict) else dt.module
+        dt_name = dt.get("name") if isinstance(dt, dict) else dt.name
+        dt_module = dt.get("module") if isinstance(dt, dict) else dt.module
         print(f"   • {dt_name} (current: {dt_module})")
         staged.append({"old_name": dt_name, "old_module": dt_module})
 
@@ -118,14 +121,14 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
                 modules = [m.strip() for m in f.readlines() if m.strip()]
             if host_module_title not in modules:
                 modules.append(host_module_title)
-                with open(host_apps_path, 'w') as f:
-                    f.write('\n'.join(modules) + '\n')
+                with open(host_apps_path, "w") as f:
+                    f.write("\n".join(modules) + "\n")
                 print(f"   ✅ Updated modules.txt with: {host_module_title}")
         else:
             # Create modules.txt if host app exists but file doesn't
             host_app_dir = os.path.expanduser(f"~/frappe-bench/apps/{host}/{host}")
             if os.path.exists(host_app_dir):
-                with open(host_apps_path, 'w') as f:
+                with open(host_apps_path, "w") as f:
                     f.write(f"{host_module_title}\n")
                 print(f"   ✅ Created modules.txt with: {host_module_title}")
             else:
@@ -134,6 +137,7 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
         # Step 3: Copy doctype files from source to host app
         import json
         import shutil
+
         source_app_path = os.path.expanduser(f"~/frappe-bench/apps/{source}/{source}")
         host_app_path = os.path.expanduser(f"~/frappe-bench/apps/{host}/{host}")
         host_module_folder = host_module_title.lower().replace(" ", "_")
@@ -176,16 +180,15 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
                             dt_json = json.load(f)
                         dt_json["module"] = host_module_title
                         dt_json["custom"] = 1
-                        with open(json_file, 'w') as f:
+                        with open(json_file, "w") as f:
                             json.dump(dt_json, f, indent=1)
                     print(f"   📄 Copied: {dt_name} → {host}/{host_module_folder}/doctype/{dt_folder_name}/")
 
                 # Update DB record
                 if frappe.db.exists("DocType", dt_name):
-                    frappe.db.set_value("DocType", dt_name, {
-                        "module": host_module_title,
-                        "custom": 1
-                    }, update_modified=False)
+                    frappe.db.set_value(
+                        "DocType", dt_name, {"module": host_module_title, "custom": 1}, update_modified=False
+                    )
                 print(f"   ✅ {dt_name} → module: {host_module_title} (custom=1)")
                 success_count += 1
             except Exception as e:
@@ -199,4 +202,3 @@ def app_migrator_stage(context, site, source, host, doctypes, prefix, dry_run):
         print("\n📋 Run with --apply to reassign doctypes to host module")
 
     frappe.db.close()
-

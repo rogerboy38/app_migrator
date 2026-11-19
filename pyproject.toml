@@ -18,7 +18,7 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "ruff>=0.1.0",
+    "ruff==0.17.4",
 ]
 test = [
     "frappe>=16.0.0",
@@ -74,7 +74,11 @@ typing-modules = ["frappe.types.DF"]
 
 [tool.ruff.format]
 quote-style = "double"
-indent-style = "tab"
+# Every Python file in app_migrator/ (147 of 147) is indented with four
+# spaces. The setting used to say "tab", which meant `ruff format --check`
+# failed on 107 files that had never been touched by the formatter — the
+# config contradicted the codebase, not the other way round.
+indent-style = "space"
 docstring-code-format = true
 
 [tool.mypy]

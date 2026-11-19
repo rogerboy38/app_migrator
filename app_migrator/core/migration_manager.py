@@ -3,6 +3,7 @@ Migration Manager for App Migrator
 Core migration functionality and app management
 """
 
+
 class MigrationManager:
     """Main migration manager class"""
 

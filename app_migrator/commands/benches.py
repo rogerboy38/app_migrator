@@ -10,8 +10,11 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
+
 from ._shared import (
     detect_available_benches,
     discover_all_benches,
@@ -19,7 +22,7 @@ from ._shared import (
 )
 
 
-@click.command('app-migrator-benches')
+@click.command("app-migrator-benches")
 @pass_context
 def app_migrator_benches(context):
     """List all available benches and their apps"""
@@ -33,10 +36,7 @@ def app_migrator_benches(context):
     # have a Procfile (rare, but seen on broken setups).
     bench_paths = discover_all_benches()
     if not bench_paths:
-        bench_paths = [
-            os.path.expanduser(f"~/{name}")
-            for name in detect_available_benches()
-        ]
+        bench_paths = [os.path.expanduser(f"~/{name}") for name in detect_available_benches()]
 
     print(f"Found {len(bench_paths)} benches:\n")
 

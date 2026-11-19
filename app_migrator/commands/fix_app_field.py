@@ -16,8 +16,11 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
+
 from ._shared import (
     MigrationSession,
     ProgressTracker,
@@ -27,11 +30,11 @@ from ._shared import (
 )
 
 
-@click.command('app-migrator-fix-app-field')
-@click.option('--site', required=True, help='Site name')
-@click.option('--module', required=True, help='Module name (e.g., "Amb W Tds")')
-@click.option('--app', required=True, help='App name (e.g., "amb_w_tds")')
-@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+@click.command("app-migrator-fix-app-field")
+@click.option("--site", required=True, help="Site name")
+@click.option("--module", required=True, help='Module name (e.g., "Amb W Tds")')
+@click.option("--app", required=True, help='App name (e.g., "amb_w_tds")')
+@click.option("--dry-run/--apply", default=True, help="Dry run or apply")
 @pass_context
 def app_migrator_fix_app_field(context, site, module, app, dry_run):
     """
@@ -57,11 +60,15 @@ def app_migrator_fix_app_field(context, site, module, app, dry_run):
     frappe.connect()
 
     # Find DocTypes with NULL app field in this module
-    doctypes_with_null_app = frappe.db.sql("""
+    doctypes_with_null_app = frappe.db.sql(
+        """
         SELECT name, module, custom, app
         FROM `tabDocType`
         WHERE module = %s AND (app IS NULL OR app = '')
-    """, (module,), as_dict=True)
+    """,
+        (module,),
+        as_dict=True,
+    )
 
     if not doctypes_with_null_app:
         print(f"\n✅ No DocTypes found with NULL app field in module '{module}'")
@@ -77,7 +84,7 @@ def app_migrator_fix_app_field(context, site, module, app, dry_run):
         fixed_count = 0
         for dt in doctypes_with_null_app:
             try:
-                frappe.db.set_value("DocType", dt['name'], "app", app, update_modified=False)
+                frappe.db.set_value("DocType", dt["name"], "app", app, update_modified=False)
                 print(f"   ✅ {dt['name']} → app: {app}")
                 fixed_count += 1
             except Exception as e:
@@ -90,5 +97,3 @@ def app_migrator_fix_app_field(context, site, module, app, dry_run):
         print("\n📋 Run with --apply to fix the app field")
 
     frappe.db.close()
-
-

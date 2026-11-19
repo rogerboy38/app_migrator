@@ -3,6 +3,7 @@ Boot Fixer for App Migrator
 Fixes common Frappe boot issues
 """
 
+
 class BootFixer:
     """Main boot fixer class for handling boot issues"""
 

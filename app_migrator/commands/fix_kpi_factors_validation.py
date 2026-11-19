@@ -7,9 +7,9 @@ import click
 import frappe
 
 
-@click.command('fix-kpi-factors')
-@click.option('--site', required=True, help='Site name')
-@click.option('--apply', is_flag=True, help='Apply fixes')
+@click.command("fix-kpi-factors")
+@click.option("--site", required=True, help="Site name")
+@click.option("--apply", is_flag=True, help="Apply fixes")
 def fix_kpi_factors(site, apply):
     """
     Fix AMB KPI Factors validation error by checking/correcting field references
@@ -65,9 +65,9 @@ def fix_kpi_factors(site, apply):
                     click.echo(f"     ⚠️ Referenced doctype '{problem_field.options}' doesn't exist!")
 
                     # Try to find similar doctypes
-                    similar_doctypes = frappe.get_all("DocType",
-                        filters={"name": ["like", f"%{problem_field.options}%"]},
-                        fields=["name"])
+                    similar_doctypes = frappe.get_all(
+                        "DocType", filters={"name": ["like", f"%{problem_field.options}%"]}, fields=["name"]
+                    )
 
                     if similar_doctypes:
                         click.echo("     Similar doctypes found:")
@@ -77,7 +77,7 @@ def fix_kpi_factors(site, apply):
                         # Suggest fix
                         if not dry_run and similar_doctypes:
                             # Update to first similar doctype
-                            new_options = similar_doctypes[0]['name']
+                            new_options = similar_doctypes[0]["name"]
                             problem_field.options = new_options
                             dt.save()
                             frappe.db.commit()
@@ -133,6 +133,7 @@ def fix_kpi_factors(site, apply):
     except Exception as e:
         click.echo(f"❌ Error: {e}")
         frappe.destroy()
+
 
 if __name__ == "__main__":
     fix_kpi_factors()

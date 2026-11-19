@@ -31,11 +31,7 @@ def run_command_with_progress(command, description, timeout=600):
 
     try:
         process = subprocess.Popen(
-            command,
-            shell=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+            command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
 
         start_time = time.time()
@@ -69,10 +65,7 @@ def monitor_directory_creation(app_name, timeout=600, check_interval=5):
     for i in range(timeout // check_interval):
         if os.path.exists(target_path):
             try:
-                result = subprocess.run(
-                    f"du -sh {target_path}",
-                    shell=True, capture_output=True, text=True
-                )
+                result = subprocess.run(f"du -sh {target_path}", shell=True, capture_output=True, text=True)
                 size = result.stdout.strip().split()[0]
             except Exception:
                 size = "unknown size"
@@ -80,7 +73,7 @@ def monitor_directory_creation(app_name, timeout=600, check_interval=5):
             return True
 
         dots = "." * (i % 4)
-        print(f"\r⏳ Waiting for {app_name} directory{dots} ({i*check_interval}s)", end="", flush=True)
+        print(f"\r⏳ Waiting for {app_name} directory{dots} ({i * check_interval}s)", end="", flush=True)
         time.sleep(check_interval)
 
     print(f"\r❌ Timeout: {app_name} directory not created after {timeout}s")
@@ -88,6 +81,7 @@ def monitor_directory_creation(app_name, timeout=600, check_interval=5):
 
 
 # ========== VALIDATION FUNCTIONS ==========
+
 
 def validate_migration_readiness(source_app, target_app):
     """
@@ -105,28 +99,22 @@ def validate_migration_readiness(source_app, target_app):
             return False, issues
 
         # Check 1: Source app exists
-        source_modules = frappe.get_all('Module Def', filters={'app_name': source_app})
+        source_modules = frappe.get_all("Module Def", filters={"app_name": source_app})
         if not source_modules:
             issues.append(f"Source app '{source_app}' not found or has no modules")
         else:
             print(f"  ✅ Source app has {len(source_modules)} modules")
 
         # Check 2: Target app exists
-        target_modules = frappe.get_all('Module Def', filters={'app_name': target_app})
+        target_modules = frappe.get_all("Module Def", filters={"app_name": target_app})
         if not target_modules:
             issues.append(f"Target app '{target_app}' not found")
         else:
             print(f"  ✅ Target app exists with {len(target_modules)} modules")
 
         # Check 3: Check for naming conflicts
-        source_doctypes = frappe.get_all('DocType',
-            filters={'app': source_app},
-            pluck='name'
-        )
-        target_doctypes = frappe.get_all('DocType',
-            filters={'app': target_app},
-            pluck='name'
-        )
+        source_doctypes = frappe.get_all("DocType", filters={"app": source_app}, pluck="name")
+        target_doctypes = frappe.get_all("DocType", filters={"app": target_app}, pluck="name")
 
         conflicts = set(source_doctypes) & set(target_doctypes)
         if conflicts:
@@ -137,8 +125,8 @@ def validate_migration_readiness(source_app, target_app):
 
         # Check 4: File system paths
         bench_path = Path(find_bench_root())
-        source_path = bench_path / 'apps' / source_app
-        target_path = bench_path / 'apps' / target_app
+        source_path = bench_path / "apps" / source_app
+        target_path = bench_path / "apps" / target_app
 
         if not source_path.exists():
             issues.append(f"Source app path not found: {source_path}")
@@ -153,8 +141,7 @@ def validate_migration_readiness(source_app, target_app):
         # Check 5: Disk space
         try:
             result = subprocess.run(
-                "df /home/frappe --output=avail | tail -1",
-                shell=True, capture_output=True, text=True
+                "df /home/frappe --output=avail | tail -1", shell=True, capture_output=True, text=True
             )
             free_space = int(result.stdout.strip()) / 1024 / 1024  # Convert to GB
             if free_space < 2:
@@ -182,6 +169,7 @@ def validate_migration_readiness(source_app, target_app):
 
 # ========== CORE MIGRATION FUNCTIONS (V2) ==========
 
+
 @with_session_management
 def migrate_app_modules(source_app, target_app, modules=None):
     """
@@ -193,18 +181,17 @@ def migrate_app_modules(source_app, target_app, modules=None):
 
     try:
         # Get source modules
-        source_modules = frappe.get_all('Module Def',
-            filters={'app_name': source_app},
-            fields=['name', 'module_name', 'app_name']
+        source_modules = frappe.get_all(
+            "Module Def", filters={"app_name": source_app}, fields=["name", "module_name", "app_name"]
         )
 
         # Filter specific modules if requested
         if modules:
             if isinstance(modules, str):
-                module_list = [m.strip() for m in modules.split(',')]
+                module_list = [m.strip() for m in modules.split(",")]
             else:
                 module_list = modules
-            source_modules = [m for m in source_modules if m['module_name'] in module_list]
+            source_modules = [m for m in source_modules if m["module_name"] in module_list]
 
         print(f"\n📦 Found {len(source_modules)} modules to migrate\n")
 
@@ -218,7 +205,7 @@ def migrate_app_modules(source_app, target_app, modules=None):
 
         # Confirm migration
         confirm = input(f"\n⚠️  Migrate {len(source_modules)} modules? (y/N): ").strip().lower()
-        if confirm != 'y':
+        if confirm != "y":
             print("🚫 Migration cancelled")
             return False
 
@@ -229,16 +216,15 @@ def migrate_app_modules(source_app, target_app, modules=None):
         for module in source_modules:
             try:
                 # Update module app
-                frappe.db.set_value('Module Def', module['name'], 'app_name', target_app)
+                frappe.db.set_value("Module Def", module["name"], "app_name", target_app)
 
                 # Get and update all doctypes in module
-                module_doctypes = frappe.get_all('DocType',
-                    filters={'module': module['module_name']},
-                    fields=['name', 'module', 'app']
+                module_doctypes = frappe.get_all(
+                    "DocType", filters={"module": module["module_name"]}, fields=["name", "module", "app"]
                 )
 
                 for doctype in module_doctypes:
-                    frappe.db.set_value('DocType', doctype['name'], 'app', target_app)
+                    frappe.db.set_value("DocType", doctype["name"], "app", target_app)
 
                 migrated_count += 1
                 print(f"  ✅ Migrated {module['module_name']} ({len(module_doctypes)} doctypes)")
@@ -261,14 +247,15 @@ def migrate_app_modules(source_app, target_app, modules=None):
 
             # Optionally move files
             move_files = input("\n💡 Move module files? (y/N): ").strip().lower()
-            if move_files == 'y':
-                move_module_files(source_app, target_app, [m['module_name'] for m in source_modules])
+            if move_files == "y":
+                move_module_files(source_app, target_app, [m["module_name"] for m in source_modules])
 
         return migrated_count > 0
 
     except Exception as e:
         print(f"❌ Migration failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -285,7 +272,7 @@ def migrate_specific_doctypes(source_app, target_app, doctypes):
     try:
         # Parse doctype list
         if isinstance(doctypes, str):
-            doctype_list = [d.strip() for d in doctypes.split(',')]
+            doctype_list = [d.strip() for d in doctypes.split(",")]
         else:
             doctype_list = doctypes
 
@@ -293,13 +280,13 @@ def migrate_specific_doctypes(source_app, target_app, doctypes):
 
         # Display doctypes
         for dt in doctype_list:
-            exists = frappe.db.exists('DocType', dt)
+            exists = frappe.db.exists("DocType", dt)
             status = "✅" if exists else "❌"
             print(f"  {status} {dt}")
 
         # Confirm migration
         confirm = input(f"\n⚠️  Migrate {len(doctype_list)} doctypes? (y/N): ").strip().lower()
-        if confirm != 'y':
+        if confirm != "y":
             print("🚫 Migration cancelled")
             return False
 
@@ -309,9 +296,9 @@ def migrate_specific_doctypes(source_app, target_app, doctypes):
 
         for doctype_name in doctype_list:
             try:
-                if frappe.db.exists('DocType', doctype_name):
-                    frappe.db.set_value('DocType', doctype_name, 'app', target_app)
-                    doctype_doc = frappe.get_doc('DocType', doctype_name)
+                if frappe.db.exists("DocType", doctype_name):
+                    frappe.db.set_value("DocType", doctype_name, "app", target_app)
+                    doctype_doc = frappe.get_doc("DocType", doctype_name)
                     module_name = doctype_doc.module
 
                     print(f"  ✅ Migrated {doctype_name} (module: {module_name})")
@@ -338,6 +325,7 @@ def migrate_specific_doctypes(source_app, target_app, doctypes):
     except Exception as e:
         print(f"❌ DocType migration failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -352,8 +340,8 @@ def move_module_files(source_app, target_app, modules):
 
     try:
         bench_path = Path(find_bench_root())
-        source_app_path = bench_path / 'apps' / source_app / source_app
-        target_app_path = bench_path / 'apps' / target_app / target_app
+        source_app_path = bench_path / "apps" / source_app / source_app
+        target_app_path = bench_path / "apps" / target_app / target_app
 
         if not source_app_path.exists():
             print(f"❌ Source app path not found: {source_app_path}")
@@ -401,13 +389,17 @@ def move_module_files(source_app, target_app, modules):
     except Exception as e:
         print(f"❌ File movement failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
 
 # ========== LOCAL BENCH MIGRATION (V4) ==========
 
-def clone_app_local(app_name, source_bench="frappe-bench-clean", target_bench="frappe-bench", session_id=None):
+
+def clone_app_local(
+    app_name, source_bench="frappe-bench-clean", target_bench="frappe-bench", session_id=None
+):
     """
     Clone app locally between benches with progress tracking
     V4-style local migration with progress
@@ -433,7 +425,7 @@ def clone_app_local(app_name, source_bench="frappe-bench-clean", target_bench="f
         success, output = run_command_with_progress(
             f"cd /home/frappe/{target_bench} && bench get-app {app_name} {source_path}",
             f"Local copy: {source_bench} → {target_bench}",
-            timeout=300
+            timeout=300,
         )
 
         if not success:
@@ -445,13 +437,14 @@ def clone_app_local(app_name, source_bench="frappe-bench-clean", target_bench="f
         success, output = run_command_with_progress(
             f"cd /home/frappe/{target_bench} && bench install-app {app_name}",
             f"Installing {app_name}",
-            timeout=300
+            timeout=300,
         )
 
         if success:
             tracker.complete()
             if session_id:
                 from .session_manager import SessionManager
+
                 try:
                     session = SessionManager(session_id=session_id)
                     session.update_progress(f"clone_{app_name}", "completed")
@@ -466,6 +459,7 @@ def clone_app_local(app_name, source_bench="frappe-bench-clean", target_bench="f
         tracker.fail(str(e))
         if session_id:
             from .session_manager import SessionManager
+
             try:
                 session = SessionManager(session_id=session_id)
                 session.update_progress(f"clone_{app_name}", "failed", str(e))

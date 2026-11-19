@@ -11,6 +11,7 @@ Public API:
   - get_current_site  — best-effort detection of the active site
   - detect_available_benches  — list ~/frappe-bench* directories
   - get_bench_apps    — list installed apps in a bench via `bench version`
+  - safe_append_line  — append a line to a text file with proper newline handling
 """
 
 import json
@@ -32,12 +33,7 @@ class ProgressTracker:
         self.app_name = app_name
         self.total_steps = total_steps
         self.current_step = 0
-        self.steps = [
-            "🔍 Validating migration",
-            "📥 Downloading app",
-            "⚙️ Installing app",
-            "✅ Finalizing"
-        ]
+        self.steps = ["🔍 Validating migration", "📥 Downloading app", "⚙️ Installing app", "✅ Finalizing"]
         self.start_time = time.time()
 
     def update(self, message=None):
@@ -49,7 +45,11 @@ class ProgressTracker:
             print(f"\r🔄 [{self.current_step}/{self.total_steps}] {message} ({elapsed}s)", end="", flush=True)
         else:
             if self.current_step <= len(self.steps):
-                print(f"\r🔄 [{self.current_step}/{self.total_steps}] {self.steps[self.current_step-1]} ({elapsed}s)", end="", flush=True)
+                print(
+                    f"\r🔄 [{self.current_step}/{self.total_steps}] {self.steps[self.current_step - 1]} ({elapsed}s)",
+                    end="",
+                    flush=True,
+                )
 
     def complete(self):
         """Mark as completed"""
@@ -64,24 +64,25 @@ class ProgressTracker:
 
 # ==================== SITE DETECTION ====================
 
+
 def get_current_site():
     """Get current site from common_site_config.json or currentsite.txt"""
     home = str(Path.home())
     possible_paths = [
-        os.path.join(os.getcwd(), 'sites'),
-        os.path.join(home, 'frappe-bench', 'sites'),
-        os.path.abspath(os.path.join(os.getcwd(), '..', '..', 'sites')),
+        os.path.join(os.getcwd(), "sites"),
+        os.path.join(home, "frappe-bench", "sites"),
+        os.path.abspath(os.path.join(os.getcwd(), "..", "..", "sites")),
     ]
     for sites_path in possible_paths:
         # Try common_site_config.json first (has default_site)
-        config_file = os.path.join(sites_path, 'common_site_config.json')
+        config_file = os.path.join(sites_path, "common_site_config.json")
         if os.path.exists(config_file):
             with open(config_file) as f:
                 config = json.load(f)
-                if config.get('default_site'):
-                    return config['default_site']
+                if config.get("default_site"):
+                    return config["default_site"]
         # Fallback to currentsite.txt
-        currentsite_file = os.path.join(sites_path, 'currentsite.txt')
+        currentsite_file = os.path.join(sites_path, "currentsite.txt")
         if os.path.exists(currentsite_file):
             with open(currentsite_file) as f:
                 return f.read().strip()
@@ -89,6 +90,7 @@ def get_current_site():
 
 
 # ==================== BENCH DISCOVERY ====================
+
 
 def _looks_like_bench(path):
     """
@@ -124,11 +126,7 @@ def find_bench_root(start_path=None):
     Raises RuntimeError if no bench root is found anywhere.
     """
     if start_path is None:
-        start_path = (
-            os.environ.get("FRAPPE_BENCH")
-            or os.environ.get("BENCH_PATH")
-            or os.getcwd()
-        )
+        start_path = os.environ.get("FRAPPE_BENCH") or os.environ.get("BENCH_PATH") or os.getcwd()
 
     p = Path(start_path).resolve()
     while p != p.parent:
@@ -141,6 +139,7 @@ def find_bench_root(start_path=None):
     home_bench = os.path.expanduser("~/frappe-bench")
     if os.path.isdir(home_bench):
         import warnings
+
         warnings.warn(
             "Falling back to ~/frappe-bench. Set FRAPPE_BENCH env var or "
             "run from inside a bench directory for multi-bench support.",
@@ -191,9 +190,9 @@ def detect_available_benches():
     that merely match the prefix).
     """
     benches = []
-    frappe_home = os.path.expanduser('~')
+    frappe_home = os.path.expanduser("~")
     for item in os.listdir(frappe_home):
-        if item.startswith('frappe-bench') and os.path.isdir(os.path.join(frappe_home, item)):
+        if item.startswith("frappe-bench") and os.path.isdir(os.path.join(frappe_home, item)):
             benches.append(item)
     return sorted(benches)
 
@@ -202,12 +201,11 @@ def get_bench_apps(bench_path):
     """Get installed apps from a bench by running `bench version`"""
     try:
         result = subprocess.run(
-            f"cd {bench_path} && bench version",
-            shell=True, capture_output=True, text=True, timeout=30
+            f"cd {bench_path} && bench version", shell=True, capture_output=True, text=True, timeout=30
         )
         apps = []
-        for line in result.stdout.strip().split('\n'):
-            if ' ' in line and not line.startswith('✅'):
+        for line in result.stdout.strip().split("\n"):
+            if " " in line and not line.startswith("✅"):
                 app = line.split()[0]
                 apps.append(app)
         return sorted(apps)
@@ -216,6 +214,58 @@ def get_bench_apps(bench_path):
 
 
 # ==================== MIGRATION SESSION ====================
+
+# ==================== TEXT FILE APPEND (DEFENSIVE) ====================
+# Discovered concretely on 2026-05-06: bench's sites/apps.txt didn't end with
+# a newline, and `echo 'X' >> apps.txt` produced `amb_w_tdsX` (concatenation,
+# one bad line) instead of two lines. This helper prevents that class of bug
+# for any command that appends to text files.
+
+
+def safe_append_line(path, line, dedupe=True):
+    """Append `line` to text file at `path`, ensuring proper newline handling.
+
+    Defensive against the missing-trailing-newline concatenation bug
+    (bench/sites/apps.txt and similar inconsistent files in the wild).
+
+    Behavior:
+      - If file doesn't exist, creates it with `line + "\n"`.
+      - If file exists but doesn't end with newline, prepends a newline before
+        appending so the new line lands on its own row.
+      - If `dedupe=True` (default), no-op if `line` already present as a
+        complete line (prevents duplicates on idempotent re-runs).
+      - Always ends the file with a trailing newline (POSIX convention).
+
+    Args:
+        path: Path or str. Target file path.
+        line: str. Line content (newlines should NOT be embedded).
+        dedupe: bool. If True (default), skip if `line` already in file.
+
+    Returns:
+        bool. True if a write occurred; False if no-op (dedupe hit or empty line).
+    """
+    path = Path(path)
+    line = line.rstrip("\n")
+    if not line:
+        return False
+
+    if not path.exists():
+        path.write_text(line + "\n")
+        return True
+
+    content = path.read_text()
+    if dedupe and line in content.splitlines():
+        return False
+
+    if content and not content.endswith("\n"):
+        content += "\n"
+    content += line + "\n"
+    path.write_text(content)
+    return True
+
+
+# ==================== SESSION MANAGEMENT ====================
+
 
 class MigrationSession:
     """Session metadata persistence under ~/migration_sessions/"""
@@ -238,7 +288,7 @@ class MigrationSession:
         os.makedirs(self.session_dir, exist_ok=True)
 
     def save(self):
-        with open(self.session_file, 'w') as f:
+        with open(self.session_file, "w") as f:
             json.dump(self.data, f, indent=2)
         return self.session_id
 

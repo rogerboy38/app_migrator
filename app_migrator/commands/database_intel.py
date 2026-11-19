@@ -35,6 +35,7 @@ def get_database_info(site_name):
         print(f"❌ Database info failed: {e}")
         return False
 
+
 def analyze_site_compatibility(source_site, target_site):
     """Analyze compatibility between two sites"""
     print("🔍 ANALYZING SITE COMPATIBILITY")

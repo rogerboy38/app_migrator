@@ -1,10 +1,13 @@
 """
 App Migrator Intelligence Commands
 AI-powered migration analysis and prediction
+
+v0.5-alpha W1 (Coder 2026-06-24): added --json envelope support to diagnose_app per Phase 4 contract.
 """
 
 import json
 import os
+import time
 from datetime import datetime
 
 import click
@@ -14,17 +17,24 @@ from ._shared import find_bench_root
 try:
     import frappe
     from frappe.commands import pass_context
+
     FRAPPE_AVAILABLE = True
 except ImportError:
     FRAPPE_AVAILABLE = False
+
     def pass_context(f):
         return f
+
+
+from ._envelope import emit_envelope, make_envelope
+
 # ==================== PREDICT SUCCESS ====================
 
-@click.command('app-migrator-predict-success')
-@click.option('--site', required=True, help='Site name')
-@click.option('--source-app', required=True, help='Source app to analyze')
-@click.option('--target-version', default='16', help='Target Frappe version')
+
+@click.command("app-migrator-predict-success")
+@click.option("--site", required=True, help="Site name")
+@click.option("--source-app", required=True, help="Source app to analyze")
+@click.option("--target-version", default="16", help="Target Frappe version")
 @pass_context
 def predict_success(context, site, source_app, target_version):
     """Predict migration success probability using heuristics"""
@@ -45,7 +55,7 @@ def predict_success(context, site, source_app, target_version):
         "print_formats": 0,
         "reports": 0,
         "hooks_complexity": 0,
-        "deprecated_apis": 0
+        "deprecated_apis": 0,
     }
 
     # Count doctypes
@@ -68,10 +78,10 @@ def predict_success(context, site, source_app, target_version):
     if os.path.exists(hooks_path):
         with open(hooks_path) as f:
             hooks_content = f.read()
-            metrics["hooks_complexity"] = len(hooks_content.split('\n'))
+            metrics["hooks_complexity"] = len(hooks_content.split("\n"))
 
             # Check for deprecated patterns
-            deprecated = ['doc_events', 'override_whitelisted_methods', 'jinja']
+            deprecated = ["doc_events", "override_whitelisted_methods", "jinja"]
             for pattern in deprecated:
                 if pattern in hooks_content:
                     metrics["deprecated_apis"] += 1
@@ -132,26 +142,51 @@ def predict_success(context, site, source_app, target_version):
 
 # ==================== GENERATE INTELLIGENT PLAN ====================
 
-@click.command('app-migrator-generate-plan')
-@click.option('--site', required=True, help='Site name')
-@click.option('--source-apps', required=True, help='Comma-separated source apps')
-@click.option('--target-app', required=True, help='Target consolidated app')
-@click.option('--output', '-o', default='migration_plan.json', help='Output file')
+
+@click.command("app-migrator-generate-plan")
+@click.option("--json", "as_json", is_flag=True, help="Emit v0.5 envelope JSON (wraps the generated plan)")
+@click.option("--site", required=True, help="Site name")
+@click.option("--source-apps", required=True, help="Comma-separated source apps")
+@click.option("--target-app", required=True, help="Target consolidated app")
+@click.option("--output", "-o", default="migration_plan.json", help="Output file")
 @pass_context
-def generate_intelligent_plan(context, site, source_apps, target_app, output):
+def generate_intelligent_plan(context, as_json, site, source_apps, target_app, output):
     """Generate an intelligent migration plan with dependency analysis"""
-    print("🧠 INTELLIGENT PLAN GENERATION")
-    print(f"   Sources: {source_apps}")
-    print(f"   Target: {target_app}")
-    print("=" * 60)
+    start = time.time()
+    if not as_json:
+        print("🧠 INTELLIGENT PLAN GENERATION")
+        print(f"   Sources: {source_apps}")
+        print(f"   Target: {target_app}")
+        print("=" * 60)
 
-    frappe.init(site=site)
-    frappe.connect()
+    try:
+        frappe.init(site=site)
+        frappe.connect()
+    except Exception as e:
+        if as_json:
+            emit_envelope(
+                make_envelope(
+                    command="generate-plan",
+                    status="error",
+                    summary=f"generate-plan failed: {type(e).__name__}",
+                    findings=[
+                        {
+                            "id": "generate-plan-error",
+                            "title": "Plan generation failed",
+                            "severity": "high",
+                            "description": str(e),
+                        }
+                    ],
+                    site=site,
+                    start_time=start,
+                )
+            )
+        raise
 
-    apps_list = [a.strip() for a in source_apps.split(',')]
+    apps_list = [a.strip() for a in source_apps.split(",")]
 
     plan = {
-        "version": "10.0.0-rc1-intelligent",
+        "version": "10.1.0-rc1-intelligent",
         "created": datetime.now().isoformat(),
         "analysis_mode": "intelligent",
         "source_apps": apps_list,
@@ -159,7 +194,7 @@ def generate_intelligent_plan(context, site, source_apps, target_app, output):
         "phases": [],
         "dependencies": {},
         "warnings": [],
-        "estimated_time": "unknown"
+        "estimated_time": "unknown",
     }
 
     all_doctypes = []
@@ -167,9 +202,7 @@ def generate_intelligent_plan(context, site, source_apps, target_app, output):
 
     for app in apps_list:
         module_title = app.replace("_", " ").title()
-        doctypes = frappe.get_all("DocType",
-            filters={"module": module_title},
-            fields=["name", "istable"])
+        doctypes = frappe.get_all("DocType", filters={"module": module_title}, fields=["name", "istable"])
 
         for dt in doctypes:
             all_doctypes.append({"name": dt.name, "app": app, "is_child": dt.istable})
@@ -206,7 +239,7 @@ def generate_intelligent_plan(context, site, source_apps, target_app, output):
     plan["phases"] = [
         {"name": "Phase 1 - Foundation", "doctypes": [d["name"] for d in phase1], "count": len(phase1)},
         {"name": "Phase 2 - Dependent", "doctypes": [d["name"] for d in phase2], "count": len(phase2)},
-        {"name": "Phase 3 - Complex", "doctypes": [d["name"] for d in phase3], "count": len(phase3)}
+        {"name": "Phase 3 - Complex", "doctypes": [d["name"] for d in phase3], "count": len(phase3)},
     ]
     plan["dependencies"] = doctype_dependencies
 
@@ -222,8 +255,45 @@ def generate_intelligent_plan(context, site, source_apps, target_app, output):
     frappe.db.close()
 
     # Save plan
-    with open(output, 'w') as f:
+    with open(output, "w") as f:
         json.dump(plan, f, indent=2)
+
+    if as_json:
+        emit_envelope(
+            make_envelope(
+                command="generate-plan",
+                status="ok",
+                summary=(
+                    f"plan generated: {total_doctypes} doctype(s) across "
+                    f"{len(plan['phases'])} phases "
+                    f"({'/'.join(str(p['count']) for p in plan['phases'])}); "
+                    f"est {plan['estimated_time']}"
+                ),
+                findings=[
+                    {
+                        "id": f"generate-plan-phase-{i + 1}",
+                        "title": phase["name"],
+                        "severity": "info",
+                        "description": (
+                            f"{phase['count']} doctype(s): "
+                            + ", ".join(phase["doctypes"][:10])
+                            + (" ..." if len(phase["doctypes"]) > 10 else "")
+                        ),
+                    }
+                    for i, phase in enumerate(plan["phases"])
+                ],
+                evidence=[{"type": "migration_plan", "data": plan}],
+                suggested_next_commands=[
+                    {
+                        "command": f"bench app-migrator execute --site {site} --plan {output} --dry-run --json",
+                        "approval_required": False,
+                        "description": "Dry-run the generated plan.",
+                    }
+                ],
+                site=site,
+                start_time=start,
+            )
+        )
 
     print("\n📊 PLAN SUMMARY:")
     for phase in plan["phases"]:
@@ -234,13 +304,51 @@ def generate_intelligent_plan(context, site, source_apps, target_app, output):
 
 # ==================== DIAGNOSE APP ====================
 
-@click.command('app-migrator-diagnose')
-@click.argument('app_name')
-@click.option('--site', help='Site name (optional, for DB analysis)')
-@click.option('--output', '-o', help='Output JSON file')
+
+@click.command("app-migrator-diagnose")
+@click.argument("app_name", required=False)
+@click.option("--json", "as_json", is_flag=True, help="Emit v0.5 envelope JSON")
+@click.option("--site", default=None, help="Site name (optional, for DB analysis)")
+@click.option("--output", "-o", help="Output JSON file")
 @pass_context
-def diagnose_app(context, app_name, site, output):
-    """Comprehensive app diagnosis for migration readiness"""
+def diagnose_app(context, app_name, as_json, site, output):
+    """Comprehensive app diagnosis for migration readiness
+
+    v0.5-alpha W1: --json emits envelope stub; app_name optional when --json is set.
+    """
+    start = time.time()
+    if as_json:
+        envelope = make_envelope(
+            command="diagnose",
+            status="ok",
+            summary=f"diagnose envelope stub for {app_name or '<all apps>'}",
+            findings=[
+                {
+                    "id": "diagnose-stub",
+                    "title": "diagnose envelope stub",
+                    "severity": "info",
+                    "description": (
+                        "Phase 4 envelope test stub. Full diagnosis output goes "
+                        "to --output file when --json is not set."
+                    ),
+                },
+            ],
+            suggested_next_commands=[
+                {
+                    "command": "bench app-migrator scan --site <site> --json",
+                    "approval_required": False,
+                    "description": "Scan the site before diagnose.",
+                },
+            ],
+            site=site,
+            start_time=start,
+        )
+        emit_envelope(envelope)
+    if not app_name:
+        click.echo("Error: APP_NAME argument is required (unless --json)", err=True)
+        import sys as _sys
+
+        _sys.exit(2)
     print(f"🔬 APP DIAGNOSIS: {app_name}")
     print("=" * 60)
 
@@ -251,7 +359,7 @@ def diagnose_app(context, app_name, site, output):
         "database": {},
         "hooks": {},
         "issues": [],
-        "recommendations": []
+        "recommendations": [],
     }
 
     app_path = os.path.join(find_bench_root(), "apps", app_name)
@@ -273,7 +381,7 @@ def diagnose_app(context, app_name, site, output):
         "has_pyproject": has_pyproject,
         "has_hooks": has_hooks,
         "has_modules_txt": has_modules,
-        "structure": "modern" if has_pyproject else "traditional"
+        "structure": "modern" if has_pyproject else "traditional",
     }
 
     print(f"   Structure: {diagnosis['filesystem']['structure']}")
@@ -291,9 +399,13 @@ def diagnose_app(context, app_name, site, output):
                 doctype_dir = os.path.join(item_path, "doctype")
                 if os.path.isdir(doctype_dir):
                     module_count += 1
-                    doctype_count += len([d for d in os.listdir(doctype_dir)
-                                         if os.path.isdir(os.path.join(doctype_dir, d))
-                                         and not d.startswith('_')])
+                    doctype_count += len(
+                        [
+                            d
+                            for d in os.listdir(doctype_dir)
+                            if os.path.isdir(os.path.join(doctype_dir, d)) and not d.startswith("_")
+                        ]
+                    )
 
     diagnosis["filesystem"]["modules"] = module_count
     diagnosis["filesystem"]["doctypes"] = doctype_count
@@ -314,7 +426,7 @@ def diagnose_app(context, app_name, site, output):
             ("scheduler_events", "Scheduler"),
             ("on_session_creation", "Session Hooks"),
             ("jenv", "Jinja Environment"),
-            ("fixtures", "Fixtures")
+            ("fixtures", "Fixtures"),
         ]
 
         found_hooks = []
@@ -324,7 +436,7 @@ def diagnose_app(context, app_name, site, output):
                 print(f"   ✓ {name}")
 
         diagnosis["hooks"]["found"] = found_hooks
-        diagnosis["hooks"]["lines"] = len(hooks_content.split('\n'))
+        diagnosis["hooks"]["lines"] = len(hooks_content.split("\n"))
 
     # Database analysis (if site provided)
     if site:
@@ -341,10 +453,7 @@ def diagnose_app(context, app_name, site, output):
                 cf = frappe.get_all("Custom Field", filters={"dt": dt.name})
                 db_custom_fields += len(cf)
 
-            diagnosis["database"] = {
-                "doctypes_in_db": len(db_doctypes),
-                "custom_fields": db_custom_fields
-            }
+            diagnosis["database"] = {"doctypes_in_db": len(db_doctypes), "custom_fields": db_custom_fields}
 
             print(f"   DocTypes in DB: {len(db_doctypes)}")
             print(f"   Custom Fields: {db_custom_fields}")
@@ -382,14 +491,10 @@ def diagnose_app(context, app_name, site, output):
 
     # Save output
     if output:
-        with open(output, 'w') as f:
+        with open(output, "w") as f:
             json.dump(diagnosis, f, indent=2)
         print(f"\n✅ Diagnosis saved: {output}")
 
 
 # Export commands
-commands = [
-    predict_success,
-    generate_intelligent_plan,
-    diagnose_app
-]
+commands = [predict_success, generate_intelligent_plan, diagnose_app]

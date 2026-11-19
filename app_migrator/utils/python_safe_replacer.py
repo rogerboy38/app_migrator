@@ -37,7 +37,7 @@ class PythonSafeReplacer:
 
         try:
             # Read original content
-            with open(filepath, encoding='utf-8', errors='ignore') as f:
+            with open(filepath, encoding="utf-8", errors="ignore") as f:
                 original_content = f.read()
 
             # Skip if no replacements needed
@@ -45,7 +45,7 @@ class PythonSafeReplacer:
                 return True
 
             # For Python files, validate syntax before and after
-            is_python_file = filepath.endswith('.py')
+            is_python_file = filepath.endswith(".py")
 
             if is_python_file:
                 if not self._validate_python_syntax(original_content, filepath):
@@ -62,10 +62,10 @@ class PythonSafeReplacer:
                     return False
 
             # Create backup and write new content
-            backup_path = filepath + '.backup'
+            backup_path = filepath + ".backup"
             shutil.copy2(filepath, backup_path)
 
-            with open(filepath, 'w', encoding='utf-8') as f:
+            with open(filepath, "w", encoding="utf-8") as f:
                 f.write(new_content)
 
             print(f"✅ Successfully replaced in: {filepath}")
@@ -79,7 +79,7 @@ class PythonSafeReplacer:
         except Exception as e:
             print(f"❌ Error processing {filepath}: {e}")
             # Restore backup if it exists
-            if 'backup_path' in locals() and os.path.exists(backup_path):
+            if "backup_path" in locals() and os.path.exists(backup_path):
                 shutil.copy2(backup_path, filepath)
                 os.remove(backup_path)
             self.skipped_files += 1
@@ -94,11 +94,11 @@ class PythonSafeReplacer:
             return 0
 
         # Skip certain directories
-        skip_dirs = {'.git', '__pycache__', 'node_modules', 'dist', 'build'}
+        skip_dirs = {".git", "__pycache__", "node_modules", "dist", "build"}
 
         for root, dirs, files in os.walk(directory_path):
             # Remove skipped directories from traversal
-            dirs[:] = [d for d in dirs if d not in skip_dirs and not d.startswith('.')]
+            dirs[:] = [d for d in dirs if d not in skip_dirs and not d.startswith(".")]
 
             for file in files:
                 file_path = os.path.join(root, file)
@@ -131,7 +131,7 @@ class ModuleRenamer:
 
         new_content = content.replace(self.source_app, self.target_app)
 
-        with open(modules_file_path, 'w') as f:
+        with open(modules_file_path, "w") as f:
             f.write(new_content)
 
         return True

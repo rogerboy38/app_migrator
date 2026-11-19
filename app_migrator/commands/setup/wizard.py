@@ -10,11 +10,11 @@ import requests
 
 
 @click.command()
-@click.option('--api-key', help='Frappe Cloud API key')
-@click.option('--ssh-key', help='Path to SSH key (default: ~/.ssh/id_ed25519)')
-@click.option('--auto-approve', is_flag=True, help='Skip confirmation prompts')
-@click.option('--sync', is_flag=True, help='Sync from source bench')
-@click.option('--test', is_flag=True, help='Test mode without actual changes')
+@click.option("--api-key", help="Frappe Cloud API key")
+@click.option("--ssh-key", help="Path to SSH key (default: ~/.ssh/id_ed25519)")
+@click.option("--auto-approve", is_flag=True, help="Skip confirmation prompts")
+@click.option("--sync", is_flag=True, help="Sync from source bench")
+@click.option("--test", is_flag=True, help="Test mode without actual changes")
 @click.pass_context
 def setup_wizard(ctx, api_key, ssh_key, auto_approve, sync, test):
     """Interactive setup wizard for App Migrator"""
@@ -83,25 +83,21 @@ def setup_wizard(ctx, api_key, ssh_key, auto_approve, sync, test):
         click.echo(f"✅ Verified: {validation_result.get('email', 'Unknown')}")
         click.echo(f"✅ Account: {validation_result.get('account', 'Unknown')}")
 
-        source = validation_result.get('source', 'unknown')
-        note = validation_result.get('note', '')
+        source = validation_result.get("source", "unknown")
+        note = validation_result.get("note", "")
 
         # Show appropriate message based on source
-        if source == 'test_key':
+        if source == "test_key":
             click.echo("   🔒 Validation: Test Key")
-        elif source == 'frappe_cloud_api':
+        elif source == "frappe_cloud_api":
             click.echo("   🔒 Validation: Frappe Cloud API")
-        elif source == 'plausibility_check':
+        elif source == "plausibility_check":
             click.echo("   ⚠️  Validation: Limited (key looks plausible)")
         else:
             click.echo(f"   ℹ️  Validation: {source.replace('_', ' ').title()}")
 
         # Use SecurityManager to determine role (FIX 3)
-        user_role = SecurityManager.get_user_role({
-            "status": "valid",
-            "source": source,
-            "note": note
-        })
+        user_role = SecurityManager.get_user_role({"status": "valid", "source": source, "note": note})
     else:
         # No validation result
         if api_key:
@@ -186,6 +182,7 @@ def setup_wizard(ctx, api_key, ssh_key, auto_approve, sync, test):
     click.echo("3. Create migration plan: bench app-migrator generate-plan")
     click.echo("4. Execute migration: bench app-migrator migrate")
 
+
 def prompt_api_key(test_mode=False):
     """Interactive API key prompt"""
     click.echo()
@@ -214,6 +211,7 @@ def prompt_api_key(test_mode=False):
     click.echo()
     click.echo("⏳ Validating API key...")
     return api_key
+
 
 def setup_ssh_wizard(ssh_manager, auto_approve, test_mode=False):
     """Interactive SSH setup"""
@@ -294,6 +292,7 @@ def setup_ssh_wizard(ssh_manager, auto_approve, test_mode=False):
     else:
         click.echo("⚠️  SSH setup skipped. Some features will be limited.")
 
+
 def analyze_repositories(ctx, test_mode=False):
     """Analyze git repositories in current bench"""
     click.echo("⏳ Scanning apps in current bench...")
@@ -303,7 +302,7 @@ def analyze_repositories(ctx, test_mode=False):
     bench_root = current_path
 
     # If we're in sites directory, go up one level
-    if current_path.endswith('/sites'):
+    if current_path.endswith("/sites"):
         bench_root = os.path.dirname(current_path)
 
     apps_path = os.path.join(bench_root, "apps")
@@ -315,8 +314,7 @@ def analyze_repositories(ctx, test_mode=False):
         return
 
     try:
-        app_dirs = [d for d in os.listdir(apps_path)
-                   if os.path.isdir(os.path.join(apps_path, d))]
+        app_dirs = [d for d in os.listdir(apps_path) if os.path.isdir(os.path.join(apps_path, d))]
 
         if test_mode:
             # Quick analysis for test mode
@@ -355,6 +353,7 @@ def analyze_repositories(ctx, test_mode=False):
         click.echo(f"⚠️  Repository analysis error: {e}")
         click.echo("   Continuing with setup...")
 
+
 def manage_pending_changes(ctx, test_mode=False):
     """Check for uncommitted changes in app_migrator"""
 
@@ -378,13 +377,10 @@ def manage_pending_changes(ctx, test_mode=False):
     # Check git status
     try:
         result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=app_migrator_dir,
-            capture_output=True,
-            text=True
+            ["git", "status", "--porcelain"], cwd=app_migrator_dir, capture_output=True, text=True
         )
 
-        changes = [line for line in result.stdout.strip().split('\n') if line]
+        changes = [line for line in result.stdout.strip().split("\n") if line]
 
         if changes:
             click.echo(f"⚠️  Found {len(changes)} uncommitted change(s) in app_migrator")
@@ -411,26 +407,28 @@ def manage_pending_changes(ctx, test_mode=False):
 
             if choice == "1":
                 from datetime import datetime
-                commit_message = click.prompt("Commit message",
-                                            default=f"Migration prep: {datetime.now().strftime('%Y-%m-%d')}")
+
+                commit_message = click.prompt(
+                    "Commit message", default=f"Migration prep: {datetime.now().strftime('%Y-%m-%d')}"
+                )
                 subprocess.run(["git", "add", "."], cwd=app_migrator_dir, check=True)
-                subprocess.run(["git", "commit", "-m", commit_message],
-                             cwd=app_migrator_dir, check=True)
+                subprocess.run(["git", "commit", "-m", commit_message], cwd=app_migrator_dir, check=True)
                 click.echo("✅ Changes committed")
 
             elif choice == "2":
                 from datetime import datetime
+
                 stash_name = f"Migration changes {datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                subprocess.run(["git", "stash", "save", stash_name],
-                             cwd=app_migrator_dir, check=True)
+                subprocess.run(["git", "stash", "save", stash_name], cwd=app_migrator_dir, check=True)
                 click.echo("✅ Changes stashed")
 
             elif choice == "3":
                 subprocess.run(["git", "diff"], cwd=app_migrator_dir)
                 if click.confirm("Commit these changes now?"):
                     subprocess.run(["git", "add", "."], cwd=app_migrator_dir, check=True)
-                    subprocess.run(["git", "commit", "-m", "Migration changes"],
-                                 cwd=app_migrator_dir, check=True)
+                    subprocess.run(
+                        ["git", "commit", "-m", "Migration changes"], cwd=app_migrator_dir, check=True
+                    )
                     click.echo("✅ Changes committed")
             else:
                 click.echo("⚠️  Changes not committed. Migration may be affected.")
@@ -441,6 +439,7 @@ def manage_pending_changes(ctx, test_mode=False):
         click.echo(f"⚠️  Git command failed: {e}")
     except Exception as e:
         click.echo(f"⚠️  Error checking changes: {e}")
+
 
 def show_summary(api_manager, ssh_manager, bench_name, user_role):
     """Show setup summary"""
@@ -462,11 +461,7 @@ def show_summary(api_manager, ssh_manager, bench_name, user_role):
     click.echo(f"{ssh_icon} SSH/GitHub: {'Connected' if ssh_status['github_connected'] else 'Not connected'}")
 
     # User Role
-    role_display = {
-        "guest": "👤 Guest (limited)",
-        "limited": "🔓 Limited Access",
-        "full": "🚀 Full Access"
-    }
+    role_display = {"guest": "👤 Guest (limited)", "limited": "🔓 Limited Access", "full": "🚀 Full Access"}
     click.echo(f"🎭 Access Level: {role_display.get(user_role, user_role)}")
 
     # Bench info
@@ -487,6 +482,7 @@ def show_summary(api_manager, ssh_manager, bench_name, user_role):
         click.echo("   ✅ Cross-bench sync")
     if permissions.get("automated_migration"):
         click.echo("   ✅ Automated migration")
+
 
 def sync_from_source(ctx, test_mode=False):
     """Sync configuration from source bench"""

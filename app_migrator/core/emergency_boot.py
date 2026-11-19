@@ -3,6 +3,7 @@ Emergency Boot Fixer for App Migrator
 Handles critical boot failures and emergency recovery
 """
 
+
 class EmergencyBoot:
     """Emergency boot functionality for critical system recovery"""
 
@@ -24,6 +25,7 @@ class EmergencyBoot:
         """Restore system to working state"""
         print("Restoring system...")
         return {"status": "restored"}
+
 
 # For backward compatibility
 def create_emergency_boot():

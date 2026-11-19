@@ -12,6 +12,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+
 class BootSafetySystem:
     """
     COMPREHENSIVE BOOT SAFETY SYSTEM
@@ -26,10 +27,10 @@ class BootSafetySystem:
 
         self.bench_path = Path(bench_path) if bench_path else Path.cwd()
         self.health_metrics = {
-            'file_structure': 1.0,
-            'import_stability': 1.0,
-            'constructor_safety': 1.0,
-            'module_execution': 1.0
+            "file_structure": 1.0,
+            "import_stability": 1.0,
+            "constructor_safety": 1.0,
+            "module_execution": 1.0,
         }
         self.issues_fixed = []
         self.detected_issues = []
@@ -67,7 +68,7 @@ class BootSafetySystem:
             self._ensure_file_structure(),
             self._ensure_import_stability(),
             self._ensure_constructor_safety(),
-            self._ensure_module_execution_safe()  # STEP-602-07: Use safe version
+            self._ensure_module_execution_safe(),  # STEP-602-07: Use safe version
         ]
 
         # Calculate overall safety score
@@ -83,24 +84,24 @@ class BootSafetySystem:
 
         # Convert to boot_health format
         return {
-            'system_safe': is_safe,
-            'health_score': safety_score * 100,
-            'issues_fixed': len(health_report['issues_fixed']),
-            'overall_score': safety_score,
-            'issues_detected': health_report['issues_detected'],
-            'metrics': health_report['metrics'],
-            'message': 'Single health check completed'
+            "system_safe": is_safe,
+            "health_score": safety_score * 100,
+            "issues_fixed": len(health_report["issues_fixed"]),
+            "overall_score": safety_score,
+            "issues_detected": health_report["issues_detected"],
+            "metrics": health_report["metrics"],
+            "message": "Single health check completed",
         }
 
     def _get_fallback_health(self):
         """STEP-602-07: Safe fallback"""
         return {
-            'system_safe': True,
-            'health_score': 85.0,
-            'issues_fixed': 0,
-            'overall_score': 0.85,
-            'fallback_mode': True,
-            'message': 'Fallback due to recursion protection'
+            "system_safe": True,
+            "health_score": 85.0,
+            "issues_fixed": 0,
+            "overall_score": 0.85,
+            "fallback_mode": True,
+            "message": "Fallback due to recursion protection",
         }
 
     def ensure_boot_safety(self, app_name=None):
@@ -108,11 +109,8 @@ class BootSafetySystem:
         Public method - uses get_boot_health for consistency
         """
         boot_health = self.get_boot_health()
-        is_safe = boot_health['system_safe']
-        health_report = self._generate_health_report(
-            boot_health['overall_score'],
-            is_safe
-        )
+        is_safe = boot_health["system_safe"]
+        health_report = self._generate_health_report(boot_health["overall_score"], is_safe)
         return is_safe, health_report
 
     def _ensure_file_structure(self):
@@ -120,21 +118,21 @@ class BootSafetySystem:
         critical_files = {
             "app_migrator/__init__.py": "# App Migrator Module\n",
             "app_migrator/core/__init__.py": "# Core Components\n",
-            "app_migrator/commands/__init__.py": "# Command Modules\n"
+            "app_migrator/commands/__init__.py": "# Command Modules\n",
         }
 
         files_created = 0
         for file_path, default_content in critical_files.items():
             if not os.path.exists(file_path):
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                with open(file_path, 'w') as f:
+                with open(file_path, "w") as f:
                     f.write(default_content)
                 self.issues_fixed.append(f"Created missing file: {file_path}")
                 files_created += 1
                 print(f"   📁 Created: {file_path}")
 
-        self.health_metrics['file_structure'] = 1.0 if files_created == 0 else 0.9
-        return self.health_metrics['file_structure']
+        self.health_metrics["file_structure"] = 1.0 if files_created == 0 else 0.9
+        return self.health_metrics["file_structure"]
 
     def _ensure_import_stability(self):
         """STEP-602-07: Safe import checking without recursion"""
@@ -152,25 +150,25 @@ class BootSafetySystem:
                     getattr(module, class_name)
                 else:
                     importlib.import_module(module_path)
-            except (ImportError, AttributeError):
+            except ImportError, AttributeError:
                 failed_imports.append(f"{module_path}.{class_name if class_name else ''}")
                 # Don't print every time to avoid spam
 
         stability_score = 1.0 - (len(failed_imports) * 0.1)
-        self.health_metrics['import_stability'] = max(0.0, stability_score)
-        return self.health_metrics['import_stability']
+        self.health_metrics["import_stability"] = max(0.0, stability_score)
+        return self.health_metrics["import_stability"]
 
     def _ensure_constructor_safety(self):
         """STEP-602-07: Safe constructor testing"""
         # Skip constructor tests to avoid recursion
         # These were causing the module execution issues
-        self.health_metrics['constructor_safety'] = 1.0
+        self.health_metrics["constructor_safety"] = 1.0
         return 1.0
 
     def _ensure_module_execution_safe(self):
         """STEP-602-07: SAFE module execution check - NO RECURSION"""
         if self._module_check_done:
-            return self.health_metrics['module_execution']
+            return self.health_metrics["module_execution"]
 
         self._module_check_done = True
 
@@ -182,7 +180,7 @@ class BootSafetySystem:
         ]
 
         execution_score = sum(simple_checks) / len(simple_checks)
-        self.health_metrics['module_execution'] = execution_score
+        self.health_metrics["module_execution"] = execution_score
         return execution_score
 
     def _check_module_exists(self, module_path):
@@ -201,11 +199,13 @@ class BootSafetySystem:
             "metrics": self.health_metrics.copy(),
             "issues_detected": self.detected_issues.copy(),
             "issues_fixed": self.issues_fixed.copy(),
-            "recommendations": []
+            "recommendations": [],
         }
+
 
 # Global instance with protection
 _boot_safety_system = None
+
 
 def ensure_boot_safety():
     """Global boot safety check"""
@@ -214,6 +214,7 @@ def ensure_boot_safety():
         _boot_safety_system = BootSafetySystem()
 
     return _boot_safety_system.ensure_boot_safety()
+
 
 def get_boot_health():
     """Global boot health check"""

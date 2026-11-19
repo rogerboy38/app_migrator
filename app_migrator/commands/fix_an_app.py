@@ -34,13 +34,7 @@ class AppFixer:
             if cwd is None:
                 cwd = self.bench_path
 
-            result = subprocess.run(
-                cmd,
-                shell=True,
-                cwd=cwd,
-                capture_output=capture_output,
-                text=True
-            )
+            result = subprocess.run(cmd, shell=True, cwd=cwd, capture_output=capture_output, text=True)
             return result
         except Exception as e:
             print(f"❌ Command failed: {cmd}")
@@ -108,10 +102,7 @@ class AppFixer:
             return False
 
         try:
-            result = self.run_command(
-                f"bench --site {self.site_name} console",
-                capture_output=True
-            )
+            result = self.run_command(f"bench --site {self.site_name} console", capture_output=True)
             if result and result.returncode == 0:
                 # Simple check - in real implementation, use frappe.get_installed_apps()
                 return True
@@ -127,7 +118,7 @@ class AppFixer:
         if self.app_path.exists():
             # Copy all files except git directory
             for item in self.app_path.iterdir():
-                if item.name != '.git':
+                if item.name != ".git":
                     dest = self.backup_path / item.name
                     if item.is_dir():
                         shutil.copytree(item, dest)
@@ -147,7 +138,7 @@ class AppFixer:
             new_lines = [line for line in lines if line.strip() != self.app_name]
 
             if len(new_lines) != len(lines):
-                with open(apps_txt, 'w') as f:
+                with open(apps_txt, "w") as f:
                     f.writelines(new_lines)
                 print("✅ Removed from apps.txt")
                 return True
@@ -166,8 +157,8 @@ class AppFixer:
         # Add if not present
         if self.app_name not in existing_apps:
             existing_apps.append(self.app_name)
-            with open(apps_txt, 'w') as f:
-                f.write('\n'.join(existing_apps) + '\n')
+            with open(apps_txt, "w") as f:
+                f.write("\n".join(existing_apps) + "\n")
             print("✅ Added to apps.txt")
             return True
         return False
@@ -308,11 +299,12 @@ class AppFixer:
                 shutil.rmtree(self.backup_path)
                 print("🧹 Backup cleaned up")
 
+
 def main():
-    parser = argparse.ArgumentParser(description='Fix Frappe app structural issues')
-    parser.add_argument('app_name', help='Name of the app to fix')
-    parser.add_argument('--bench-path', default='.', help='Path to bench directory')
-    parser.add_argument('--site', help='Site name for installation')
+    parser = argparse.ArgumentParser(description="Fix Frappe app structural issues")
+    parser.add_argument("app_name", help="Name of the app to fix")
+    parser.add_argument("--bench-path", default=".", help="Path to bench directory")
+    parser.add_argument("--site", help="Site name for installation")
 
     args = parser.parse_args()
 
@@ -320,6 +312,7 @@ def main():
     success = fixer.fix_app()
 
     sys.exit(0 if success else 1)
+
 
 if __name__ == "__main__":
     main()

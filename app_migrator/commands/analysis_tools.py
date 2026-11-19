@@ -49,15 +49,11 @@ class AppAnalysis:
     def __init__(self):
         self.analysis_cache = {}
         self.migration_patterns = {
-            'compatible': ['frappe', 'python', 'postgresql', 'mariadb', 'redis', 'node', 'nginx'],
-            'risky': ['custom_scripts', 'external_apis', 'file_system_access'],
-            'incompatible': ['php', 'java', 'oracle', 'sqlserver', 'windows_specific']
+            "compatible": ["frappe", "python", "postgresql", "mariadb", "redis", "node", "nginx"],
+            "risky": ["custom_scripts", "external_apis", "file_system_access"],
+            "incompatible": ["php", "java", "oracle", "sqlserver", "windows_specific"],
         }
-        self.complexity_thresholds = {
-            'low': 10,
-            'medium': 20,
-            'high': 50
-        }
+        self.complexity_thresholds = {"low": 10, "medium": 20, "high": 50}
 
     # ==================== CORE APP STRUCTURE ANALYSIS ====================
 
@@ -91,7 +87,7 @@ class AppAnalysis:
                 "warnings": [],
                 "recommendations": [],
                 "structure_score": 0,
-                "analysis_timestamp": datetime.now().isoformat()
+                "analysis_timestamp": datetime.now().isoformat(),
             }
 
             # 1. Analyze hooks.py
@@ -124,7 +120,9 @@ class AppAnalysis:
             # 7. Generate recommendations
             analysis_result["recommendations"] = self.generate_structure_recommendations(analysis_result)
 
-            print(f"✅ Structure analysis complete: {len(analysis_result.get('modules', []))} modules found, Score: {analysis_result['structure_score']}/100")
+            print(
+                f"✅ Structure analysis complete: {len(analysis_result.get('modules', []))} modules found, Score: {analysis_result['structure_score']}/100"
+            )
             return analysis_result
 
         except Exception as e:
@@ -136,7 +134,7 @@ class AppAnalysis:
         """Get app path with enhanced Frappe bench detection"""
         try:
             # Method 1: Frappe's get_app_path (when running in bench context)
-            if hasattr(frappe, 'get_app_path'):
+            if hasattr(frappe, "get_app_path"):
                 try:
                     app_path = frappe.get_app_path(app_name)
                     if app_path and os.path.exists(app_path):
@@ -152,7 +150,7 @@ class AppAnalysis:
                 bench_path.parent / "apps" / app_name,  # ../apps/app_name
                 Path("/home/frappe/frappe-bench/apps") / app_name,
                 Path("/home/frappe/frappe-bench-clean-v6/apps") / app_name,
-                Path("/tmp/frappe-bench/apps") / app_name
+                Path("/tmp/frappe-bench/apps") / app_name,
             ]
 
             # Also check if we're in a bench directory structure
@@ -197,7 +195,7 @@ class AppAnalysis:
             "has_before_migrate": False,
             "error": None,
             "content_hash": "",
-            "analysis_method": "none"
+            "analysis_method": "none",
         }
 
         if not hooks_file.exists():
@@ -207,7 +205,7 @@ class AppAnalysis:
         try:
             hooks_data["exists"] = True
 
-            with open(hooks_file, encoding='utf-8', errors='ignore') as f:
+            with open(hooks_file, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
 
             hooks_data["content_hash"] = hashlib.md5(content.encode()).hexdigest()
@@ -217,7 +215,7 @@ class AppAnalysis:
             parsing_methods = [
                 self._parse_hooks_with_ast,
                 self._parse_hooks_with_regex,
-                self._parse_hooks_with_exec
+                self._parse_hooks_with_exec,
             ]
 
             for method in parsing_methods:
@@ -259,7 +257,9 @@ class AppAnalysis:
                             if isinstance(node.value, ast.Str):
                                 hooks_data[var_name] = node.value.s
                             elif isinstance(node.value, ast.List):
-                                hooks_data[var_name] = [elt.s for elt in node.value.elts if isinstance(elt, ast.Str)]
+                                hooks_data[var_name] = [
+                                    elt.s for elt in node.value.elts if isinstance(elt, ast.Str)
+                                ]
 
             return self._normalize_hooks_data(hooks_data)
         except Exception:
@@ -268,12 +268,12 @@ class AppAnalysis:
     def _parse_hooks_with_regex(self, content: str) -> dict[str, Any]:
         """Parse hooks.py using regex patterns"""
         patterns = {
-            'app_name': r'app_name\s*=\s*["\']([^"\']+)["\']',
-            'app_title': r'app_title\s*=\s*["\']([^"\']+)["\']',
-            'app_version': r'app_version\s*=\s*["\']([^"\']+)["\']',
-            'app_publisher': r'app_publisher\s*=\s*["\']([^"\']+)["\']',
-            'app_description': r'app_description\s*=\s*["\']([^"\']+)["\']',
-            'app_license': r'app_license\s*=\s*["\']([^"\']+)["\']',
+            "app_name": r'app_name\s*=\s*["\']([^"\']+)["\']',
+            "app_title": r'app_title\s*=\s*["\']([^"\']+)["\']',
+            "app_version": r'app_version\s*=\s*["\']([^"\']+)["\']',
+            "app_publisher": r'app_publisher\s*=\s*["\']([^"\']+)["\']',
+            "app_description": r'app_description\s*=\s*["\']([^"\']+)["\']',
+            "app_license": r'app_license\s*=\s*["\']([^"\']+)["\']',
         }
 
         hooks_data = {}
@@ -284,8 +284,8 @@ class AppAnalysis:
 
         # Extract list variables
         list_patterns = {
-            'required_apps': r'required_apps\s*=\s*\[([^\]]+)\]',
-            'dependencies': r'dependencies\s*=\s*\[([^\]]+)\]'
+            "required_apps": r"required_apps\s*=\s*\[([^\]]+)\]",
+            "dependencies": r"dependencies\s*=\s*\[([^\]]+)\]",
         }
 
         for key, pattern in list_patterns.items():
@@ -296,12 +296,16 @@ class AppAnalysis:
 
         # Check for hook functions
         hook_functions = [
-            'install_after', 'migrate', 'after_install', 'before_install',
-            'after_migrate', 'before_migrate'
+            "install_after",
+            "migrate",
+            "after_install",
+            "before_install",
+            "after_migrate",
+            "before_migrate",
         ]
 
         for func in hook_functions:
-            hooks_data[f'has_{func}'] = f'def {func}' in content or f'{func} =' in content
+            hooks_data[f"has_{func}"] = f"def {func}" in content or f"{func} =" in content
 
         return self._normalize_hooks_data(hooks_data)
 
@@ -310,13 +314,13 @@ class AppAnalysis:
         try:
             # Create a safe environment for execution
             safe_globals = {
-                '__builtins__': {
-                    'str': str,
-                    'list': list,
-                    'dict': dict,
-                    'len': len,
-                    'range': range,
-                    'bool': bool
+                "__builtins__": {
+                    "str": str,
+                    "list": list,
+                    "dict": dict,
+                    "len": len,
+                    "range": range,
+                    "bool": bool,
                 }
             }
 
@@ -325,8 +329,14 @@ class AppAnalysis:
 
             hooks_data = {}
             hook_variables = [
-                'app_name', 'app_title', 'app_version', 'app_publisher',
-                'app_description', 'app_license', 'required_apps', 'dependencies'
+                "app_name",
+                "app_title",
+                "app_version",
+                "app_publisher",
+                "app_description",
+                "app_license",
+                "required_apps",
+                "dependencies",
             ]
 
             for var in hook_variables:
@@ -335,12 +345,16 @@ class AppAnalysis:
 
             # Check for hook functions
             hook_functions = [
-                'install_after', 'migrate', 'after_install', 'before_install',
-                'after_migrate', 'before_migrate'
+                "install_after",
+                "migrate",
+                "after_install",
+                "before_install",
+                "after_migrate",
+                "before_migrate",
             ]
 
             for func in hook_functions:
-                hooks_data[f'has_{func}'] = func in safe_locals
+                hooks_data[f"has_{func}"] = func in safe_locals
 
             return self._normalize_hooks_data(hooks_data)
 
@@ -352,7 +366,14 @@ class AppAnalysis:
         hooks_data = {}
 
         # Simple string extraction
-        string_vars = ['app_name', 'app_title', 'app_version', 'app_publisher', 'app_description', 'app_license']
+        string_vars = [
+            "app_name",
+            "app_title",
+            "app_version",
+            "app_publisher",
+            "app_description",
+            "app_license",
+        ]
         for var in string_vars:
             pattern = rf'{var}\s*=\s*["\']([^"\']+)["\']'
             match = re.search(pattern, content)
@@ -366,7 +387,7 @@ class AppAnalysis:
         normalized = hooks_data.copy()
 
         # Ensure lists
-        list_vars = ['required_apps', 'dependencies']
+        list_vars = ["required_apps", "dependencies"]
         for var in list_vars:
             if var in normalized:
                 if isinstance(normalized[var], str):
@@ -381,7 +402,14 @@ class AppAnalysis:
                 normalized[var] = []
 
         # Ensure strings are stripped
-        string_vars = ['app_name', 'app_title', 'app_version', 'app_publisher', 'app_description', 'app_license']
+        string_vars = [
+            "app_name",
+            "app_title",
+            "app_version",
+            "app_publisher",
+            "app_description",
+            "app_license",
+        ]
         for var in string_vars:
             if var in normalized and isinstance(normalized[var], str):
                 normalized[var] = normalized[var].strip()
@@ -395,7 +423,7 @@ class AppAnalysis:
             if modules_dir.exists():
                 print(f"🔍 Scanning modules directory: {modules_dir}")
                 for item in modules_dir.iterdir():
-                    if item.is_dir() and not item.name.startswith('.') and item.name != '__pycache__':
+                    if item.is_dir() and not item.name.startswith(".") and item.name != "__pycache__":
                         module_info = {
                             "name": item.name,
                             "path": str(item),
@@ -405,12 +433,14 @@ class AppAnalysis:
                             "has_dashboard": (item / "dashboard").exists(),
                             "python_files": len(list(item.rglob("*.py"))),
                             "json_files": len(list(item.rglob("*.json"))),
-                            "doctypes": self._discover_module_doctypes(item)
+                            "doctypes": self._discover_module_doctypes(item),
                         }
 
                         # Include module even if it has no content yet (might be new module)
                         modules.append(module_info)
-                        print(f"  📦 Found module: {item.name} (Python files: {module_info['python_files']}, Doctypes: {len(module_info['doctypes'])})")
+                        print(
+                            f"  📦 Found module: {item.name} (Python files: {module_info['python_files']}, Doctypes: {len(module_info['doctypes'])})"
+                        )
 
             else:
                 print(f"❌ Modules directory not found: {modules_dir}")
@@ -427,14 +457,14 @@ class AppAnalysis:
             doctype_path = module_path / "doctype"
             if doctype_path.exists():
                 for doctype_dir in doctype_path.iterdir():
-                    if doctype_dir.is_dir() and not doctype_dir.name.startswith('.'):
+                    if doctype_dir.is_dir() and not doctype_dir.name.startswith("."):
                         doctype_info = {
                             "name": doctype_dir.name,
                             "path": str(doctype_dir),
                             "has_controller": (doctype_dir / f"{doctype_dir.name}.py").exists(),
                             "has_json": (doctype_dir / f"{doctype_dir.name}.json").exists(),
                             "has_js": len(list(doctype_dir.rglob("*.js"))) > 0,
-                            "has_html": len(list(doctype_dir.rglob("*.html"))) > 0
+                            "has_html": len(list(doctype_dir.rglob("*.html"))) > 0,
                         }
                         doctypes.append(doctype_info)
         except Exception as e:
@@ -474,7 +504,7 @@ class AppAnalysis:
             "sql_files": 0,
             "total_files": 0,
             "file_size_distribution": {},
-            "largest_files": []
+            "largest_files": [],
         }
 
         try:
@@ -491,7 +521,7 @@ class AppAnalysis:
                 ("txt_files", "*.txt"),
                 ("yaml_files", "*.yaml"),
                 ("xml_files", "*.xml"),
-                ("sql_files", "*.sql")
+                ("sql_files", "*.sql"),
             ]:
                 files = list(app_path.rglob(pattern))
                 file_analysis[file_type] = len(files)
@@ -511,12 +541,14 @@ class AppAnalysis:
                 file_analysis["largest_files"] = file_sizes[:10]
 
                 sizes = [size for _, size in file_sizes]
-                file_analysis.update({
-                    "average_file_size": sum(sizes) / len(sizes),
-                    "largest_file_size": max(sizes) if sizes else 0,
-                    "smallest_file_size": min(sizes) if sizes else 0,
-                    "total_size": sum(sizes)
-                })
+                file_analysis.update(
+                    {
+                        "average_file_size": sum(sizes) / len(sizes),
+                        "largest_file_size": max(sizes) if sizes else 0,
+                        "smallest_file_size": min(sizes) if sizes else 0,
+                        "total_size": sum(sizes),
+                    }
+                )
 
         except Exception as e:
             print(f"Warning: Error analyzing file types: {e}")
@@ -531,29 +563,33 @@ class AppAnalysis:
             "essential_dirs_present": {},
             "directory_tree": {},
             "missing_standard_dirs": [],
-            "unusual_dirs": []
+            "unusual_dirs": [],
         }
 
         try:
             app_path = Path(app_path)
             standard_dirs = [
-                "modules", "public", "templates", "www", "config",
-                "patches", "fixtures", "translations", "utils"
+                "modules",
+                "public",
+                "templates",
+                "www",
+                "config",
+                "patches",
+                "fixtures",
+                "translations",
+                "utils",
             ]
 
             unusual_dirs = ["temp", "tmp", "backup", "log", "logs", "cache"]
 
-            essential_dirs = {
-                "modules": "Core modules directory",
-                "hooks.py": "App configuration file"
-            }
+            essential_dirs = {"modules": "Core modules directory", "hooks.py": "App configuration file"}
 
             # Check essential directories
             for dir_name, description in essential_dirs.items():
                 path = app_path / dir_name
                 dir_analysis["essential_dirs_present"][dir_name] = {
                     "exists": path.exists(),
-                    "description": description
+                    "description": description,
                 }
 
             # Check standard directories
@@ -582,25 +618,22 @@ class AppAnalysis:
         if current_depth > max_depth:
             return {"name": path.name, "type": "directory", "depth": current_depth}
 
-        tree = {
-            "name": path.name,
-            "type": "directory",
-            "depth": current_depth,
-            "children": []
-        }
+        tree = {"name": path.name, "type": "directory", "depth": current_depth, "children": []}
 
         try:
             for item in path.iterdir():
-                if item.is_dir() and not item.name.startswith('.') and item.name != '__pycache__':
+                if item.is_dir() and not item.name.startswith(".") and item.name != "__pycache__":
                     child_tree = self._build_directory_tree(item, max_depth, current_depth + 1)
                     tree["children"].append(child_tree)
                 elif item.is_file() and current_depth <= max_depth - 1:
-                    tree["children"].append({
-                        "name": item.name,
-                        "type": "file",
-                        "size": item.stat().st_size,
-                        "depth": current_depth + 1
-                    })
+                    tree["children"].append(
+                        {
+                            "name": item.name,
+                            "type": "file",
+                            "size": item.stat().st_size,
+                            "depth": current_depth + 1,
+                        }
+                    )
         except Exception:
             pass
 
@@ -609,7 +642,11 @@ class AppAnalysis:
     def _count_directories(self, path: Path) -> int:
         """Count total directories"""
         try:
-            return sum(1 for _ in path.rglob('*') if _.is_dir() and not _.name.startswith('.') and _.name != '__pycache__')
+            return sum(
+                1
+                for _ in path.rglob("*")
+                if _.is_dir() and not _.name.startswith(".") and _.name != "__pycache__"
+            )
         except Exception:
             return 0
 
@@ -618,7 +655,7 @@ class AppAnalysis:
         try:
             max_depth = 0
             for root, _dirs, _files in os.walk(path):
-                depth = root.replace(str(path), '').count(os.sep)
+                depth = root.replace(str(path), "").count(os.sep)
                 if depth > max_depth:
                     max_depth = depth
             return max_depth
@@ -634,7 +671,7 @@ class AppAnalysis:
             "warnings": [],
             "checks_passed": 0,
             "checks_total": 0,
-            "detailed_checks": {}
+            "detailed_checks": {},
         }
 
         try:
@@ -678,7 +715,9 @@ class AppAnalysis:
                 validation["issues"].append("No valid modules with content found")
 
             # Check 6: Required apps defined (warning if not)
-            check6 = hooks_data.get("has_required_apps", False) or len(hooks_data.get("required_apps", [])) > 0
+            check6 = (
+                hooks_data.get("has_required_apps", False) or len(hooks_data.get("required_apps", [])) > 0
+            )
             checks.append(("dependencies_defined", check6, "Dependencies are defined"))
             if not check6:
                 validation["warnings"].append("No dependencies defined in hooks.py")
@@ -695,8 +734,7 @@ class AppAnalysis:
 
             # Store detailed checks
             validation["detailed_checks"] = {
-                name: {"passed": check, "description": desc}
-                for name, check, desc in checks
+                name: {"passed": check, "description": desc} for name, check, desc in checks
             }
 
         except Exception as e:
@@ -735,9 +773,13 @@ class AppAnalysis:
             if not modules:
                 recommendations.append("Create at least one module directory under modules/")
             else:
-                empty_modules = [m for m in modules if not m.get("has_doctype") and m.get("python_files", 0) == 0]
+                empty_modules = [
+                    m for m in modules if not m.get("has_doctype") and m.get("python_files", 0) == 0
+                ]
                 if empty_modules:
-                    recommendations.append(f"Add content to empty modules: {[m['name'] for m in empty_modules[:3]]}")
+                    recommendations.append(
+                        f"Add content to empty modules: {[m['name'] for m in empty_modules[:3]]}"
+                    )
 
             # Structure recommendations based on validation
             if not validation.get("valid", False):
@@ -773,7 +815,9 @@ class AppAnalysis:
             # Check if app exists first
             app_path = self._get_app_path_safe(app_name)
             if not app_path or not app_path.exists():
-                return self._create_compatibility_error_result(app_name, f"App {app_name} not found or inaccessible")
+                return self._create_compatibility_error_result(
+                    app_name, f"App {app_name} not found or inaccessible"
+                )
 
             # Get structure analysis first
             structure_analysis = self.analyze_app_structure(app_name)
@@ -790,34 +834,38 @@ class AppAnalysis:
                 "detailed_analysis": {},
                 "migration_effort": "unknown",
                 "estimated_timeline": "unknown",
-                "risk_level": "unknown"
+                "risk_level": "unknown",
             }
 
             # If basic structure analysis failed, return early
             if not structure_analysis.get("exists", False):
-                compatibility_result.update({
-                    "critical_issues": ["App not found or inaccessible"],
-                    "compatibility_level": "invalid",
-                    "migration_effort": "high",
-                    "risk_level": "high"
-                })
+                compatibility_result.update(
+                    {
+                        "critical_issues": ["App not found or inaccessible"],
+                        "compatibility_level": "invalid",
+                        "migration_effort": "high",
+                        "risk_level": "high",
+                    }
+                )
                 return compatibility_result
 
             # Merge structure analysis
-            compatibility_result.update({
-                "exists": structure_analysis.get("exists", False),
-                "structure_valid": structure_analysis.get("structure_valid", False),
-                "structure_score": structure_analysis.get("structure_score", 0),
-                "modules": structure_analysis.get("modules", []),
-                "doctypes": structure_analysis.get("doctypes", []),
-                "hooks_data": structure_analysis.get("hooks_data", {}),
-                "file_analysis": {
-                    "python_files": structure_analysis.get("python_files", 0),
-                    "json_files": structure_analysis.get("json_files", 0),
-                    "js_files": structure_analysis.get("js_files", 0),
-                    "total_files": structure_analysis.get("total_files", 0)
+            compatibility_result.update(
+                {
+                    "exists": structure_analysis.get("exists", False),
+                    "structure_valid": structure_analysis.get("structure_valid", False),
+                    "structure_score": structure_analysis.get("structure_score", 0),
+                    "modules": structure_analysis.get("modules", []),
+                    "doctypes": structure_analysis.get("doctypes", []),
+                    "hooks_data": structure_analysis.get("hooks_data", {}),
+                    "file_analysis": {
+                        "python_files": structure_analysis.get("python_files", 0),
+                        "json_files": structure_analysis.get("json_files", 0),
+                        "js_files": structure_analysis.get("js_files", 0),
+                        "total_files": structure_analysis.get("total_files", 0),
+                    },
                 }
-            })
+            )
 
             # Perform comprehensive compatibility analysis
             compatibility_analysis = self._perform_comprehensive_compatibility_analysis(structure_analysis)
@@ -827,7 +875,9 @@ class AppAnalysis:
             final_metrics = self._calculate_final_migration_metrics(compatibility_result)
             compatibility_result.update(final_metrics)
 
-            print(f"✅ Compatibility analysis complete: Score {compatibility_result['compatibility_score']}/100 - Level: {compatibility_result['compatibility_level']}")
+            print(
+                f"✅ Compatibility analysis complete: Score {compatibility_result['compatibility_score']}/100 - Level: {compatibility_result['compatibility_level']}"
+            )
             return compatibility_result
 
         except Exception as e:
@@ -835,7 +885,9 @@ class AppAnalysis:
             print(f"❌ {error_msg}")
             return self._create_compatibility_error_result(app_name, error_msg)
 
-    def _perform_comprehensive_compatibility_analysis(self, structure_analysis: dict[str, Any]) -> dict[str, Any]:
+    def _perform_comprehensive_compatibility_analysis(
+        self, structure_analysis: dict[str, Any]
+    ) -> dict[str, Any]:
         """Perform detailed compatibility analysis across multiple dimensions"""
         analysis = {
             "compatibility_score": 0,
@@ -843,7 +895,7 @@ class AppAnalysis:
             "readiness_breakdown": {},
             "critical_issues": [],
             "warnings": [],
-            "recommendations": []
+            "recommendations": [],
         }
 
         try:
@@ -878,7 +930,7 @@ class AppAnalysis:
                 "dependencies": 0.25,
                 "code_quality": 0.20,
                 "configuration": 0.15,
-                "data": 0.10
+                "data": 0.10,
             }
 
             total_score = 0
@@ -892,7 +944,9 @@ class AppAnalysis:
             # Generate issues and recommendations
             analysis["critical_issues"] = self._identify_critical_issues(analysis, structure_analysis)
             analysis["warnings"] = self._identify_warnings(analysis, structure_analysis)
-            analysis["recommendations"] = self._generate_compatibility_recommendations(analysis, structure_analysis)
+            analysis["recommendations"] = self._generate_compatibility_recommendations(
+                analysis, structure_analysis
+            )
 
         except Exception as e:
             analysis["critical_issues"].append(f"Compatibility analysis error: {e!s}")
@@ -915,7 +969,9 @@ class AppAnalysis:
             if modules:
                 score += 20
                 # Bonus for well-organized modules
-                valid_modules = len([m for m in modules if m.get("has_doctype") or m.get("python_files", 0) > 0])
+                valid_modules = len(
+                    [m for m in modules if m.get("has_doctype") or m.get("python_files", 0) > 0]
+                )
                 if valid_modules == len(modules):
                     score += 10
 
@@ -933,7 +989,9 @@ class AppAnalysis:
             # Directory structure
             if structure_analysis.get("directory_structure", {}).get("essential_dirs_present", {}):
                 essential_dirs = structure_analysis["directory_structure"]["essential_dirs_present"]
-                present_count = sum(1 for dir_info in essential_dirs.values() if dir_info.get("exists", False))
+                present_count = sum(
+                    1 for dir_info in essential_dirs.values() if dir_info.get("exists", False)
+                )
                 score += (present_count / max(1, len(essential_dirs))) * 15
 
             return min(100, score)
@@ -950,9 +1008,9 @@ class AppAnalysis:
             dependencies = hooks_data.get("dependencies", [])
 
             # Check for known compatible dependencies
-            compatible_patterns = ['frappe', 'erpnext', 'python', 'postgresql', 'mariadb']
-            risky_patterns = ['redis', 'node', 'external_api', 'custom']
-            incompatible_patterns = ['php', 'java', 'oracle', 'sqlserver', 'windows']
+            compatible_patterns = ["frappe", "erpnext", "python", "postgresql", "mariadb"]
+            risky_patterns = ["redis", "node", "external_api", "custom"]
+            incompatible_patterns = ["php", "java", "oracle", "sqlserver", "windows"]
 
             all_deps = required_apps + dependencies
 
@@ -1013,7 +1071,9 @@ class AppAnalysis:
         except Exception:
             return 50
 
-    def _analyze_configuration_compatibility(self, hooks_data: dict[str, Any], structure_analysis: dict[str, Any]) -> int:
+    def _analyze_configuration_compatibility(
+        self, hooks_data: dict[str, Any], structure_analysis: dict[str, Any]
+    ) -> int:
         """Analyze configuration compatibility (0-100)"""
         try:
             score = 0
@@ -1037,7 +1097,9 @@ class AppAnalysis:
         except Exception:
             return 0
 
-    def _analyze_data_compatibility(self, doctypes: list[dict[str, Any]], modules: list[dict[str, Any]]) -> int:
+    def _analyze_data_compatibility(
+        self, doctypes: list[dict[str, Any]], modules: list[dict[str, Any]]
+    ) -> int:
         """Analyze data/compatibility (0-100)"""
         try:
             score = 50  # Start with neutral score
@@ -1082,7 +1144,9 @@ class AppAnalysis:
         else:
             return "poor"
 
-    def _identify_critical_issues(self, analysis: dict[str, Any], structure_analysis: dict[str, Any]) -> list[str]:
+    def _identify_critical_issues(
+        self, analysis: dict[str, Any], structure_analysis: dict[str, Any]
+    ) -> list[str]:
         """Identify critical migration issues"""
         issues = []
 
@@ -1105,7 +1169,7 @@ class AppAnalysis:
 
             # Check dependencies for known incompatible patterns
             deps = hooks_data.get("required_apps", []) + hooks_data.get("dependencies", [])
-            incompatible_patterns = ['oracle', 'sqlserver', 'windows', 'java', 'php']
+            incompatible_patterns = ["oracle", "sqlserver", "windows", "java", "php"]
             for dep in deps:
                 if any(pattern in dep.lower() for pattern in incompatible_patterns):
                     issues.append(f"Potentially incompatible dependency: {dep}")
@@ -1138,7 +1202,7 @@ class AppAnalysis:
 
             # Check for risky patterns in dependencies
             deps = hooks_data.get("required_apps", []) + hooks_data.get("dependencies", [])
-            risky_patterns = ['redis', 'node', 'custom', 'external']
+            risky_patterns = ["redis", "node", "custom", "external"]
             for dep in deps:
                 if any(pattern in dep.lower() for pattern in risky_patterns):
                     warnings.append(f"Risky dependency that may need special handling: {dep}")
@@ -1148,7 +1212,9 @@ class AppAnalysis:
 
         return warnings
 
-    def _generate_compatibility_recommendations(self, analysis: dict[str, Any], structure_analysis: dict[str, Any]) -> list[str]:
+    def _generate_compatibility_recommendations(
+        self, analysis: dict[str, Any], structure_analysis: dict[str, Any]
+    ) -> list[str]:
         """Generate compatibility improvement recommendations"""
         recommendations = []
 
@@ -1227,7 +1293,7 @@ class AppAnalysis:
                 "migration_effort": effort,
                 "estimated_timeline": timeline,
                 "risk_level": risk,
-                "migration_ready": score >= 70 and len(critical_issues) == 0
+                "migration_ready": score >= 70 and len(critical_issues) == 0,
             }
 
         except Exception:
@@ -1235,7 +1301,7 @@ class AppAnalysis:
                 "migration_effort": "unknown",
                 "estimated_timeline": "unknown",
                 "risk_level": "unknown",
-                "migration_ready": False
+                "migration_ready": False,
             }
 
     def _create_compatibility_error_result(self, app_name: str, error: str) -> dict[str, Any]:
@@ -1251,13 +1317,13 @@ class AppAnalysis:
             "recommendations": [
                 "Check app installation and accessibility",
                 "Verify app structure manually",
-                "Retry analysis after fixing any issues"
+                "Retry analysis after fixing any issues",
             ],
             "migration_effort": "unknown",
             "estimated_timeline": "unknown",
             "risk_level": "high",
             "exists": False,
-            "structure_valid": False
+            "structure_valid": False,
         }
 
     def _create_error_result(self, error_msg: str) -> dict[str, Any]:
@@ -1275,7 +1341,7 @@ class AppAnalysis:
             "issues": [error_msg],
             "warnings": ["Analysis failed - check app manually"],
             "recommendations": ["Verify app exists and is accessible", "Check permissions and paths"],
-            "analysis_timestamp": datetime.now().isoformat()
+            "analysis_timestamp": datetime.now().isoformat(),
         }
 
     # ==================== ADDITIONAL ORIGINAL FUNCTIONALITY ====================
@@ -1287,7 +1353,12 @@ class AppAnalysis:
 
             app_path = self._get_app_path_safe(app_name)
             if not app_path or not app_path.exists():
-                return {"error": "App not found", "complexity_score": 0, "analysis": "failed", "exists": False}
+                return {
+                    "error": "App not found",
+                    "complexity_score": 0,
+                    "analysis": "failed",
+                    "exists": False,
+                }
 
             # Basic complexity analysis based on file structure
             file_analysis = self.analyze_file_types(app_path)
@@ -1313,9 +1384,9 @@ class AppAnalysis:
                 "file_metrics": {
                     "python_files": python_files,
                     "total_files": total_files,
-                    "python_ratio": python_files / max(1, total_files)
+                    "python_ratio": python_files / max(1, total_files),
                 },
-                "analysis": "basic_heuristic"
+                "analysis": "basic_heuristic",
             }
 
         except Exception as e:
@@ -1324,7 +1395,7 @@ class AppAnalysis:
                 "complexity_score": 0,
                 "complexity_level": "unknown",
                 "analysis": "failed",
-                "exists": False
+                "exists": False,
             }
 
     def analyze_dependencies(self, app_name: str) -> dict[str, Any]:
@@ -1352,8 +1423,8 @@ class AppAnalysis:
                 "compatibility": compatibility,
                 "hooks_analysis": {
                     "exists": hooks_analysis.get("exists", False),
-                    "app_name": hooks_analysis.get("app_name", "")
-                }
+                    "app_name": hooks_analysis.get("app_name", ""),
+                },
             }
 
         except Exception as e:
@@ -1364,7 +1435,7 @@ class AppAnalysis:
                 "additional_dependencies": [],
                 "count": 0,
                 "compatibility": {"error": str(e)},
-                "exists": False
+                "exists": False,
             }
 
     def assess_dependency_compatibility(self, dependencies: list[str]) -> dict[str, Any]:
@@ -1375,9 +1446,9 @@ class AppAnalysis:
             incompatible = []
             unknown = []
 
-            compatible_patterns = ['frappe', 'erpnext', 'python']
-            risky_patterns = ['redis', 'node', 'external', 'custom', 'api']
-            incompatible_patterns = ['oracle', 'sqlserver', 'java', 'php', 'windows']
+            compatible_patterns = ["frappe", "erpnext", "python"]
+            risky_patterns = ["redis", "node", "external", "custom", "api"]
+            incompatible_patterns = ["oracle", "sqlserver", "java", "php", "windows"]
 
             for dep in dependencies:
                 dep_lower = dep.lower()
@@ -1406,8 +1477,8 @@ class AppAnalysis:
                     "compatible_count": len(compatible),
                     "risky_count": len(risky),
                     "incompatible_count": len(incompatible),
-                    "unknown_count": len(unknown)
-                }
+                    "unknown_count": len(unknown),
+                },
             }
 
         except Exception as e:
@@ -1418,7 +1489,7 @@ class AppAnalysis:
                 "incompatible": [],
                 "unknown": [],
                 "compatibility_ratio": 0,
-                "compatibility_score": 0
+                "compatibility_score": 0,
             }
 
     def analyze_security_vulnerabilities(self, app_name: str) -> dict[str, Any]:
@@ -1453,8 +1524,8 @@ class AppAnalysis:
                 "recommendations": [
                     "Perform comprehensive security audit",
                     "Review dependencies for known vulnerabilities",
-                    "Implement proper authentication and authorization"
-                ]
+                    "Implement proper authentication and authorization",
+                ],
             }
 
         except Exception as e:
@@ -1463,7 +1534,7 @@ class AppAnalysis:
                 "vulnerabilities": ["Analysis failed"],
                 "security_score": 0,
                 "security_level": "unknown",
-                "exists": False
+                "exists": False,
             }
 
     def analyze_performance(self, app_name: str) -> dict[str, Any]:
@@ -1498,22 +1569,17 @@ class AppAnalysis:
                 "metrics": {
                     "total_files": total_files,
                     "largest_file_size": largest_file,
-                    "average_file_size": file_analysis.get("average_file_size", 0)
+                    "average_file_size": file_analysis.get("average_file_size", 0),
                 },
                 "recommendations": [
                     "Monitor actual performance in production",
                     "Optimize database queries",
-                    "Implement caching where appropriate"
-                ]
+                    "Implement caching where appropriate",
+                ],
             }
 
         except Exception as e:
-            return {
-                "error": str(e),
-                "performance_score": 0,
-                "performance_level": "unknown",
-                "exists": False
-            }
+            return {"error": str(e), "performance_score": 0, "performance_level": "unknown", "exists": False}
 
     # ==================== ADDITIONAL UTILITY METHODS ====================
 
@@ -1535,7 +1601,7 @@ class AppAnalysis:
                 structure.get("structure_score", 0),
                 dependencies.get("compatibility", {}).get("compatibility_score", 0),
                 security.get("security_score", 0),
-                performance.get("performance_score", 0)
+                performance.get("performance_score", 0),
             ]
 
             valid_scores = [s for s in scores if s > 0]
@@ -1555,11 +1621,12 @@ class AppAnalysis:
                 "summary": {
                     "migration_ready": compatibility.get("migration_ready", False),
                     "critical_issues": len(compatibility.get("critical_issues", [])),
-                    "total_recommendations": len(structure.get("recommendations", [])) + len(compatibility.get("recommendations", [])),
+                    "total_recommendations": len(structure.get("recommendations", []))
+                    + len(compatibility.get("recommendations", [])),
                     "module_count": len(structure.get("modules", [])),
                     "doctype_count": len(structure.get("doctypes", [])),
-                    "dependency_count": len(dependencies.get("dependencies", []))
-                }
+                    "dependency_count": len(dependencies.get("dependencies", [])),
+                },
             }
 
         except Exception as e:
@@ -1568,7 +1635,7 @@ class AppAnalysis:
                 "error": f"Comprehensive analysis failed: {e!s}",
                 "overall_health_score": 0,
                 "overall_health_level": "error",
-                "analysis_timestamp": datetime.now().isoformat()
+                "analysis_timestamp": datetime.now().isoformat(),
             }
 
     def _get_health_level(self, score: float) -> str:
@@ -1593,7 +1660,7 @@ class AppAnalysis:
                 return {
                     "format": "json",
                     "content": json.dumps(analysis, indent=2),
-                    "filename": f"{app_name}_analysis_report.json"
+                    "filename": f"{app_name}_analysis_report.json",
                 }
             elif format == "summary":
                 # Create a text summary
@@ -1607,75 +1674,80 @@ class AppAnalysis:
                     f"Dependencies: {analysis.get('summary', {}).get('dependency_count', 0)}",
                     f"Critical Issues: {analysis.get('summary', {}).get('critical_issues', 0)}",
                     "",
-                    "RECOMMENDATIONS:"
+                    "RECOMMENDATIONS:",
                 ]
 
                 # Add recommendations from various analyses
-                for analysis_type in ['structure_analysis', 'compatibility_analysis']:
-                    recs = analysis.get(analysis_type, {}).get('recommendations', [])
+                for analysis_type in ["structure_analysis", "compatibility_analysis"]:
+                    recs = analysis.get(analysis_type, {}).get("recommendations", [])
                     for rec in recs[:5]:  # Limit to top 5 per analysis type
                         summary_lines.append(f"- {rec}")
 
                 return {
                     "format": "text",
                     "content": "\n".join(summary_lines),
-                    "filename": f"{app_name}_analysis_summary.txt"
+                    "filename": f"{app_name}_analysis_summary.txt",
                 }
             else:
-                return {
-                    "error": f"Unsupported format: {format}",
-                    "supported_formats": ["json", "summary"]
-                }
+                return {"error": f"Unsupported format: {format}", "supported_formats": ["json", "summary"]}
 
         except Exception as e:
-            return {
-                "error": f"Export failed: {e!s}",
-                "format": format,
-                "content": ""
-            }
+            return {"error": f"Export failed: {e!s}", "format": format, "content": ""}
+
 
 # Create singleton instance
 app_analysis = AppAnalysis()
 
 # ==================== EXPORT ALL ORIGINAL FUNCTIONS ====================
 
+
 def analyze_app_structure(app_name: str) -> dict[str, Any]:
     """Analyze application structure"""
     return app_analysis.analyze_app_structure(app_name)
+
 
 def analyze_migration_compatibility(app_name: str, detailed: bool = False) -> dict[str, Any]:
     """Analyze migration compatibility"""
     return app_analysis.analyze_migration_compatibility(app_name, detailed)
 
+
 def analyze_code_complexity(app_name: str) -> dict[str, Any]:
     """Analyze code complexity"""
     return app_analysis.analyze_code_complexity(app_name)
+
 
 def analyze_dependencies(app_name: str) -> dict[str, Any]:
     """Analyze dependencies"""
     return app_analysis.analyze_dependencies(app_name)
 
+
 def assess_dependency_compatibility(dependencies: list[str]) -> dict[str, Any]:
     """Assess dependency compatibility"""
     return app_analysis.assess_dependency_compatibility(dependencies)
+
 
 def analyze_security_vulnerabilities(app_name: str) -> dict[str, Any]:
     """Analyze security vulnerabilities"""
     return app_analysis.analyze_security_vulnerabilities(app_name)
 
+
 def analyze_performance(app_name: str) -> dict[str, Any]:
     """Analyze performance characteristics"""
     return app_analysis.analyze_performance(app_name)
+
 
 def get_analysis_summary(app_name: str) -> dict[str, Any]:
     """Get comprehensive analysis summary"""
     return app_analysis.get_analysis_summary(app_name)
 
+
 def export_analysis_report(app_name: str, format: str = "json") -> dict[str, Any]:
     """Export analysis report"""
     return app_analysis.export_analysis_report(app_name, format)
 
+
 # ==================== ADDITIONAL HELPER FUNCTIONS ====================
+
 
 def list_available_analyses() -> list[str]:
     """List all available analysis functions"""
@@ -1687,8 +1759,9 @@ def list_available_analyses() -> list[str]:
         "analyze_security_vulnerabilities",
         "analyze_performance",
         "get_analysis_summary",
-        "export_analysis_report"
+        "export_analysis_report",
     ]
+
 
 def get_analysis_metadata() -> dict[str, Any]:
     """Get metadata about available analyses"""
@@ -1702,8 +1775,8 @@ def get_analysis_metadata() -> dict[str, Any]:
             "Code complexity analysis",
             "Security vulnerability assessment",
             "Performance characteristics analysis",
-            "Multi-format report export"
+            "Multi-format report export",
         ],
         "supported_formats": ["json", "summary"],
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }

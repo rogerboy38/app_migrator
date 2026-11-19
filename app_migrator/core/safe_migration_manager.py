@@ -18,6 +18,7 @@ try:
     from .migration_manager import MigrationManager
 except ImportError as e:
     logger.warning(f"Import fallback: {e}")
+
     # Fallback: Create basic MigrationManager if imports fail
     class MigrationManager:
         def __init__(self, bench_path=None):
@@ -29,6 +30,7 @@ except ImportError as e:
 
         def migrate_app(self, app_name):
             return {"status": "migrated", "app": app_name}
+
 
 class SafeMigrationManager(MigrationManager):
     """
@@ -67,24 +69,24 @@ class SafeMigrationManager(MigrationManager):
             return self._get_fallback_boot_health()
 
         return {
-            'system_safe': health_report.get('is_safe', False),
-            'health_score': health_report.get('overall_score', 0) * 100,
-            'issues_fixed': len(health_report.get('issues_fixed', [])),
-            'overall_score': health_report.get('overall_score', 0),
-            'issues_detected': health_report.get('issues_detected', []),
-            'metrics': health_report.get('metrics', {})
+            "system_safe": health_report.get("is_safe", False),
+            "health_score": health_report.get("overall_score", 0) * 100,
+            "issues_fixed": len(health_report.get("issues_fixed", [])),
+            "overall_score": health_report.get("overall_score", 0),
+            "issues_detected": health_report.get("issues_detected", []),
+            "metrics": health_report.get("metrics", {}),
         }
 
     def _get_fallback_boot_health(self):
         """STEP-602-08: STRONG fallback that's never None"""
         return {
-            'system_safe': False,
-            'health_score': 0.0,
-            'issues_fixed': 0,
-            'overall_score': 0.0,
-            'issues_detected': ['fallback_mode'],
-            'metrics': {},
-            'fallback_mode': True
+            "system_safe": False,
+            "health_score": 0.0,
+            "issues_fixed": 0,
+            "overall_score": 0.0,
+            "issues_detected": ["fallback_mode"],
+            "metrics": {},
+            "fallback_mode": True,
         }
 
     def migrate_app(self, app_name, safety_check=True):
@@ -101,12 +103,12 @@ class SafeMigrationManager(MigrationManager):
 
             # STEP-602-08: SAFE dictionary access
             boot_health_info = {
-                'pre_check_passed': safety_check,
-                'health_score': self.boot_health.get('overall_score', 0),
-                'issues_fixed': self.boot_health.get('issues_fixed', 0)
+                "pre_check_passed": safety_check,
+                "health_score": self.boot_health.get("overall_score", 0),
+                "issues_fixed": self.boot_health.get("issues_fixed", 0),
             }
 
-            result['boot_safety'] = boot_health_info
+            result["boot_safety"] = boot_health_info
             return result
 
         except Exception as e:
@@ -124,17 +126,14 @@ class SafeMigrationManager(MigrationManager):
                 "status": "blocked",
                 "app": app_name,
                 "reason": "Failed safety checks",
-                "boot_health": self.boot_health  # Always exists due to fallback
+                "boot_health": self.boot_health,  # Always exists due to fallback
             }
 
         return self.migrate_app(app_name, safety_check=False)
 
     def _pre_migration_safety_check(self, app_name):
         """Basic safety checks"""
-        checks = [
-            self._check_disk_space() > 0.1,
-            self._check_system_resources()
-        ]
+        checks = [self._check_disk_space() > 0.1, self._check_system_resources()]
 
         if not all(checks):
             print("   ⚠ Some safety checks failed")
@@ -145,14 +144,14 @@ class SafeMigrationManager(MigrationManager):
         """
         try:
             # GUARANTEED: self.boot_health is never None due to fallback
-            boot_score = self.boot_health.get('overall_score', 0.0)
-            issues_detected = self.boot_health.get('issues_detected', [])
+            boot_score = self.boot_health.get("overall_score", 0.0)
+            issues_detected = self.boot_health.get("issues_detected", [])
 
             required_checks = [
                 boot_score >= 0.8,
                 len(issues_detected) == 0,
                 self._check_disk_space() >= 0.1,
-                self._check_system_resources()
+                self._check_system_resources(),
             ]
 
             return all(required_checks)
@@ -168,6 +167,7 @@ class SafeMigrationManager(MigrationManager):
         """Check disk space"""
         try:
             import shutil
+
             total, _used, free = shutil.disk_usage("/")
             return free / total
         except Exception:
@@ -180,15 +180,13 @@ class SafeMigrationManager(MigrationManager):
     def _handle_migration_failure(self, app_name, error):
         """Handle migration failure"""
         print(f"   🚨 Migration failed: {error}")
-        return {
-            "status": "failed",
-            "app": app_name,
-            "error": str(error)
-        }
+        return {"status": "failed", "app": app_name, "error": str(error)}
+
 
 def create_safe_migration_manager(bench_path=None):
     """Factory function"""
     return SafeMigrationManager(bench_path)
+
 
 # Backward compatibility
 MigrationManager = SafeMigrationManager

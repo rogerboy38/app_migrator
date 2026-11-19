@@ -14,9 +14,9 @@ class MigrationService:
 
     def __init__(self, migration_session):
         self.session = migration_session
-        self.source_app = migration_session.get('source_app')
-        self.target_app = migration_session.get('target_app')
-        self.migration_type = migration_session.get('migration_type', 'full')
+        self.source_app = migration_session.get("source_app")
+        self.target_app = migration_session.get("target_app")
+        self.migration_type = migration_session.get("migration_type", "full")
 
     def execute_migration(self):
         """
@@ -26,21 +26,21 @@ class MigrationService:
             frappe.logger().info(f"Starting migration: {self.source_app} -> {self.target_app}")
 
             # Update session status
-            self.session['status'] = 'in_progress'
+            self.session["status"] = "in_progress"
 
             # Execute based on migration type
-            if self.migration_type == 'full':
+            if self.migration_type == "full":
                 return self._execute_full_migration()
-            elif self.migration_type == 'schema':
+            elif self.migration_type == "schema":
                 return self._execute_schema_migration()
-            elif self.migration_type == 'data':
+            elif self.migration_type == "data":
                 return self._execute_data_migration()
             else:
                 frappe.throw(_("Unsupported migration type: {}").format(self.migration_type))
 
         except Exception as e:
-            self.session['status'] = 'failed'
-            self.session['error'] = str(e)
+            self.session["status"] = "failed"
+            self.session["error"] = str(e)
             frappe.log_error(f"Migration failed: {e!s}")
             raise
 
@@ -62,14 +62,14 @@ class MigrationService:
         # Step 4: Migrate customizations
         steps.append(self._migrate_customizations())
 
-        self.session['steps'] = steps
-        self.session['status'] = 'completed'
+        self.session["steps"] = steps
+        self.session["status"] = "completed"
 
         return {
             "success": True,
             "message": _("Full migration completed successfully"),
             "steps_completed": len(steps),
-            "migration_id": self.session['migration_id']
+            "migration_id": self.session["migration_id"],
         }
 
     def _analyze_source_app(self):
@@ -79,7 +79,7 @@ class MigrationService:
         step = {
             "name": "analyze_source",
             "status": "completed",
-            "details": f"Analyzed {self.source_app} structure"
+            "details": f"Analyzed {self.source_app} structure",
         }
 
         # Implementation details would go here
@@ -94,7 +94,7 @@ class MigrationService:
         step = {
             "name": "migrate_schema",
             "status": "completed",
-            "details": f"Migrated schema from {self.source_app} to {self.target_app}"
+            "details": f"Migrated schema from {self.source_app} to {self.target_app}",
         }
 
         # Implementation details would go here
@@ -109,7 +109,7 @@ class MigrationService:
         step = {
             "name": "migrate_data",
             "status": "completed",
-            "details": f"Migrated data from {self.source_app} to {self.target_app}"
+            "details": f"Migrated data from {self.source_app} to {self.target_app}",
         }
 
         # Implementation details would go here
@@ -124,7 +124,7 @@ class MigrationService:
         step = {
             "name": "migrate_customizations",
             "status": "completed",
-            "details": f"Migrated customizations from {self.source_app} to {self.target_app}"
+            "details": f"Migrated customizations from {self.source_app} to {self.target_app}",
         }
 
         # Implementation details would go here

@@ -18,8 +18,11 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
+
 from ._shared import (
     MigrationSession,
     ProgressTracker,
@@ -29,8 +32,8 @@ from ._shared import (
 )
 
 
-@click.command('app-migrator-fix-structure')
-@click.argument('app_name')
+@click.command("app-migrator-fix-structure")
+@click.argument("app_name")
 @pass_context
 def app_migrator_fix_structure(context, app_name):
     """
@@ -94,10 +97,13 @@ def app_migrator_fix_structure(context, app_name):
     # Check module folders at level2
     print("\n📂 MODULE FOLDERS AT LEVEL 2:")
 
-    level2_dirs = [d for d in os.listdir(level2)
-                   if os.path.isdir(os.path.join(level2, d))
-                   and not d.startswith('.')
-                   and d not in ['__pycache__', 'templates', 'public', 'patches', 'config', 'www']]
+    level2_dirs = [
+        d
+        for d in os.listdir(level2)
+        if os.path.isdir(os.path.join(level2, d))
+        and not d.startswith(".")
+        and d not in ["__pycache__", "templates", "public", "patches", "config", "www"]
+    ]
 
     for dir_name in sorted(level2_dirs):
         dir_path = os.path.join(level2, dir_name)
@@ -108,13 +114,20 @@ def app_migrator_fix_structure(context, app_name):
         if has_doctype or has_page or has_report:
             # This is a module folder
             module_title = dir_name.replace("_", " ").title()
-            in_modules_txt = module_title in modules or dir_name in [m.lower().replace(" ", "_") for m in modules]
+            in_modules_txt = module_title in modules or dir_name in [
+                m.lower().replace(" ", "_") for m in modules
+            ]
 
             doctype_count = 0
             if has_doctype:
                 doctype_path = os.path.join(dir_path, "doctype")
-                doctype_count = len([d for d in os.listdir(doctype_path)
-                                    if os.path.isdir(os.path.join(doctype_path, d)) and d != '__pycache__'])
+                doctype_count = len(
+                    [
+                        d
+                        for d in os.listdir(doctype_path)
+                        if os.path.isdir(os.path.join(doctype_path, d)) and d != "__pycache__"
+                    ]
+                )
 
             status = "✅" if in_modules_txt else "⚠️ NOT IN modules.txt"
             print(f"   • {dir_name}/ - {doctype_count} doctypes {status}")
@@ -129,8 +142,13 @@ def app_migrator_fix_structure(context, app_name):
     # Check for doctypes directly at level2
     direct_doctype = os.path.join(level2, "doctype")
     if os.path.isdir(direct_doctype):
-        doctype_count = len([d for d in os.listdir(direct_doctype)
-                            if os.path.isdir(os.path.join(direct_doctype, d)) and d != '__pycache__'])
+        doctype_count = len(
+            [
+                d
+                for d in os.listdir(direct_doctype)
+                if os.path.isdir(os.path.join(direct_doctype, d)) and d != "__pycache__"
+            ]
+        )
         print(f"\n⚠️ DOCTYPES DIRECTLY AT LEVEL 2 ({doctype_count}):")
         print(f"   Path: {direct_doctype}")
         print("   This is unusual - doctypes should be inside a module folder.")
@@ -152,5 +170,3 @@ def app_migrator_fix_structure(context, app_name):
         print("      3. Update modules.txt with module name")
     else:
         print("   ℹ️ App structure looks standard")
-
-

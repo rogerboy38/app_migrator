@@ -32,7 +32,7 @@ class APIManager:
     def get_api_key(self):
         """Retrieve API key"""
         # First check memory
-        if hasattr(self, '_current_key'):
+        if hasattr(self, "_current_key"):
             return self._current_key
 
         # Then check keyring
@@ -61,16 +61,11 @@ class APIManager:
             return None
 
         try:
-            headers = {
-                "Authorization": f"token {api_key}",
-                "Content-Type": "application/json"
-            }
+            headers = {"Authorization": f"token {api_key}", "Content-Type": "application/json"}
 
             # Test endpoint - adjust based on actual Frappe Cloud API
             response = requests.get(
-                "https://frappecloud.com/api/method/frappe.client.get_list",
-                headers=headers,
-                timeout=10
+                "https://frappecloud.com/api/method/frappe.client.get_list", headers=headers, timeout=10
             )
 
             if response.status_code == 200:
@@ -79,7 +74,7 @@ class APIManager:
                 return {
                     "status": "valid",
                     "email": data.get("email", "Unknown"),
-                    "account": data.get("account", "Unknown")
+                    "account": data.get("account", "Unknown"),
                 }
             else:
                 # Fallback - at least check if key looks valid
@@ -126,6 +121,7 @@ class APIManager:
         key = base64.urlsafe_b64encode(kdf.derive(hash_digest))
         return key
 
+
 class SecurityManager:
     @staticmethod
     def get_user_role(api_status):
@@ -148,7 +144,7 @@ class SecurityManager:
                 "download_private": False,
                 "push_changes": False,
                 "cross_bench_sync": False,
-                "automated_migration": False
+                "automated_migration": False,
             },
             "api_user": {
                 "analyze_apps": True,
@@ -157,7 +153,7 @@ class SecurityManager:
                 "download_private": True,
                 "push_changes": False,
                 "cross_bench_sync": True,
-                "automated_migration": True
+                "automated_migration": True,
             },
             "full": {
                 "analyze_apps": True,
@@ -166,8 +162,8 @@ class SecurityManager:
                 "download_private": True,
                 "push_changes": True,
                 "cross_bench_sync": True,
-                "automated_migration": True
-            }
+                "automated_migration": True,
+            },
         }
 
         return permissions.get(role, permissions["guest"])

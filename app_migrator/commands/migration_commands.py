@@ -23,17 +23,22 @@ import yaml
 try:
     import frappe
     from frappe.commands import get_site, pass_context
+
     FRAPPE_AVAILABLE = True
 except ImportError:
     FRAPPE_AVAILABLE = False
+
     def pass_context(f):
         return f
+
     def get_site(c):
         return None
 # ==================== SCAN SITE COMMAND ====================
 
+
 class SiteScanResult:
     """Container for site scan results"""
+
     def __init__(self, site_name: str):
         self.site_name = site_name
         self.scan_timestamp = datetime.now().isoformat()
@@ -57,14 +62,14 @@ class SiteScanResult:
                 "child_tables": len(self.child_tables),
                 "custom_fields": len(self.custom_fields),
                 "property_setters": len(self.property_setters),
-                "total_tables": self.total_tables
+                "total_tables": self.total_tables,
             },
             "installed_apps": self.installed_apps,
             "doctypes": self.doctypes,
             "child_tables": self.child_tables,
             "custom_fields": self.custom_fields,
             "property_setters": self.property_setters,
-            "errors": self.errors
+            "errors": self.errors,
         }
 
 
@@ -77,7 +82,7 @@ def scan_site_impl(site_name: str, apps_filter: list[str] | None = None) -> Site
 
     try:
         # Get Frappe version
-        result.frappe_version = frappe.__version__ if hasattr(frappe, '__version__') else "unknown"
+        result.frappe_version = frappe.__version__ if hasattr(frappe, "__version__") else "unknown"
 
         # Get installed apps with versions
         installed_apps = frappe.get_installed_apps()
@@ -85,8 +90,10 @@ def scan_site_impl(site_name: str, apps_filter: list[str] | None = None) -> Site
             try:
                 app_info = {
                     "name": app_name,
-                    "version": frappe.get_attr(f"{app_name}.__version__") if hasattr(frappe.get_module(app_name), '__version__') else "unknown",
-                    "path": frappe.get_app_path(app_name) if hasattr(frappe, 'get_app_path') else "unknown"
+                    "version": frappe.get_attr(f"{app_name}.__version__")
+                    if hasattr(frappe.get_module(app_name), "__version__")
+                    else "unknown",
+                    "path": frappe.get_app_path(app_name) if hasattr(frappe, "get_app_path") else "unknown",
                 }
             except Exception:
                 app_info = {"name": app_name, "version": "unknown", "path": "unknown"}
@@ -101,7 +108,7 @@ def scan_site_impl(site_name: str, apps_filter: list[str] | None = None) -> Site
         all_doctypes = frappe.get_all(
             "DocType",
             filters=doctype_filters,
-            fields=["name", "module", "custom", "istable", "issingle", "is_virtual"]
+            fields=["name", "module", "custom", "istable", "issingle", "is_virtual"],
         )
 
         for dt in all_doctypes:
@@ -112,7 +119,7 @@ def scan_site_impl(site_name: str, apps_filter: list[str] | None = None) -> Site
                 "is_table": dt.istable,
                 "is_single": dt.issingle,
                 "is_virtual": dt.get("is_virtual", 0),
-                "fields_count": 0
+                "fields_count": 0,
             }
 
             # Get fields count
@@ -138,7 +145,7 @@ def scan_site_impl(site_name: str, apps_filter: list[str] | None = None) -> Site
         custom_fields = frappe.get_all(
             "Custom Field",
             filters=cf_filters,
-            fields=["name", "dt", "fieldname", "fieldtype", "label", "options"]
+            fields=["name", "dt", "fieldname", "fieldtype", "label", "options"],
         )
         result.custom_fields = [dict(cf) for cf in custom_fields]
 
@@ -152,7 +159,7 @@ def scan_site_impl(site_name: str, apps_filter: list[str] | None = None) -> Site
         property_setters = frappe.get_all(
             "Property Setter",
             filters=ps_filters,
-            fields=["name", "doc_type", "field_name", "property", "value", "property_type"]
+            fields=["name", "doc_type", "field_name", "property", "value", "property_type"],
         )
         result.property_setters = [dict(ps) for ps in property_setters]
 
@@ -166,11 +173,19 @@ def scan_site_impl(site_name: str, apps_filter: list[str] | None = None) -> Site
     return result
 
 
-@click.command('scan-site')
-@click.option('--site', required=True, help='Site name to scan')
-@click.option('--apps', default=None, help='Comma-separated list of apps to filter (e.g., amb_w_spc,amb_w_tds)')
-@click.option('--output', '-o', default=None, help='Output file path (JSON format)')
-@click.option('--format', 'output_format', type=click.Choice(['json', 'yaml', 'text']), default='text', help='Output format')
+@click.command("scan-site")
+@click.option("--site", required=True, help="Site name to scan")
+@click.option(
+    "--apps", default=None, help="Comma-separated list of apps to filter (e.g., amb_w_spc,amb_w_tds)"
+)
+@click.option("--output", "-o", default=None, help="Output file path (JSON format)")
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["json", "yaml", "text"]),
+    default="text",
+    help="Output format",
+)
 @pass_context
 def scan_site(context, site, apps, output, output_format):
     """
@@ -188,7 +203,7 @@ def scan_site(context, site, apps, output, output_format):
         frappe.init(site=site)
         frappe.connect()
 
-        apps_filter = apps.split(',') if apps else None
+        apps_filter = apps.split(",") if apps else None
         result = scan_site_impl(site, apps_filter)
 
         frappe.db.close()
@@ -197,8 +212,8 @@ def scan_site(context, site, apps, output, output_format):
         result_dict = result.to_dict()
 
         if output:
-            with open(output, 'w') as f:
-                if output_format == 'yaml':
+            with open(output, "w") as f:
+                if output_format == "yaml":
                     yaml.dump(result_dict, f, default_flow_style=False)
                 else:
                     json.dump(result_dict, f, indent=2)
@@ -229,8 +244,10 @@ def scan_site(context, site, apps, output, output_format):
 
 # ==================== DETECT CONFLICTS COMMAND ====================
 
+
 class ConflictDetectionResult:
     """Container for conflict detection results"""
+
     def __init__(self, site_name: str, apps: list[str]):
         self.site_name = site_name
         self.apps = apps
@@ -245,11 +262,11 @@ class ConflictDetectionResult:
 
     def to_dict(self) -> dict[str, Any]:
         self.total_conflicts = (
-            len(self.duplicate_doctypes) +
-            len(self.field_clashes) +
-            len(self.schema_inconsistencies) +
-            len(self.orphan_doctypes) +
-            len(self.naming_conflicts)
+            len(self.duplicate_doctypes)
+            + len(self.field_clashes)
+            + len(self.schema_inconsistencies)
+            + len(self.orphan_doctypes)
+            + len(self.naming_conflicts)
         )
 
         # Calculate severity
@@ -275,15 +292,15 @@ class ConflictDetectionResult:
                 "field_clashes": len(self.field_clashes),
                 "schema_inconsistencies": len(self.schema_inconsistencies),
                 "orphan_doctypes": len(self.orphan_doctypes),
-                "naming_conflicts": len(self.naming_conflicts)
+                "naming_conflicts": len(self.naming_conflicts),
             },
             "conflicts": {
                 "duplicate_doctypes": self.duplicate_doctypes,
                 "field_clashes": self.field_clashes,
                 "schema_inconsistencies": self.schema_inconsistencies,
                 "orphan_doctypes": self.orphan_doctypes,
-                "naming_conflicts": self.naming_conflicts
-            }
+                "naming_conflicts": self.naming_conflicts,
+            },
         }
 
 
@@ -298,11 +315,7 @@ def detect_conflicts_impl(site_name: str, apps: list[str]) -> ConflictDetectionR
         # Get all doctypes for the specified apps
         app_doctypes = {}
         for app in apps:
-            doctypes = frappe.get_all(
-                "DocType",
-                filters={"module": app},
-                fields=["name", "module", "custom"]
-            )
+            doctypes = frappe.get_all("DocType", filters={"module": app}, fields=["name", "module", "custom"])
             app_doctypes[app] = [dt.name for dt in doctypes]
 
         # Detect duplicate doctypes across apps
@@ -315,85 +328,93 @@ def detect_conflicts_impl(site_name: str, apps: list[str]) -> ConflictDetectionR
 
         for dt, dt_apps in doctype_to_apps.items():
             if len(dt_apps) > 1:
-                result.duplicate_doctypes.append({
-                    "doctype": dt,
-                    "found_in_apps": dt_apps,
-                    "resolution": "Choose which app should own this doctype"
-                })
+                result.duplicate_doctypes.append(
+                    {
+                        "doctype": dt,
+                        "found_in_apps": dt_apps,
+                        "resolution": "Choose which app should own this doctype",
+                    }
+                )
 
         # Detect field clashes (same field name in linked doctypes with different types)
         unique_doctypes = list(set(all_doctypes))
         if unique_doctypes:
             # Get all fields for these doctypes
-            fields_data = frappe.db.sql("""
+            fields_data = frappe.db.sql(
+                """
                 SELECT parent, fieldname, fieldtype, options
                 FROM `tabDocField`
                 WHERE parent IN %(doctypes)s
                 ORDER BY parent, fieldname
-            """, {"doctypes": unique_doctypes}, as_dict=True)
+            """,
+                {"doctypes": unique_doctypes},
+                as_dict=True,
+            )
 
             # Group by fieldname to find potential clashes
             field_definitions = defaultdict(list)
             for field in fields_data:
                 f"{field['parent']}.{field['fieldname']}"
-                field_definitions[field['fieldname']].append({
-                    "doctype": field['parent'],
-                    "fieldtype": field['fieldtype'],
-                    "options": field['options']
-                })
+                field_definitions[field["fieldname"]].append(
+                    {"doctype": field["parent"], "fieldtype": field["fieldtype"], "options": field["options"]}
+                )
 
             # Check for inconsistent field definitions
             for fieldname, definitions in field_definitions.items():
                 if len(definitions) > 1:
                     # Check if same fieldname has different types
-                    types = set(d['fieldtype'] for d in definitions)
+                    types = set(d["fieldtype"] for d in definitions)
                     if len(types) > 1:
-                        result.field_clashes.append({
-                            "fieldname": fieldname,
-                            "definitions": definitions,
-                            "issue": f"Field '{fieldname}' has different types: {types}",
-                            "resolution": "Standardize field type across doctypes"
-                        })
+                        result.field_clashes.append(
+                            {
+                                "fieldname": fieldname,
+                                "definitions": definitions,
+                                "issue": f"Field '{fieldname}' has different types: {types}",
+                                "resolution": "Standardize field type across doctypes",
+                            }
+                        )
 
         # Detect orphan doctypes (app=None or module not found)
         orphan_doctypes = frappe.get_all(
             "DocType",
-            filters=[
-                ["module", "in", ["", None, "None"]],
-                ["custom", "=", 0]
-            ],
-            fields=["name", "module"]
+            filters=[["module", "in", ["", None, "None"]], ["custom", "=", 0]],
+            fields=["name", "module"],
         )
 
         for dt in orphan_doctypes:
-            result.orphan_doctypes.append({
-                "doctype": dt.name,
-                "current_module": dt.module or "None",
-                "issue": "DocType has no valid module assignment",
-                "resolution": "Assign to appropriate module or mark as custom"
-            })
+            result.orphan_doctypes.append(
+                {
+                    "doctype": dt.name,
+                    "current_module": dt.module or "None",
+                    "issue": "DocType has no valid module assignment",
+                    "resolution": "Assign to appropriate module or mark as custom",
+                }
+            )
 
         # Detect naming conflicts (similar names that might cause confusion)
         from difflib import SequenceMatcher
+
         doctype_names = list(set(all_doctypes))
         for i, dt1 in enumerate(doctype_names):
-            for dt2 in doctype_names[i+1:]:
+            for dt2 in doctype_names[i + 1 :]:
                 similarity = SequenceMatcher(None, dt1.lower(), dt2.lower()).ratio()
                 if similarity > 0.8 and dt1 != dt2:
-                    result.naming_conflicts.append({
-                        "doctype1": dt1,
-                        "doctype2": dt2,
-                        "similarity": round(similarity * 100, 1),
-                        "issue": f"Similar names might cause confusion ({similarity*100:.1f}% similar)",
-                        "resolution": "Consider renaming for clarity"
-                    })
+                    result.naming_conflicts.append(
+                        {
+                            "doctype1": dt1,
+                            "doctype2": dt2,
+                            "similarity": round(similarity * 100, 1),
+                            "issue": f"Similar names might cause confusion ({similarity * 100:.1f}% similar)",
+                            "resolution": "Consider renaming for clarity",
+                        }
+                    )
 
         # Detect schema inconsistencies (custom fields that might conflict)
         if unique_doctypes:
             custom_fields = frappe.get_all(
                 "Custom Field",
                 filters={"dt": ["in", unique_doctypes]},
-                fields=["name", "dt", "fieldname", "fieldtype", "insert_after"]
+                fields=["name", "dt", "fieldname", "fieldtype", "insert_after"],
             )
 
             # Check for duplicate custom field names within same doctype
@@ -405,28 +426,42 @@ def detect_conflicts_impl(site_name: str, apps: list[str]) -> ConflictDetectionR
                 fieldnames = [cf.fieldname for cf in cfs]
                 duplicates = set([fn for fn in fieldnames if fieldnames.count(fn) > 1])
                 if duplicates:
-                    result.schema_inconsistencies.append({
-                        "doctype": dt,
-                        "issue": f"Duplicate custom field names: {duplicates}",
-                        "fields": list(duplicates),
-                        "resolution": "Remove or rename duplicate custom fields"
-                    })
+                    result.schema_inconsistencies.append(
+                        {
+                            "doctype": dt,
+                            "issue": f"Duplicate custom field names: {duplicates}",
+                            "fields": list(duplicates),
+                            "resolution": "Remove or rename duplicate custom fields",
+                        }
+                    )
 
     except Exception as e:
-        result.schema_inconsistencies.append({
-            "error": str(e),
-            "issue": "Failed to complete conflict detection",
-            "resolution": "Check database connection and permissions"
-        })
+        result.schema_inconsistencies.append(
+            {
+                "error": str(e),
+                "issue": "Failed to complete conflict detection",
+                "resolution": "Check database connection and permissions",
+            }
+        )
 
     return result
 
 
-@click.command('detect-conflicts')
-@click.option('--site', required=True, help='Site name to analyze')
-@click.option('--apps', required=True, help='Comma-separated list of apps to check (e.g., amb_w_spc,amb_w_spc_2,amb_w_tds)')
-@click.option('--output', '-o', default=None, help='Output file path')
-@click.option('--format', 'output_format', type=click.Choice(['json', 'yaml', 'text']), default='text', help='Output format')
+@click.command("detect-conflicts")
+@click.option("--site", required=True, help="Site name to analyze")
+@click.option(
+    "--apps",
+    required=True,
+    help="Comma-separated list of apps to check (e.g., amb_w_spc,amb_w_spc_2,amb_w_tds)",
+)
+@click.option("--output", "-o", default=None, help="Output file path")
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["json", "yaml", "text"]),
+    default="text",
+    help="Output format",
+)
 @pass_context
 def detect_conflicts(context, site, apps, output, output_format):
     """
@@ -444,7 +479,7 @@ def detect_conflicts(context, site, apps, output, output_format):
         frappe.init(site=site)
         frappe.connect()
 
-        apps_list = [a.strip() for a in apps.split(',')]
+        apps_list = [a.strip() for a in apps.split(",")]
         result = detect_conflicts_impl(site, apps_list)
 
         frappe.db.close()
@@ -452,8 +487,8 @@ def detect_conflicts(context, site, apps, output, output_format):
         result_dict = result.to_dict()
 
         if output:
-            with open(output, 'w') as f:
-                if output_format == 'yaml':
+            with open(output, "w") as f:
+                if output_format == "yaml":
                     yaml.dump(result_dict, f, default_flow_style=False)
                 else:
                     json.dump(result_dict, f, indent=2)
@@ -461,16 +496,12 @@ def detect_conflicts(context, site, apps, output, output_format):
 
         # Display summary
         summary = result_dict["summary"]
-        severity_colors = {
-            "none": "✅",
-            "low": "⚠️",
-            "medium": "🔶",
-            "high": "🔴",
-            "critical": "💥"
-        }
+        severity_colors = {"none": "✅", "low": "⚠️", "medium": "🔶", "high": "🔴", "critical": "💥"}
 
         click.echo("\n📊 CONFLICT DETECTION SUMMARY")
-        click.echo(f"   Severity: {severity_colors.get(summary['severity'], '❓')} {summary['severity'].upper()}")
+        click.echo(
+            f"   Severity: {severity_colors.get(summary['severity'], '❓')} {summary['severity'].upper()}"
+        )
         click.echo(f"   Total Conflicts: {summary['total_conflicts']}")
         click.echo(f"   - Duplicate DocTypes: {summary['duplicate_doctypes']}")
         click.echo(f"   - Field Clashes: {summary['field_clashes']}")
@@ -478,7 +509,7 @@ def detect_conflicts(context, site, apps, output, output_format):
         click.echo(f"   - Orphan DocTypes: {summary['orphan_doctypes']}")
         click.echo(f"   - Naming Conflicts: {summary['naming_conflicts']}")
 
-        if summary['total_conflicts'] > 0:
+        if summary["total_conflicts"] > 0:
             click.echo("\n⚠️ Conflicts found! Review the output file for details.")
             click.echo("   Run 'generate-plan' with --config to create migration plan.")
         else:
@@ -491,8 +522,10 @@ def detect_conflicts(context, site, apps, output, output_format):
 
 # ==================== GENERATE PLAN COMMAND ====================
 
+
 class MigrationPlan:
     """Container for migration plan"""
+
     def __init__(self, source_apps: list[str], target_app: str):
         self.source_apps = source_apps
         self.target_app = target_app
@@ -518,22 +551,19 @@ class MigrationPlan:
                 "risk_level": self.risk_level,
                 "total_doctype_mappings": len(self.doctype_mappings),
                 "total_field_mappings": len(self.field_mappings),
-                "total_data_rules": len(self.data_rules)
+                "total_data_rules": len(self.data_rules),
             },
             "doctype_mappings": self.doctype_mappings,
             "field_mappings": self.field_mappings,
             "data_rules": self.data_rules,
             "execution_order": self.execution_order,
             "pre_migration_checks": self.pre_migration_checks,
-            "post_migration_checks": self.post_migration_checks
+            "post_migration_checks": self.post_migration_checks,
         }
 
 
 def generate_plan_impl(
-    site_name: str,
-    source_apps: list[str],
-    target_app: str,
-    config: dict[str, Any] | None = None
+    site_name: str, source_apps: list[str], target_app: str, config: dict[str, Any] | None = None
 ) -> MigrationPlan:
     """
     Implementation of migration plan generation
@@ -552,19 +582,13 @@ def generate_plan_impl(
         all_doctypes = {}
         for app in source_apps:
             doctypes = frappe.get_all(
-                "DocType",
-                filters={"module": app},
-                fields=["name", "module", "custom", "istable"]
+                "DocType", filters={"module": app}, fields=["name", "module", "custom", "istable"]
             )
             for dt in doctypes:
                 if dt.name not in ignored_doctypes:
                     if dt.name not in all_doctypes:
                         all_doctypes[dt.name] = []
-                    all_doctypes[dt.name].append({
-                        "app": app,
-                        "custom": dt.custom,
-                        "is_table": dt.istable
-                    })
+                    all_doctypes[dt.name].append({"app": app, "custom": dt.custom, "is_table": dt.istable})
 
         # Generate doctype mappings
         for dt_name, sources in all_doctypes.items():
@@ -587,7 +611,7 @@ def generate_plan_impl(
                 "action": "migrate",
                 "is_table": sources[0]["is_table"],
                 "sources": sources,
-                "conflict": len(sources) > 1
+                "conflict": len(sources) > 1,
             }
 
             # Check for custom mapping overrides
@@ -602,16 +626,12 @@ def generate_plan_impl(
 
             # Get all fields
             fields = frappe.get_all(
-                "DocField",
-                filters={"parent": dt_name},
-                fields=["fieldname", "fieldtype", "options", "reqd"]
+                "DocField", filters={"parent": dt_name}, fields=["fieldname", "fieldtype", "options", "reqd"]
             )
 
             # Get custom fields
             custom_fields = frappe.get_all(
-                "Custom Field",
-                filters={"dt": dt_name},
-                fields=["fieldname", "fieldtype", "options", "reqd"]
+                "Custom Field", filters={"dt": dt_name}, fields=["fieldname", "fieldtype", "options", "reqd"]
             )
 
             field_mapping = {
@@ -620,7 +640,7 @@ def generate_plan_impl(
                 "custom_fields": len(custom_fields),
                 "fields_to_migrate": [f.fieldname for f in fields],
                 "custom_fields_to_migrate": [f.fieldname for f in custom_fields],
-                "transformations": []
+                "transformations": [],
             }
 
             plan.field_mappings.append(field_mapping)
@@ -642,7 +662,7 @@ def generate_plan_impl(
                 "action": "copy" if count > 0 else "skip",
                 "batch_size": 1000,
                 "filters": {},
-                "default_values": {}
+                "default_values": {},
             }
 
             plan.data_rules.append(data_rule)
@@ -657,7 +677,7 @@ def generate_plan_impl(
             {"check": "backup_exists", "required": True, "description": "Verify backup is available"},
             {"check": "no_pending_jobs", "required": True, "description": "No pending background jobs"},
             {"check": "disk_space", "required": True, "description": "Sufficient disk space available"},
-            {"check": "frappe_version", "required": True, "description": "Compatible Frappe version (v16+)"}
+            {"check": "frappe_version", "required": True, "description": "Compatible Frappe version (v16+)"},
         ]
 
         # Generate post-migration checks
@@ -665,7 +685,7 @@ def generate_plan_impl(
             {"check": "record_counts", "description": "Verify record counts match"},
             {"check": "key_constraints", "description": "Check foreign key constraints"},
             {"check": "business_flows", "description": "Test key business flows"},
-            {"check": "custom_fields", "description": "Verify custom fields migrated"}
+            {"check": "custom_fields", "description": "Verify custom fields migrated"},
         ]
 
         # Calculate effort and risk
@@ -684,22 +704,23 @@ def generate_plan_impl(
             plan.risk_level = "high"
 
     except Exception as e:
-        plan.data_rules.append({
-            "error": str(e),
-            "action": "review_required"
-        })
+        plan.data_rules.append({"error": str(e), "action": "review_required"})
         plan.risk_level = "high"
 
     return plan
 
 
-@click.command('generate-plan')
-@click.option('--site', required=True, help='Site name')
-@click.option('--apps', required=True, help='Comma-separated source apps to consolidate')
-@click.option('--target', required=True, help='Target consolidated app name')
-@click.option('--config', 'config_file', default=None, help='Path to YAML/JSON config file with business rules')
-@click.option('--output', '-o', required=True, help='Output file path for migration plan')
-@click.option('--format', 'output_format', type=click.Choice(['json', 'yaml']), default='json', help='Output format')
+@click.command("generate-plan")
+@click.option("--site", required=True, help="Site name")
+@click.option("--apps", required=True, help="Comma-separated source apps to consolidate")
+@click.option("--target", required=True, help="Target consolidated app name")
+@click.option(
+    "--config", "config_file", default=None, help="Path to YAML/JSON config file with business rules"
+)
+@click.option("--output", "-o", required=True, help="Output file path for migration plan")
+@click.option(
+    "--format", "output_format", type=click.Choice(["json", "yaml"]), default="json", help="Output format"
+)
 @pass_context
 def generate_plan(context, site, apps, target, config_file, output, output_format):
     """
@@ -719,13 +740,13 @@ def generate_plan(context, site, apps, target, config_file, output, output_forma
         frappe.init(site=site)
         frappe.connect()
 
-        apps_list = [a.strip() for a in apps.split(',')]
+        apps_list = [a.strip() for a in apps.split(",")]
 
         # Load config if provided
         config = None
         if config_file and os.path.exists(config_file):
             with open(config_file) as f:
-                if config_file.endswith('.yaml') or config_file.endswith('.yml'):
+                if config_file.endswith(".yaml") or config_file.endswith(".yml"):
                     config = yaml.safe_load(f)
                 else:
                     config = json.load(f)
@@ -738,8 +759,8 @@ def generate_plan(context, site, apps, target, config_file, output, output_forma
         plan_dict = plan.to_dict()
 
         # Save plan
-        with open(output, 'w') as f:
-            if output_format == 'yaml':
+        with open(output, "w") as f:
+            if output_format == "yaml":
                 yaml.dump(plan_dict, f, default_flow_style=False)
             else:
                 json.dump(plan_dict, f, indent=2)
@@ -767,8 +788,10 @@ def generate_plan(context, site, apps, target, config_file, output, output_forma
 
 # ==================== EXECUTE PLAN COMMAND ====================
 
+
 class ExecutionResult:
     """Container for plan execution results"""
+
     def __init__(self, plan_file: str):
         self.plan_file = plan_file
         self.execution_start = datetime.now().isoformat()
@@ -799,7 +822,7 @@ class ExecutionResult:
                 "schema_changes": len(self.schema_changes),
                 "data_changes": len(self.data_changes),
                 "errors": len(self.errors),
-                "warnings": len(self.warnings)
+                "warnings": len(self.warnings),
             },
             "steps_completed": self.steps_completed,
             "steps_failed": self.steps_failed,
@@ -807,15 +830,12 @@ class ExecutionResult:
             "schema_changes": self.schema_changes,
             "data_changes": self.data_changes,
             "errors": self.errors,
-            "warnings": self.warnings
+            "warnings": self.warnings,
         }
 
 
 def execute_plan_impl(
-    site_name: str,
-    plan: dict[str, Any],
-    dry_run: bool = True,
-    batch_size: int = 1000
+    site_name: str, plan: dict[str, Any], dry_run: bool = True, batch_size: int = 1000
 ) -> ExecutionResult:
     """
     Implementation of migration plan execution
@@ -846,36 +866,38 @@ def execute_plan_impl(
             try:
                 # Schema migration (update module)
                 if not dry_run:
-                    frappe.db.sql("""
+                    frappe.db.sql(
+                        """
                         UPDATE `tabDocType`
                         SET module = %(target_app)s
                         WHERE name = %(doctype)s
-                    """, {
-                        "target_app": mapping.get("target_app"),
-                        "doctype": doctype_name
-                    })
-                    result.schema_changes.append({
-                        "doctype": doctype_name,
-                        "change": "module_updated",
-                        "from": mapping.get("source_app"),
-                        "to": mapping.get("target_app")
-                    })
+                    """,
+                        {"target_app": mapping.get("target_app"), "doctype": doctype_name},
+                    )
+                    result.schema_changes.append(
+                        {
+                            "doctype": doctype_name,
+                            "change": "module_updated",
+                            "from": mapping.get("source_app"),
+                            "to": mapping.get("target_app"),
+                        }
+                    )
                 else:
-                    result.schema_changes.append({
-                        "doctype": doctype_name,
-                        "change": "module_update_planned",
-                        "dry_run": True
-                    })
+                    result.schema_changes.append(
+                        {"doctype": doctype_name, "change": "module_update_planned", "dry_run": True}
+                    )
 
                 # Data migration stats
                 record_count = rule.get("record_count", 0)
                 if record_count > 0:
                     result.records_migrated += record_count
-                    result.data_changes.append({
-                        "doctype": doctype_name,
-                        "records": record_count,
-                        "action": "migrated" if not dry_run else "would_migrate"
-                    })
+                    result.data_changes.append(
+                        {
+                            "doctype": doctype_name,
+                            "records": record_count,
+                            "action": "migrated" if not dry_run else "would_migrate",
+                        }
+                    )
                     click.echo(f"   📊 Records: {record_count}")
 
                 result.steps_completed.append(doctype_name)
@@ -883,10 +905,7 @@ def execute_plan_impl(
 
             except Exception as e:
                 result.steps_failed.append(doctype_name)
-                result.errors.append({
-                    "step": doctype_name,
-                    "error": str(e)
-                })
+                result.errors.append({"step": doctype_name, "error": str(e)})
                 click.echo(f"   ❌ Failed: {e!s}")
 
         # Commit if not dry run
@@ -903,10 +922,7 @@ def execute_plan_impl(
         result.success = len(result.steps_failed) == 0
 
     except Exception as e:
-        result.errors.append({
-            "step": "execution",
-            "error": str(e)
-        })
+        result.errors.append({"step": "execution", "error": str(e)})
         result.success = False
 
         if not dry_run:
@@ -919,12 +935,12 @@ def execute_plan_impl(
     return result
 
 
-@click.command('execute-plan')
-@click.option('--site', required=True, help='Site name')
-@click.option('--plan', 'plan_file', required=True, help='Path to migration plan file (JSON/YAML)')
-@click.option('--dry-run/--apply', default=True, help='Dry run (default) or apply changes')
-@click.option('--batch-size', default=1000, help='Batch size for data migration')
-@click.option('--output', '-o', default=None, help='Output file for execution report')
+@click.command("execute-plan")
+@click.option("--site", required=True, help="Site name")
+@click.option("--plan", "plan_file", required=True, help="Path to migration plan file (JSON/YAML)")
+@click.option("--dry-run/--apply", default=True, help="Dry run (default) or apply changes")
+@click.option("--batch-size", default=1000, help="Batch size for data migration")
+@click.option("--output", "-o", default=None, help="Output file for execution report")
 @pass_context
 def execute_plan(context, site, plan_file, dry_run, batch_size, output):
     """
@@ -949,7 +965,7 @@ def execute_plan(context, site, plan_file, dry_run, batch_size, output):
     try:
         # Load plan
         with open(plan_file) as f:
-            if plan_file.endswith('.yaml') or plan_file.endswith('.yml'):
+            if plan_file.endswith(".yaml") or plan_file.endswith(".yml"):
                 plan = yaml.safe_load(f)
             else:
                 plan = json.load(f)
@@ -967,7 +983,7 @@ def execute_plan(context, site, plan_file, dry_run, batch_size, output):
 
         # Save report
         if output:
-            with open(output, 'w') as f:
+            with open(output, "w") as f:
                 json.dump(result_dict, f, indent=2)
             click.echo(f"\n📄 Execution report saved to: {output}")
 

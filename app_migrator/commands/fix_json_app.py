@@ -16,8 +16,11 @@ try:
     import frappe
     from frappe.commands import pass_context
 except ImportError:
+
     def pass_context(f):
         return f
+
+
 from ._shared import (
     MigrationSession,
     ProgressTracker,
@@ -27,9 +30,9 @@ from ._shared import (
 )
 
 
-@click.command('app-migrator-fix-json-app')
-@click.argument('app_name')
-@click.option('--dry-run/--apply', default=True, help='Dry run or apply')
+@click.command("app-migrator-fix-json-app")
+@click.argument("app_name")
+@click.option("--dry-run/--apply", default=True, help="Dry run or apply")
 def app_migrator_fix_json_app(app_name, dry_run):
     """
     Fix JSON app field issues to prevent orphan deletion on fresh installs.
@@ -84,11 +87,7 @@ def app_migrator_fix_json_app(app_name, dry_run):
                             null_app_files.append(json_path)
                             needs_fix = True
                             if not dry_run:
-                                content = re.sub(
-                                    r'"app":\s*null',
-                                    f'"app": "{app_name}"',
-                                    content
-                                )
+                                content = re.sub(r'"app":\s*null', f'"app": "{app_name}"', content)
 
                         # Issue 2: Check for duplicate "app" fields
                         app_count = len(re.findall(r'"app":', content))
@@ -97,7 +96,7 @@ def app_migrator_fix_json_app(app_name, dry_run):
                             needs_fix = True
                             if not dry_run:
                                 # Remove the first occurrence (in first 30 lines)
-                                lines = content.split('\n')
+                                lines = content.split("\n")
                                 new_lines = []
                                 removed = False
                                 for i, line in enumerate(lines):
@@ -105,10 +104,10 @@ def app_migrator_fix_json_app(app_name, dry_run):
                                         removed = True
                                         continue
                                     new_lines.append(line)
-                                content = '\n'.join(new_lines)
+                                content = "\n".join(new_lines)
 
                         if needs_fix and not dry_run:
-                            with open(json_path, 'w') as fp:
+                            with open(json_path, "w") as fp:
                                 fp.write(content)
                         elif not needs_fix:
                             already_correct.append(json_path)
@@ -141,7 +140,9 @@ def app_migrator_fix_json_app(app_name, dry_run):
 
     if dry_run and total_issues > 0:
         print(f"\n📋 Run with --apply to fix {total_issues} file(s)")
-        print(f"   Then commit: cd {app_path} && git add -A && git commit -m 'Fix app field in JSON' && git push")
+        print(
+            f"   Then commit: cd {app_path} && git add -A && git commit -m 'Fix app field in JSON' && git push"
+        )
     elif not dry_run and total_issues > 0:
         print(f"\n✅ Fixed {total_issues} file(s)")
         print("\n📋 Now commit the changes:")
@@ -149,5 +150,3 @@ def app_migrator_fix_json_app(app_name, dry_run):
         print("   git add -A && git commit -m 'Fix app field in JSON' && git push")
     elif total_issues == 0:
         print("\n✅ All JSON files are correct - no issues found")
-
-

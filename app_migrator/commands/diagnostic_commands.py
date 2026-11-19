@@ -15,33 +15,42 @@ def diagnose_app_callback(app_path, fix=False):
     try:
         # Try relative import first
         from .pre_installation_diagnostics import diagnose_app_function
+
         return diagnose_app_function(app_path, fix)
     except ImportError:
         # Fallback to absolute import
         from pre_installation_diagnostics import diagnose_app_function
+
         return diagnose_app_function(app_path, fix)
+
 
 def scan_bench_health_callback():
     """Callback for scan-bench-health command"""
     try:
         # Try relative import first
         from .app_health_scanner import scan_bench_health_function
+
         return scan_bench_health_function()
     except ImportError:
         # Fallback to absolute import
         from app_health_scanner import scan_bench_health_function
+
         return scan_bench_health_function()
+
 
 def quick_health_check_callback(app_name):
     """Callback for quick-health-check command"""
     try:
         # Try relative import first
         from .app_health_scanner import quick_health_check_function
+
         return quick_health_check_function(app_name)
     except ImportError:
         # Fallback to absolute import
         from app_health_scanner import quick_health_check_function
+
         return quick_health_check_function(app_name)
+
 
 def repair_bench_apps_callback(dry_run=False):
     """Callback for repair-bench-apps command"""
@@ -62,7 +71,7 @@ def repair_bench_apps_callback(dry_run=False):
         results = scanner.scan_bench_apps()
         critical_apps = []
 
-        for app_name, health in results['apps_health'].items():
+        for app_name, health in results["apps_health"].items():
             if "error" not in health and health.get("health_score", 0) < 50:
                 critical_apps.append((app_name, health))
 
@@ -80,7 +89,7 @@ def repair_bench_apps_callback(dry_run=False):
 
         if click.confirm(f"\n🚀 Apply fixes to {len(critical_apps)} apps?"):
             for app_name, _health in critical_apps:
-                app_path = os.path.join(scanner.bench_path, 'apps', app_name)
+                app_path = os.path.join(scanner.bench_path, "apps", app_name)
                 analyzer = PreInstallationAnalyzer()
                 fix_results = analyzer.auto_fix_app_structure(app_path)
                 print(f"✅ {app_name}: Applied {fix_results['total_fixes']} fixes")

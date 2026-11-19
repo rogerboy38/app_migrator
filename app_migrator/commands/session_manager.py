@@ -42,7 +42,7 @@ class SessionManager:
             self.data = self.load_session(session_id)
             if not self.data:
                 raise ValueError(f"Session {session_id} not found")
-            self.name = self.data['metadata']['name']
+            self.name = self.data["metadata"]["name"]
         elif name:
             # Create new session
             self.name = name
@@ -63,7 +63,7 @@ class SessionManager:
                 "start_time": datetime.now().isoformat(),
                 "last_updated": datetime.now().isoformat(),
                 "status": "active",
-                "current_phase": "initialization"
+                "current_phase": "initialization",
             },
             "progress": {
                 "current_operation": None,
@@ -71,7 +71,7 @@ class SessionManager:
                 "failed_operations": [],
                 "total_operations": 0,
                 "success_count": 0,
-                "failure_count": 0
+                "failure_count": 0,
             },
             "migration_data": {
                 "source_app": None,
@@ -79,22 +79,18 @@ class SessionManager:
                 "migrated_modules": [],
                 "migrated_doctypes": [],
                 "pending_modules": [],
-                "pending_doctypes": []
+                "pending_doctypes": [],
             },
-            "connection_data": {
-                "reconnection_count": 0,
-                "last_reconnection": None,
-                "site": None
-            }
+            "connection_data": {"reconnection_count": 0, "last_reconnection": None, "site": None},
         }
 
     def save(self):
         """Save session to disk"""
         try:
-            self.data['metadata']['last_updated'] = datetime.now().isoformat()
+            self.data["metadata"]["last_updated"] = datetime.now().isoformat()
             session_file = os.path.join(self.SESSION_DIR, f"{self.session_id}.json")
 
-            with open(session_file, 'w') as f:
+            with open(session_file, "w") as f:
                 json.dump(self.data, f, indent=2)
 
             return True
@@ -124,18 +120,20 @@ class SessionManager:
 
             sessions = []
             for file in os.listdir(cls.SESSION_DIR):
-                if file.endswith('.json'):
+                if file.endswith(".json"):
                     session_id = file[:-5]  # Remove .json extension
                     data = cls.load_session(session_id)
                     if data:
-                        sessions.append({
-                            'session_id': session_id,
-                            'name': data['metadata']['name'],
-                            'status': data['metadata']['status'],
-                            'start_time': data['metadata']['start_time']
-                        })
+                        sessions.append(
+                            {
+                                "session_id": session_id,
+                                "name": data["metadata"]["name"],
+                                "status": data["metadata"]["status"],
+                                "start_time": data["metadata"]["start_time"],
+                            }
+                        )
 
-            return sorted(sessions, key=lambda x: x['start_time'], reverse=True)
+            return sorted(sessions, key=lambda x: x["start_time"], reverse=True)
         except Exception as e:
             print(f"❌ Failed to list sessions: {e}")
             return []
@@ -154,18 +152,18 @@ class SessionManager:
                 "operation": operation,
                 "status": status,
                 "timestamp": datetime.now().isoformat(),
-                "details": details
+                "details": details,
             }
 
-            self.data['progress']['current_operation'] = operation
-            self.data['progress']['total_operations'] += 1
+            self.data["progress"]["current_operation"] = operation
+            self.data["progress"]["total_operations"] += 1
 
-            if status == 'completed':
-                self.data['progress']['completed_operations'].append(operation_data)
-                self.data['progress']['success_count'] += 1
-            elif status == 'failed':
-                self.data['progress']['failed_operations'].append(operation_data)
-                self.data['progress']['failure_count'] += 1
+            if status == "completed":
+                self.data["progress"]["completed_operations"].append(operation_data)
+                self.data["progress"]["success_count"] += 1
+            elif status == "failed":
+                self.data["progress"]["failed_operations"].append(operation_data)
+                self.data["progress"]["failure_count"] += 1
 
             self.save()
             return True
@@ -175,20 +173,20 @@ class SessionManager:
 
     def set_phase(self, phase):
         """Update current migration phase"""
-        self.data['metadata']['current_phase'] = phase
+        self.data["metadata"]["current_phase"] = phase
         self.save()
 
     def set_status(self, status):
         """Update session status"""
-        self.data['metadata']['status'] = status
+        self.data["metadata"]["status"] = status
         self.save()
 
     def get_progress_summary(self):
         """Get formatted progress summary"""
-        progress = self.data['progress']
-        total = progress['total_operations']
-        success = progress['success_count']
-        failed = progress['failure_count']
+        progress = self.data["progress"]
+        total = progress["total_operations"]
+        success = progress["success_count"]
+        failed = progress["failure_count"]
 
         if total > 0:
             success_rate = (success / total) * 100
@@ -196,11 +194,11 @@ class SessionManager:
             success_rate = 0
 
         return {
-            'total_operations': total,
-            'success_count': success,
-            'failure_count': failed,
-            'success_rate': success_rate,
-            'current_operation': progress['current_operation']
+            "total_operations": total,
+            "success_count": success,
+            "failure_count": failed,
+            "success_rate": success_rate,
+            "current_operation": progress["current_operation"],
         }
 
     def display_status(self):
@@ -209,7 +207,7 @@ class SessionManager:
         print(f"📊 SESSION STATUS: {self.name}")
         print("=" * 70)
 
-        metadata = self.data['metadata']
+        metadata = self.data["metadata"]
         print(f"\n🆔 Session ID: {self.session_id}")
         print(f"📈 Status: {metadata['status'].upper()}")
         print(f"🕐 Started: {metadata['start_time']}")
@@ -223,28 +221,29 @@ class SessionManager:
         print(f"  ❌ Failed: {summary['failure_count']}")
         print(f"  📈 Success Rate: {summary['success_rate']:.1f}%")
 
-        if summary['current_operation']:
+        if summary["current_operation"]:
             print(f"\n🔄 Current Operation: {summary['current_operation']}")
 
         # Show recent operations
-        completed = self.data['progress']['completed_operations']
+        completed = self.data["progress"]["completed_operations"]
         if completed:
             print("\n🕐 Recent Completed Operations:")
             for op in completed[-5:]:
                 print(f"  ✅ {op['operation']} ({op['timestamp']})")
 
-        failed = self.data['progress']['failed_operations']
+        failed = self.data["progress"]["failed_operations"]
         if failed:
             print("\n❌ Recent Failed Operations:")
             for op in failed[-5:]:
                 print(f"  ❌ {op['operation']} ({op['timestamp']})")
-                if op.get('details'):
+                if op.get("details"):
                     print(f"     Details: {op['details']}")
 
         print("\n" + "=" * 70)
 
 
 # ========== V2-STYLE CONNECTION MANAGEMENT ==========
+
 
 def ensure_frappe_connection():
     """
@@ -274,6 +273,7 @@ def with_session_management(func):
     Decorator to handle session management for all migration functions
     V2-style decorator pattern with auto-reconnect
     """
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
@@ -305,6 +305,7 @@ def with_session_tracking(session_id=None):
     Decorator to track operation in session
     Combines V2 connection management with V4 session tracking
     """
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -323,12 +324,12 @@ def with_session_tracking(session_id=None):
                 if not ensure_frappe_connection():
                     print("❌ Cannot establish Frappe connection")
                     if session:
-                        session.update_progress(operation_name, 'failed', 'Connection failed')
+                        session.update_progress(operation_name, "failed", "Connection failed")
                     return None
 
                 # Track start
                 if session:
-                    session.update_progress(operation_name, 'started')
+                    session.update_progress(operation_name, "started")
 
                 # Execute function
                 result = func(*args, **kwargs)
@@ -336,7 +337,7 @@ def with_session_tracking(session_id=None):
 
                 # Track success
                 if session:
-                    session.update_progress(operation_name, 'completed')
+                    session.update_progress(operation_name, "completed")
 
                 return result
 
@@ -345,7 +346,7 @@ def with_session_tracking(session_id=None):
 
                 # Track failure
                 if session:
-                    session.update_progress(operation_name, 'failed', str(e))
+                    session.update_progress(operation_name, "failed", str(e))
 
                 # Attempt recovery
                 try:
@@ -354,7 +355,7 @@ def with_session_tracking(session_id=None):
                         result = func(*args, **kwargs)
                         frappe.db.commit()
                         if session:
-                            session.update_progress(operation_name, 'completed', 'Recovered')
+                            session.update_progress(operation_name, "completed", "Recovered")
                         return result
                 except Exception as retry_error:
                     print(f"   ❌ Recovery failed: {retry_error}")
@@ -362,6 +363,7 @@ def with_session_tracking(session_id=None):
                 return None
 
         return wrapper
+
     return decorator
 
 
