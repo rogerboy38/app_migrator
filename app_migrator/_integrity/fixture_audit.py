@@ -498,3 +498,87 @@ def iter_never_modified(report: dict[str, Any]) -> Iterator[tuple[str, str, str]
                     and f["file"] == summary["file"]
                 ):
                     yield summary["app"], summary["file"], f["record"]
+
+
+# ---------------------------------------------------------------------------
+# CLI
+#
+# Runnable standalone: the module is pure stdlib and imports nothing from the
+# app_migrator package, so it can be dropped next to a bench and run with the
+# system python - no bench, no site, no frappe import:
+#
+#     python3 fixture_audit.py --apps-root ~/frappe-bench/apps --summary
+#     python3 fixture_audit.py --apps-root ~/frappe-bench/apps --json > audit.json
+# ---------------------------------------------------------------------------
+
+
+def _print_summary(report: dict[str, Any]) -> None:
+    print(f"apps_root     : {report['apps_root']}")
+    print(f"files read    : {report['file_count']}")
+    print(f"records seen  : {report['record_count']}")
+    print(f"by mechanism  : {report['mechanism_counts']}")
+    print()
+    print("FINDING COUNTS")
+    for finding_id, count in sorted(report["finding_counts"].items()):
+        print(f"  {count:6}  {finding_id}")
+    print()
+    print("RECORDS A MIGRATE WILL REWRITE (app-level fixtures always; doc-files with no `modified`)")
+    by_app: dict[str, int] = {}
+    for app, _file, _record in iter_never_modified(report):
+        by_app[app] = by_app.get(app, 0) + 1
+    for app in sorted(by_app):
+        print(f"  {by_app[app]:6}  {app}")
+    print(f"  {sum(by_app.values()):6}  TOTAL")
+    print()
+    print("EMPTY STANDARD-DOCUMENT BODIES")
+    for f in report["findings"]:
+        if f["id"] == "FX-EMPTY-BODY":
+            print(f"  {f['app']} / {f['doctype']} / {f['record']} / {f['field']}")
+    print()
+    print("APPS WITH MORE THAN ONE fixtures/ FOLDER (sync_fixtures() reads only one)")
+    for f in report["findings"]:
+        if f["id"] == "FX-MULTIPLE-FIXTURE-FOLDERS":
+            print(f"  {f['app']}  {f['folder']}  ({f['records_in_folder']} records)")
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+    import json
+    import sys
+
+    parser = argparse.ArgumentParser(
+        prog="fixture_audit",
+        description="Report which fixture records a Frappe 16 migrate will rewrite.",
+    )
+    parser.add_argument(
+        "--apps-root",
+        default=None,
+        help="path to the bench apps/ directory (default: search upward from cwd)",
+    )
+    parser.add_argument("--json", action="store_true", help="emit the full report as JSON")
+    parser.add_argument(
+        "--summary", action="store_true", help="emit a human summary (this is the default)"
+    )
+    args = parser.parse_args(argv)
+
+    if args.apps_root:
+        apps_root = Path(args.apps_root).expanduser().resolve()
+        if not apps_root.is_dir():
+            print(f"not a directory: {apps_root}", file=sys.stderr)
+            return 2
+    else:
+        apps_root = discover_apps_root(Path.cwd())
+        if apps_root is None:
+            print("no apps root found; pass --apps-root", file=sys.stderr)
+            return 2
+
+    report = audit_apps_root(apps_root)
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        _print_summary(report)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
