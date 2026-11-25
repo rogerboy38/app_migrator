@@ -145,7 +145,9 @@ def _read_json(path: Path) -> list[dict[str, Any]]:
     """
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except OSError:
+        return []
+    except ValueError:
         return []
     if isinstance(data, list):
         return [r for r in data if isinstance(r, dict)]
@@ -267,30 +269,17 @@ def discover_fixture_files(apps_root: Path) -> list[FixtureFile]:
             stem = path.stem
 
             if parent == "fixtures":
-                found.append(
-                    FixtureFile(app, path, MECHANISM_APP_FIXTURE, _scrub(stem), None)
-                )
+                found.append(FixtureFile(app, path, MECHANISM_APP_FIXTURE, _scrub(stem), None))
                 continue
             if parent == "custom":
-                found.append(
-                    FixtureFile(
-                        app, path, MECHANISM_CUSTOMIZATION, _scrub(stem), _scrub(app)
-                    )
-                )
+                found.append(FixtureFile(app, path, MECHANISM_CUSTOMIZATION, _scrub(stem), _scrub(app)))
                 continue
             # doc-file: <doctype>/<scrubbed name>/<scrubbed name>.json
             if len(parts) >= 3 and parent == stem and parts[-3] in IMPORTABLE_DOCTYPES:
-                found.append(
-                    FixtureFile(app, path, MECHANISM_DOC_FILE, parts[-3], None)
-                )
+                found.append(FixtureFile(app, path, MECHANISM_DOC_FILE, parts[-3], None))
                 continue
-            if len(parts) >= 3 and parent == stem and parts[-3] in (
-                "list_filter",
-                "kanban_board",
-            ):
-                found.append(
-                    FixtureFile(app, path, MECHANISM_DOC_FILE, parts[-3], None)
-                )
+            if len(parts) >= 3 and parent == stem and parts[-3] in ("list_filter", "kanban_board"):
+                found.append(FixtureFile(app, path, MECHANISM_DOC_FILE, parts[-3], None))
     return found
 
 
@@ -437,8 +426,7 @@ def audit_apps_root(apps_root: Path) -> dict[str, Any]:
                 records_here = sum(
                     s["records"]
                     for s in file_summaries
-                    if s["mechanism"] == MECHANISM_APP_FIXTURE
-                    and str(Path(s["file"]).parent) == folder
+                    if s["mechanism"] == MECHANISM_APP_FIXTURE and str(Path(s["file"]).parent) == folder
                 )
                 findings.append(
                     _finding(
@@ -494,10 +482,7 @@ def iter_never_modified(report: dict[str, Any]) -> Iterator[tuple[str, str, str]
                     yield summary["app"], summary["file"], f["record"]
         elif summary["mechanism"] == MECHANISM_DOC_FILE and summary["without_modified"]:
             for f in report["findings"]:
-                if (
-                    f["id"] == "FX-NO-MODIFIED-DOCFILE"
-                    and f["file"] == summary["file"]
-                ):
+                if f["id"] == "FX-NO-MODIFIED-DOCFILE" and f["file"] == summary["file"]:
                     yield summary["app"], summary["file"], f["record"]
 
 
@@ -557,9 +542,7 @@ def main(argv: list[str] | None = None) -> int:
         help="path to the bench apps/ directory (default: search upward from cwd)",
     )
     parser.add_argument("--json", action="store_true", help="emit the full report as JSON")
-    parser.add_argument(
-        "--summary", action="store_true", help="emit a human summary (this is the default)"
-    )
+    parser.add_argument("--summary", action="store_true", help="emit a human summary (this is the default)")
     args = parser.parse_args(argv)
 
     if args.apps_root:
