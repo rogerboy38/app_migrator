@@ -211,7 +211,10 @@ def print_paths() -> None:
         print(f"\n  {app}")
         print(f"      READS      : {read_path}  (exists={os.path.isdir(read_path)})")
         app_root = os.path.dirname(os.path.dirname(read_path))
-        others = [p for p in all_fixture_folders(app_root) if os.path.abspath(p) != os.path.abspath(read_path)]
+        others = []
+        for path in all_fixture_folders(app_root):
+            if os.path.abspath(path) != os.path.abspath(read_path):
+                others.append(path)
         for other in others:
             records = sum(len(read_records(other)))
             print(f"      NOT READ   : {other}  ({records} records never applied)")
@@ -264,10 +267,11 @@ def print_diffs() -> None:
             file_modified = rec.get("modified")
             print(f"\n  ~ {app}/{doctype} '{name}'   [{filename}]")
             print(f"      live modified={live_modified}   file modified={file_modified}")
-            for field, live_value, file_value in value_diffs:
-                print(f"      VALUE  {field:26} live={normalise(live_value)[:40]:42} file={normalise(file_value)[:40]}")
-            for field, live_value, file_value in flag_diffs:
-                print(f"      FLAG   {field:26} live={normalise(live_value)[:40]:42} file={normalise(file_value)[:40]}")
+            for label, entries in (("VALUE", value_diffs), ("FLAG", flag_diffs)):
+                for field, live_value, file_value in entries:
+                    live_text = normalise(live_value)[:40]
+                    file_text = normalise(file_value)[:40]
+                    print(f"      {label:6} {field:26} live={live_text:42} file={file_text}")
         if app_differing:
             print(f"\n  -- {app}: {app_differing} differing records")
     print(f"\n  TOTAL records compared : {total_records}")
@@ -373,5 +377,8 @@ def main() -> None:
         tee.close()
 
 
-if frappe is not None:
+if __name__ == "__main__":
+    # The bench console runs this file as __main__; importing it (as the
+    # tests do) must not run the report against whatever frappe happens to
+    # be importable.
     main()

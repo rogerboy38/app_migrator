@@ -118,3 +118,32 @@ def test_metadata_flags_are_not_value_fields():
 def test_right_to_method_maps_delete_to_on_trash():
     assert lfd.RIGHT_TO_METHOD["delete"] == "on_trash"
     assert lfd.RIGHT_TO_METHOD["submit"] == "submit"
+
+
+def test_importing_the_script_does_not_run_the_report_even_with_a_frappe_stub():
+    """Importing must never run the report - not even with a frappe present.
+
+    This is a regression test for a real CI failure.  The bench-free suite
+    installs a permissive `frappe` stand-in whose `get_installed_apps()`
+    returns a stub object rather than a list, so a script that ran its
+    report on import died during pytest collection with
+
+        TypeError: 'stub_get_installed_apps' object is not iterable
+
+    The report runs on `__main__` only, which is what the bench console and
+    `python3 live_fixture_diff.py` both are.
+    """
+    import _frappe_stub
+
+    _frappe_stub.install()
+
+    spec = importlib.util.spec_from_file_location(
+        "live_fixture_diff_imported_with_stub", SCRIPT_PATH
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["live_fixture_diff_imported_with_stub"] = module
+    # The import itself is the assertion: it must not raise, which is what
+    # happens if the report runs and tries to read a site.
+    spec.loader.exec_module(module)
+
+    assert module.frappe is not None, "the frappe stand-in should be importable here"

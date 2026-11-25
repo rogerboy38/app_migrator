@@ -41,8 +41,9 @@ See app_migrator's L520/L521/L522 memory entries for the receipts.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator, NamedTuple
+from typing import Any, NamedTuple
 
 SCHEMA_VERSION = "1.0.0"
 
